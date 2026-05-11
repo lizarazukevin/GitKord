@@ -1,3 +1,5 @@
+#![expect(dead_code)]
+
 //! Runtime configuration for `DiGiBot`.
 //!
 //! [`Config::from_env`] is the single source of truth for all env variables.

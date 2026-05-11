@@ -21,7 +21,7 @@ DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-da
 - **Push-aware** — `push` events to `main` (including merges) are reflected in the PR's commit line.
 - **Slash commands** — `/subscribe`, `/link`, `/assign`, and more — all ephemeral, no channel spam.
 - **Lightweight persistence** — SQLite-backed subscriptions and user links survive restarts; everything else lives in memory.
-- **Health endpoint** — `GET /health` reports bot and GitHub API reachability.
+- **Health endpoint** — `GET /healthz` reports bot and GitHub API reachability.
 
 ---
 

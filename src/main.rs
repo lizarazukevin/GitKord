@@ -2,7 +2,6 @@
 #![warn(missing_docs)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::multiple_crate_versions)] // transitive deps — not in our control
-#![allow(dead_code)] // remove once all fields are wired up in later steps
 
 //! `DiGiBot` entrypoint.
 //!
@@ -17,6 +16,7 @@
 
 mod config;
 mod error;
+mod github;
 
 use anyhow::Result;
 use std::net::SocketAddr;
@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     let config = config::Config::from_env()?;
     info!("DiGiBot starting — watching {}", config.github_repo);
 
-    let http_task = tokio::spawn(serve_http(config.port));
+    let http_task = tokio::spawn(serve_http(config.port, config.github_webhook_secret));
     let discord_task = tokio::spawn(run_discord(config.discord_token));
 
     tokio::select! {
@@ -56,10 +56,14 @@ fn init_tracing() {
 }
 
 /// Bind a TCP listener and start the Axum HTTP server.
-async fn serve_http(port: u16) {
+async fn serve_http(port: u16, webhook_secret: String) {
     let app = axum::Router::new()
         .route("/healthz", axum::routing::get(healthz))
-        .route("/github/webhook", axum::routing::post(webhook_placeholder));
+        .route(
+            "/github/webhook",
+            axum::routing::post(github::webhook::handle),
+        )
+        .with_state(webhook_secret);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     info!("HTTP server listening on {addr}");
@@ -92,15 +96,7 @@ async fn healthz() -> &'static str {
     "ok"
 }
 
-/// Temporary webhook sink.
-///
-/// Returns `200 OK` so GitHub marks deliveries as successful while the real
-/// HMAC-verified handler is being implemented.
-async fn webhook_placeholder() -> &'static str {
-    "webhook received"
-}
-
-// ── Discord Handler ───────────────────────────────────────
+// ── Discord Handler ─────────────────────────────────────────────
 
 struct ReadyHandler;
 

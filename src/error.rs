@@ -1,3 +1,5 @@
+#![expect(dead_code)]
+
 //! Unified error types for `DiGiBot`.
 //!
 //! [`AppError`] is returned by all Axum handlers.
@@ -25,7 +27,7 @@ pub enum AppError {
     /// Wraps errors from the Serenity Discord client.
     /// Maps to `500 Internal Server Error`.
     #[error("Discord error: {0}")]
-    Discord(#[from] serenity::Error),
+    Discord(#[from] Box<serenity::Error>),
 
     /// Catch-all for internal errors that don't fit variants.
     /// Maps to `500 Internal Server Error`.
