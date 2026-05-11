@@ -121,7 +121,7 @@ Generate an OAuth2 invite URL with the following scopes and permissions:
 | `/link`        | Link your Discord account to a GitHub username           |
 | `/unlink`      | Remove your Discord ↔ GitHub link                        |
 | `/assign`      | Assign a reviewer to a PR (autocomplete for PR and user) |
-| `/health`      | Show bot and GitHub API status                           |
+| `/healthz`     | Show bot and GitHub API status                           |
 
 ---
 
@@ -143,7 +143,7 @@ Generate an OAuth2 invite URL with the following scopes and permissions:
 - Webhook verification and event deserialization
 - Main message creation and in-place updates (PR events)
 - Audit thread logging
-- Slash commands: `/subscribe`, `/unsubscribe`, `/link`, `/health`
+- Slash commands: `/subscribe`, `/unsubscribe`, `/link`, `/healthz`
 - SQLite persistence for subscriptions and user links
 
 ### v0.2 — Review lifecycle

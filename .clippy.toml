@@ -1,0 +1,5 @@
+# Clippy lint configuration
+# Docs: https://doc.rust-lang.org/clippy/configuration.html
+
+# Warn when cognitive complexity gets unweildly
+cognitive-complexity-threshold = 10
