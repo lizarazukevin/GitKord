@@ -4,6 +4,9 @@
 //! the HMAC-SHA256 signature in `X-Hub-Signature-256` before the payload is
 //! parsed — unauthenticated requests are rejected with `401 Unauthorized`.
 
+use std::sync::Arc;
+
+use axum::response::Response;
 use axum::{
     body::Bytes,
     extract::State,
@@ -11,15 +14,30 @@ use axum::{
     response::IntoResponse,
 };
 use hmac::{Hmac, KeyInit, Mac};
+use serenity::all::{ChannelId, Http};
 use sha2::Sha256;
 use tracing::{info, warn};
 
+use crate::discord::messages;
 use crate::error::AppError;
 use crate::github::types::{
     GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
 };
 
 type HmacSha256 = Hmac<Sha256>;
+
+/// State shared across all webhook handler invocations.
+#[derive(Clone)]
+pub struct WebhookState {
+    /// HMAC secret for verifying GitHub payloads
+    pub secret: String,
+
+    /// Serenity HTTP client for posting Discord messages
+    pub http: Arc<Http>,
+
+    /// Channel to post PR messages to (temporary)
+    pub channel_id: ChannelId,
+}
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
@@ -29,11 +47,11 @@ type HmacSha256 = Hmac<Sha256>;
 /// 2. Verifies the `X-Hub-Signature-256` header against the shared secret.
 /// 3. Dispatches to the appropriate event handler based on `X-GitHub-Event`.
 pub async fn handle(
-    State(secret): State<String>,
+    State(state): State<WebhookState>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<impl IntoResponse, AppError> {
-    verify_signature(&secret, &headers, &body)?;
+    verify_signature(&state.secret, &headers, &body)?;
 
     let event_type = headers
         .get("x-github-event")
@@ -52,13 +70,13 @@ pub async fn handle(
         GitHubEvent::PullRequest => {
             let payload: PullRequestPayload =
                 serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
-            Ok(handle_pull_request(&payload).into_response())
+            handle_pull_request(state, payload).await
         }
 
         GitHubEvent::PullRequestReview => {
             let payload: PullRequestReviewPayload =
                 serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
-            Ok(handle_pull_request_review(&payload).into_response())
+            handle_pull_request_review(state, payload).await
         }
 
         GitHubEvent::Push => {
@@ -76,8 +94,12 @@ pub async fn handle(
 
 // ── Event handlers ────────────────────────────────────────────────────────────
 
-fn handle_pull_request(payload: &PullRequestPayload) -> StatusCode {
+async fn handle_pull_request(
+    state: WebhookState,
+    payload: PullRequestPayload,
+) -> Result<Response, AppError> {
     let pr = &payload.pull_request;
+
     info!(
         repo   = %payload.repository.full_name,
         pr     = pr.number,
@@ -86,12 +108,27 @@ fn handle_pull_request(payload: &PullRequestPayload) -> StatusCode {
         title  = %pr.title,
         "pull_request event received"
     );
-    StatusCode::OK
+
+    match payload.action.as_str() {
+        "opened" => {
+            messages::post_pull_request(&state.http, state.channel_id, &payload).await?;
+        }
+        "closed" | "reopened" | "synchronize" => {
+            info!(action = %payload.action, "update not yet persisted, state layer pending");
+        }
+        _ => {}
+    }
+
+    Ok(StatusCode::OK.into_response())
 }
 
-fn handle_pull_request_review(payload: &PullRequestReviewPayload) -> StatusCode {
+async fn handle_pull_request_review(
+    state: WebhookState,
+    payload: PullRequestReviewPayload,
+) -> Result<Response, AppError> {
     let pr = &payload.pull_request;
     let review = &payload.review;
+
     info!(
         repo     = %payload.repository.full_name,
         pr       = pr.number,
@@ -100,7 +137,12 @@ fn handle_pull_request_review(payload: &PullRequestReviewPayload) -> StatusCode 
         verdict  = %review.verdict_emoji(),
         "pull_request_review event received"
     );
-    StatusCode::OK
+
+    if payload.action == "submitted" {
+        messages::post_review(&state.http, state.channel_id, &payload).await?;
+    }
+
+    Ok(StatusCode::OK.into_response())
 }
 
 fn handle_push(payload: &PushPayload) -> StatusCode {

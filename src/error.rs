@@ -1,5 +1,3 @@
-#![expect(dead_code)]
-
 //! Unified error types for `DiGiBot`.
 //!
 //! [`AppError`] is returned by all Axum handlers.
@@ -46,6 +44,3 @@ impl IntoResponse for AppError {
         (status, self.to_string()).into_response()
     }
 }
-
-/// Aliases
-pub type Result<T> = std::result::Result<T, AppError>;

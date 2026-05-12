@@ -1,6 +1,4 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
-#![warn(missing_docs)]
-#![allow(clippy::module_name_repetitions)]
 #![allow(clippy::multiple_crate_versions)] // transitive deps — not in our control
 
 //! `DiGiBot` entrypoint.
@@ -15,10 +13,13 @@
 //! so Railway (or any supervisor) knows to restart it.
 
 mod config;
+mod discord;
 mod error;
 mod github;
 
+use crate::github::webhook::WebhookState;
 use anyhow::Result;
+use serenity::all::ChannelId;
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -29,8 +30,23 @@ async fn main() -> Result<()> {
     let config = config::Config::from_env()?;
     info!("DiGiBot starting — watching {}", config.github_repo);
 
-    let http_task = tokio::spawn(serve_http(config.port, config.github_webhook_secret));
-    let discord_task = tokio::spawn(run_discord(config.discord_token));
+    // Builds the Discord client and extract the HTTP handle before client
+    // is moved into its task, HTTP is Arc-backed so cloning is cheap.
+    let (mut discord_client, http) = discord::bot::build(&config.discord_token).await;
+
+    let webhook_state = WebhookState {
+        secret: config.github_webhook_secret,
+        http,
+        channel_id: ChannelId::new(config.discord_channel_id),
+    };
+
+    let http_task = tokio::spawn(serve_http(config.port, webhook_state));
+    let discord_task = tokio::spawn(async move {
+        discord_client
+            .start()
+            .await
+            .expect("Discord client crashed");
+    });
 
     tokio::select! {
         _ = http_task    => tracing::error!("HTTP server exited unexpectedly"),
@@ -56,14 +72,14 @@ fn init_tracing() {
 }
 
 /// Bind a TCP listener and start the Axum HTTP server.
-async fn serve_http(port: u16, webhook_secret: String) {
+async fn serve_http(port: u16, state: WebhookState) {
     let app = axum::Router::new()
         .route("/healthz", axum::routing::get(healthz))
         .route(
             "/github/webhook",
             axum::routing::post(github::webhook::handle),
         )
-        .with_state(webhook_secret);
+        .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     info!("HTTP server listening on {addr}");
@@ -77,32 +93,9 @@ async fn serve_http(port: u16, webhook_secret: String) {
         .expect("HTTP server crashed");
 }
 
-/// Connect the Serenity Discord client and begin processing gateway events.
-async fn run_discord(token: String) {
-    let intents = serenity::all::GatewayIntents::empty();
-
-    let mut client = serenity::Client::builder(&token, intents)
-        .event_handler(ReadyHandler)
-        .await
-        .expect("failed to build Discord client");
-
-    client.start().await.expect("Discord client crashed");
-}
-
 // — HTTP Handlers ————————————————————————————————————————————————
 
 /// Liveness probe, returns `200 OK` for uptime monitors and Railway health checks.
 async fn healthz() -> &'static str {
     "ok"
-}
-
-// ── Discord Handler ─────────────────────────────────────────────
-
-struct ReadyHandler;
-
-#[serenity::async_trait]
-impl serenity::all::EventHandler for ReadyHandler {
-    async fn ready(&self, _ctx: serenity::all::Context, ready: serenity::all::Ready) {
-        info!("Discord bot connected as {}", ready.user.name);
-    }
 }
