@@ -27,6 +27,11 @@ pub enum AppError {
     #[error("Discord error: {0}")]
     Discord(#[from] Box<serenity::Error>),
 
+    /// Wraps `SQLite` database errors.
+    /// Maps to `500 Internal Server Error`.
+    #[error("internal error: {0}")]
+    Database(sqlx::Error),
+
     /// Catch-all for internal errors that don't fit variants.
     /// Maps to `500 Internal Server Error`.
     #[error("internal error: {0}")]
@@ -38,7 +43,9 @@ impl IntoResponse for AppError {
         let status = match &self {
             Self::InvalidSignature => StatusCode::UNAUTHORIZED,
             Self::GitHub(_) => StatusCode::BAD_GATEWAY,
-            Self::Discord(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Discord(_) | Self::Database(_) | Self::Internal(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         };
 
         (status, self.to_string()).into_response()

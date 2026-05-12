@@ -23,6 +23,7 @@ use crate::error::AppError;
 use crate::github::types::{
     GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
 };
+use crate::state::{PrMessage, PrMessageStore};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -37,15 +38,14 @@ pub struct WebhookState {
 
     /// Channel to post PR messages to (temporary)
     pub channel_id: ChannelId,
+
+    /// Persistent store for PR message IDs
+    pub pr_store: Arc<dyn PrMessageStore>,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 /// Axum handler for `POST /github/webhook`.
-///
-/// 1. Reads the raw request body as bytes (required for signature verification).
-/// 2. Verifies the `X-Hub-Signature-256` header against the shared secret.
-/// 3. Dispatches to the appropriate event handler based on `X-GitHub-Event`.
 pub async fn handle(
     State(state): State<WebhookState>,
     headers: HeaderMap,
@@ -111,10 +111,44 @@ async fn handle_pull_request(
 
     match payload.action.as_str() {
         "opened" => {
-            messages::post_pull_request(&state.http, state.channel_id, &payload).await?;
+            let message_id =
+                messages::post_pull_request(&state.http, state.channel_id, &payload).await?;
+
+            state
+                .pr_store
+                .upsert(PrMessage {
+                    repo: payload.repository.full_name.clone(),
+                    pr_number: pr.number,
+                    channel_id: state.channel_id.get(),
+                    message_id,
+                })
+                .await?;
         }
         "closed" | "reopened" | "synchronize" => {
-            info!(action = %payload.action, "update not yet persisted, state layer pending");
+            let record = state
+                .pr_store
+                .get(&payload.repository.full_name, pr.number)
+                .await?;
+
+            if let Some(record) = record {
+                messages::update_pull_request(
+                    &state.http,
+                    ChannelId::new(record.channel_id),
+                    record.message_id,
+                    &payload,
+                )
+                .await?;
+
+                // Remove record if PR is fully closed
+                if payload.action == "closed" {
+                    state
+                        .pr_store
+                        .delete(&payload.repository.full_name, pr.number)
+                        .await?;
+                }
+            } else {
+                info!(action = %payload.action, "update not yet persisted, state layer pending");
+            }
         }
         _ => {}
     }

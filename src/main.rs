@@ -16,12 +16,16 @@ mod config;
 mod discord;
 mod error;
 mod github;
+pub mod state;
 
-use crate::github::webhook::WebhookState;
 use anyhow::Result;
 use serenity::all::ChannelId;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing::info;
+
+use crate::github::webhook::WebhookState;
+use crate::state::db::{connect, SqlitePrMessageStore};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,6 +33,10 @@ async fn main() -> Result<()> {
 
     let config = config::Config::from_env()?;
     info!("DiGiBot starting — watching {}", config.github_repo);
+
+    // Connect to SQLite and initialize tables
+    let pool = connect(&config.database_url).await?;
+    let pr_store = Arc::new(SqlitePrMessageStore::new(pool));
 
     // Builds the Discord client and extract the HTTP handle before client
     // is moved into its task, HTTP is Arc-backed so cloning is cheap.
@@ -38,6 +46,7 @@ async fn main() -> Result<()> {
         secret: config.github_webhook_secret,
         http,
         channel_id: ChannelId::new(config.discord_channel_id),
+        pr_store,
     };
 
     let http_task = tokio::spawn(serve_http(config.port, webhook_state));

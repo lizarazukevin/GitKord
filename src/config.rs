@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 ///
 /// Cloning is cheap, pass `Config` by clone into spawned tasks
 /// rather than wrapping it in an `Arc`.
+#[derive(Debug, Clone)]
 pub struct Config {
     /// Discord bot token from the Developer Portal
     pub discord_token: String,
@@ -26,6 +27,9 @@ pub struct Config {
     /// GitHub personal access token for REST API calls (reviewer assignment, etc.)
     #[allow(dead_code)]
     pub github_token: String,
+
+    /// `SQLite` database URL (e.g. `sqlite://digibot.db`)
+    pub database_url: String,
 
     /// TCP port the Axum HTTP server listens on. Defaults to `3000`
     /// Port assignment conflicts with Vite API routing, change to another port if this happens
@@ -46,6 +50,7 @@ impl Config {
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
             github_repo: require("GITHUB_REPO")?,
             github_token: require("GITHUB_TOKEN")?,
+            database_url: require("DATABASE_URL").unwrap_or_else(|_| "sqlite://digibot.db?mode=rwc".into()),
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "3000".into())
                 .parse::<u16>()

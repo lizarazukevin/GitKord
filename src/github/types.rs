@@ -159,6 +159,7 @@ impl Review {
 /// Payload for a `push` webhook event.
 #[derive(Debug, Deserialize)]
 pub struct PushPayload {
+    #[serde(rename = "ref")]
     pub git_ref: String,
     pub after: String,
     pub repository: Repository,
@@ -181,8 +182,15 @@ pub struct Commit {
 /// Authorship metadata on a commit.
 #[derive(Debug, Deserialize)]
 pub struct CommitAuthor {
+    /// Display name
     pub name: String,
+
+    /// Email address
     pub email: String,
+
+    /// GitHub username (only present in push payloads)
+    #[serde(default)]
+    pub username: Option<String>,
 }
 
 // — Shared Types ─────────────────────────────────────────────
