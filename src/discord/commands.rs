@@ -9,7 +9,7 @@ use serenity::all::{
 };
 use tracing::info;
 
-use crate::state::traits::{UserLink, UserLinkStore};
+use crate::state::traits::{Subscription, SubscriptionStore, UserLink, UserLinkStore};
 
 // ── Registration ──────────────────────────────────────────────────────────────
 
@@ -26,9 +26,25 @@ pub async fn register(ctx: &Context) -> Result<(), serenity::Error> {
         ctx,
         vec![
             CreateCommand::new("subscribe")
-                .description("Subscribe this channel to PR updates for the configured repository"),
+                .description("Subscribe this channel to PR updates for a repository")
+                .add_option(
+                    CreateCommandOption::new(
+                        CommandOptionType::String,
+                        "repo",
+                        "Repository to watch in owner/name format (e.g. kevinlizarazu/digibot)",
+                    )
+                    .required(true),
+                ),
             CreateCommand::new("unsubscribe")
-                .description("Stop posting PR updates to this channel"),
+                .description("Stop posting PR updates for a repository")
+                .add_option(
+                    CreateCommandOption::new(
+                        CommandOptionType::String,
+                        "repo",
+                        "Repository to unsubscribe from in owner/name format",
+                    )
+                    .required(true),
+                ),
             CreateCommand::new("link")
                 .description("Link your Discord account to a GitHub username")
                 .add_option(
@@ -52,14 +68,19 @@ pub async fn register(ctx: &Context) -> Result<(), serenity::Error> {
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
 /// Route an incoming interaction to the correct command handler.
-pub async fn dispatch(ctx: &Context, interaction: &Interaction, user_store: &dyn UserLinkStore) {
+pub async fn dispatch(
+    ctx: &Context,
+    interaction: &Interaction,
+    sub_store: &dyn SubscriptionStore,
+    user_store: &dyn UserLinkStore,
+) {
     let Interaction::Command(cmd) = interaction else {
         return;
     };
 
     let result = match cmd.data.name.as_str() {
-        "subscribe" => handle_subscribe(ctx, cmd).await,
-        "unsubscribe" => handle_unsubscribe(ctx, cmd).await,
+        "subscribe" => handle_subscribe(ctx, cmd, sub_store).await,
+        "unsubscribe" => handle_unsubscribe(ctx, cmd, sub_store).await,
         "link" => handle_link(ctx, cmd, user_store).await,
         "unlink" => handle_unlink(ctx, cmd, user_store).await,
         "health" => handle_health(ctx, cmd).await,
@@ -76,39 +97,104 @@ pub async fn dispatch(ctx: &Context, interaction: &Interaction, user_store: &dyn
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
-async fn handle_subscribe(ctx: &Context, cmd: &CommandInteraction) -> Result<(), serenity::Error> {
-    // Full implementation comes with the subscription store in a later step.
-    // For now, acknowledges the command and informs the user.
-    info!(
-        channel = %cmd.channel_id,
-        user    = %cmd.user.name,
-        "subscribe command received"
-    );
+async fn handle_subscribe(
+    ctx: &Context,
+    cmd: &CommandInteraction,
+    sub_store: &dyn SubscriptionStore,
+) -> Result<(), serenity::Error> {
+    // guild_id only made available in servers, not in DMs
+    let Some(guild_id) = cmd.guild_id else {
+        return ephemeral(ctx, cmd, "❌ This command can only be used in a server").await;
+    };
 
-    ephemeral(
-        ctx,
-        cmd,
-        "✅ This channel will receive PR updates. (Subscription persistence coming soon)",
-    )
-    .await
+    let repo = cmd
+        .data
+        .options
+        .iter()
+        .find(|o| o.name == "repo")
+        .and_then(|o| o.value.as_str())
+        .unwrap_or("")
+        .to_owned();
+
+    if repo.is_empty() || !repo.contains('/') {
+        return ephemeral(
+            ctx,
+            cmd,
+            "❌ Please provide a valid repo in `owner/name` format.",
+        )
+        .await;
+    }
+
+    let subscription = Subscription {
+        repo: repo.clone(),
+        guild_id: guild_id.get(),
+        channel_id: cmd.channel_id.get(),
+    };
+
+    match sub_store.upsert(subscription).await {
+        Ok(()) => {
+            info!(
+                channel = %cmd.channel_id,
+                guild_id = %guild_id,
+                repo = %repo,
+                "channel subscribed"
+            );
+            ephemeral(
+                ctx,
+                cmd,
+                &format!("✅ This channel will now receive PR updates for **{repo}**."),
+            )
+            .await
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to save subscription");
+            ephemeral(ctx, cmd, "❌ Something went wrong. Try again.").await
+        }
+    }
 }
 
 async fn handle_unsubscribe(
     ctx: &Context,
     cmd: &CommandInteraction,
+    sub_store: &dyn SubscriptionStore,
 ) -> Result<(), serenity::Error> {
-    info!(
-        channel = %cmd.channel_id,
-        user    = %cmd.user.name,
-        "unsubscribe command received"
-    );
+    let Some(guild_id) = cmd.guild_id else {
+        return ephemeral(ctx, cmd, "❌ This command can only be used in a server.").await;
+    };
 
-    ephemeral(
-        ctx,
-        cmd,
-        "🔕 PR updates will stop for this channel. (Subscription persistence coming soon)",
-    )
-    .await
+    let repo = cmd
+        .data
+        .options
+        .iter()
+        .find(|o| o.name == "repo")
+        .and_then(|o| o.value.as_str())
+        .unwrap_or("")
+        .to_owned();
+
+    if repo.is_empty() {
+        return ephemeral(ctx, cmd, "❌ Please provide a repo in `owner/name` format.").await;
+    }
+
+    match sub_store.delete(&repo, guild_id.get()).await {
+        Ok(()) => {
+            info!(
+                channel = %cmd.channel_id,
+                guild   = %guild_id,
+                repo    = %repo,
+                "channel unsubscribed"
+            );
+            ephemeral(
+                ctx,
+                cmd,
+                &format!("🔕 This channel will no longer receive PR updates for **{repo}**."),
+            )
+            .await
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to remove subscription");
+            ephemeral(ctx, cmd, "❌ Something went wrong. Try again.").await
+        }
+    }
 }
 
 async fn handle_link(

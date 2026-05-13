@@ -45,6 +45,61 @@ pub trait PrMessageStore: Send + Sync {
     async fn delete(&self, repo: &str, pr_number: u64) -> Result<(), AppError>;
 }
 
+// ── Subscription store ────────────────────────────────────────────────────────
+
+/// A channel subscribed to PR updates for a given repository.
+#[derive(Debug, Clone)]
+pub struct Subscription {
+    /// GitHub repository in `owner/name` format.
+    pub repo: String,
+
+    /// Discord guild (server) the channel belongs to.
+    pub guild_id: u64,
+
+    /// Discord channel that will receive PR messages.
+    pub channel_id: u64,
+}
+
+/// Persist and retrieve channel subscriptions.
+#[async_trait]
+pub trait SubscriptionStore: Send + Sync {
+    /// Subscribe a channel to PR updates for a repository.
+    ///
+    /// If a subscription already exists for `(repo, guild_id)` the channel
+    /// is updated — one subscription per repo per guild.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::Database`] if the query fails.
+    async fn upsert(&self, subscription: Subscription) -> Result<(), AppError>;
+
+    /// Look up the subscribed channel for a repository in a given guild.
+    ///
+    /// Returns `None` if the guild has not subscribed to this repo.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::Database`] if the query fails.
+    async fn get(&self, repo: &str, guild_id: u64) -> Result<Option<Subscription>, AppError>;
+
+    /// Look up all subscriptions for a repository across all guilds.
+    ///
+    /// Used when a webhook event arrives to find every channel that should
+    /// receive a message.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::Database`] if the query fails.
+    async fn get_all_for_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError>;
+
+    /// Remove a subscription.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::Database`] if the query fails.
+    async fn delete(&self, repo: &str, guild_id: u64) -> Result<(), AppError>;
+}
+
 // ── User link store ───────────────────────────────────────────────────────────
 
 /// A link between a Discord user and their GitHub username.

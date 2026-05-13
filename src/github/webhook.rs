@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-
 //! GitHub webhook endpoint.
 //!
 //! Handles `POST /github/webhook`. Every incoming request is verified against
@@ -25,7 +23,7 @@ use crate::error::AppError;
 use crate::github::types::{
     GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
 };
-use crate::state::{PrMessage, PrMessageStore, UserLinkStore};
+use crate::state::{PrMessage, PrMessageStore, SubscriptionStore};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -38,11 +36,11 @@ pub struct WebhookState {
     /// Serenity HTTP client for posting Discord messages
     pub http: Arc<Http>,
 
-    /// Channel to post PR messages to (temporary)
-    pub channel_id: ChannelId,
-
     /// Persistent store for PR message IDs
     pub pr_store: Arc<dyn PrMessageStore>,
+
+    /// Persistent store for channel subscription
+    pub sub_store: Arc<dyn SubscriptionStore>,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -111,20 +109,33 @@ async fn handle_pull_request(
         "pull_request event received"
     );
 
+    let subscriptions = state
+        .sub_store
+        .get_all_for_repo(&payload.repository.full_name)
+        .await?;
+
+    if subscriptions.is_empty() {
+        info!(repo = %payload.repository.full_name, "no subscriptions found");
+        return Ok(StatusCode::OK.into_response());
+    }
+
     match payload.action.as_str() {
         "opened" => {
-            let message_id =
-                messages::post_pull_request(&state.http, state.channel_id, &payload).await?;
+            for sub in &subscriptions {
+                let channel_id = ChannelId::from(sub.channel_id);
+                let message_id =
+                    messages::post_pull_request(&state.http, channel_id, &payload).await?;
 
-            state
-                .pr_store
-                .upsert(PrMessage {
-                    repo: payload.repository.full_name.clone(),
-                    pr_number: pr.number,
-                    channel_id: state.channel_id.get(),
-                    message_id,
-                })
-                .await?;
+                state
+                    .pr_store
+                    .upsert(PrMessage {
+                        repo: payload.repository.full_name.clone(),
+                        pr_number: pr.number,
+                        channel_id: sub.channel_id,
+                        message_id,
+                    })
+                    .await?;
+            }
         }
         "closed" | "reopened" | "synchronize" => {
             let record = state
@@ -141,7 +152,6 @@ async fn handle_pull_request(
                 )
                 .await?;
 
-                // Remove record if PR is fully closed
                 if payload.action == "closed" {
                     state
                         .pr_store
@@ -149,7 +159,7 @@ async fn handle_pull_request(
                         .await?;
                 }
             } else {
-                info!(action = %payload.action, "update not yet persisted, state layer pending");
+                info!(pr = pr.number, "no stored message for PR — skipping update");
             }
         }
         _ => {}
@@ -175,7 +185,14 @@ async fn handle_pull_request_review(
     );
 
     if payload.action == "submitted" {
-        messages::post_review(&state.http, state.channel_id, &payload).await?;
+        let record = state
+            .pr_store
+            .get(&payload.repository.full_name, pr.number)
+            .await?;
+
+        if let Some(record) = record {
+            messages::post_review(&state.http, ChannelId::new(record.channel_id), &payload).await?;
+        }
     }
 
     Ok(StatusCode::OK.into_response())
