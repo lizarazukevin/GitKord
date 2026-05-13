@@ -53,6 +53,7 @@ async fn main() -> Result<()> {
         Arc::clone(&user_store),
         Arc::clone(&github),
         config.webhook_url.clone(),
+        config.github_webhook_secret.clone(),
     )
     .await;
 

@@ -1,6 +1,4 @@
-#![allow(unused)]
-
-//! GitHub webhook endpoint.
+//! `GitHub` webhook endpoint.
 //!
 //! Handles `POST /github/webhook`. Every incoming request is verified against
 //! the HMAC-SHA256 signature in `X-Hub-Signature-256` before the payload is
@@ -17,7 +15,7 @@ use axum::{
 };
 use hmac::{Hmac, KeyInit, Mac};
 use octocrab::Octocrab;
-use serenity::all::{ChannelId, Http, Webhook};
+use serenity::all::{ChannelId, Http};
 use sha2::Sha256;
 use tracing::{info, warn};
 
@@ -46,9 +44,11 @@ pub struct WebhookState {
     pub sub_store: Arc<dyn SubscriptionStore>,
 
     /// Authenticated GitHub API client
+    #[allow(dead_code)]
     pub github: Arc<Octocrab>,
 
     /// Publicly reachable URL for this bot, passed to GitHub when registering webhooks
+    #[allow(dead_code)]
     pub webhook_url: String,
 }
 

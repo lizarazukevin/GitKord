@@ -76,13 +76,16 @@ pub async fn dispatch(
     user_store: &dyn UserLinkStore,
     github: &Octocrab,
     webhook_url: &str,
+    webhook_secret: &str,
 ) {
     let Interaction::Command(cmd) = interaction else {
         return;
     };
 
     let result = match cmd.data.name.as_str() {
-        "subscribe" => handle_subscribe(ctx, cmd, sub_store, github, webhook_url).await,
+        "subscribe" => {
+            handle_subscribe(ctx, cmd, sub_store, github, webhook_url, webhook_secret).await
+        }
         "unsubscribe" => handle_unsubscribe(ctx, cmd, sub_store).await,
         "link" => handle_link(ctx, cmd, user_store, github).await,
         "unlink" => handle_unlink(ctx, cmd, user_store).await,
@@ -106,6 +109,7 @@ async fn handle_subscribe(
     sub_store: &dyn SubscriptionStore,
     github: &Octocrab,
     webhook_url: &str,
+    webhook_secret: &str,
 ) -> Result<(), serenity::Error> {
     // guild_id only made available in servers, not in DMs
     let Some(guild_id) = cmd.guild_id else {
@@ -131,12 +135,9 @@ async fn handle_subscribe(
     }
 
     let (owner, repo_name) = repo.split_once('/').expect("validated above");
+
     let payload_url = format!("{webhook_url}/github/webhook");
-
-    // refactor later to pass through WebhookState
-    let secret = std::env::var("GITHUB_WEBHOOK_SECRET").unwrap_or_default();
-
-    match api::register_webhook(github, owner, repo_name, &payload_url, &secret).await {
+    match api::register_webhook(github, owner, repo_name, &payload_url, webhook_secret).await {
         Ok(Some(id)) => info!(repo, hook_id = id, "webhook registered via API"),
         Ok(None) => info!(repo, "webhook already existed"),
         Err(e) => {

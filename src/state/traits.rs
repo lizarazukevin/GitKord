@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 //! Store trait abstractions for `DiGiBot`.
 //!
 //! High-level handlers depend on these traits, not on concrete database types.
@@ -80,6 +78,7 @@ pub trait SubscriptionStore: Send + Sync {
     /// # Errors
     ///
     /// Returns [`AppError::Database`] if the query fails.
+    #[allow(dead_code)]
     async fn get(&self, repo: &str, guild_id: u64) -> Result<Option<Subscription>, AppError>;
 
     /// Look up all subscriptions for a repository across all guilds.
@@ -119,9 +118,11 @@ pub trait UserLinkStore: Send + Sync {
     async fn upsert(&self, link: UserLink) -> Result<(), AppError>;
 
     /// Look up a user's GitHub login by their Discord ID.
+    #[allow(dead_code)]
     async fn get_by_discord(&self, discord_id: u64) -> Result<Option<UserLink>, AppError>;
 
     /// Look up a Discord ID by GitHub login.
+    #[allow(dead_code)]
     async fn get_by_github(&self, github_login: &str) -> Result<Option<UserLink>, AppError>;
 
     /// Remove a link.

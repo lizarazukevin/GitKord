@@ -24,6 +24,7 @@ pub async fn build(
     user_store: Arc<dyn UserLinkStore>,
     github: Arc<Octocrab>,
     webhook_url: String,
+    webhook_secret: String,
 ) -> (serenity::Client, Arc<Http>) {
     let intents = GatewayIntents::empty();
 
@@ -33,6 +34,7 @@ pub async fn build(
             user_store,
             github,
             webhook_url,
+            webhook_secret,
         })
         .await
         .expect("failed to build Discord client");
@@ -50,6 +52,7 @@ struct ReadyHandler {
     user_store: Arc<dyn UserLinkStore>,
     github: Arc<Octocrab>,
     webhook_url: String,
+    webhook_secret: String,
 }
 
 #[serenity::async_trait]
@@ -70,6 +73,7 @@ impl EventHandler for ReadyHandler {
             self.user_store.as_ref(),
             &self.github,
             &self.webhook_url,
+            &self.webhook_secret,
         )
         .await;
     }
