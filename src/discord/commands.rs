@@ -75,13 +75,14 @@ pub async fn dispatch(
     sub_store: &dyn SubscriptionStore,
     user_store: &dyn UserLinkStore,
     github: &Octocrab,
+    webhook_url: &str,
 ) {
     let Interaction::Command(cmd) = interaction else {
         return;
     };
 
     let result = match cmd.data.name.as_str() {
-        "subscribe" => handle_subscribe(ctx, cmd, sub_store).await,
+        "subscribe" => handle_subscribe(ctx, cmd, sub_store, github, webhook_url).await,
         "unsubscribe" => handle_unsubscribe(ctx, cmd, sub_store).await,
         "link" => handle_link(ctx, cmd, user_store, github).await,
         "unlink" => handle_unlink(ctx, cmd, user_store).await,
@@ -103,6 +104,8 @@ async fn handle_subscribe(
     ctx: &Context,
     cmd: &CommandInteraction,
     sub_store: &dyn SubscriptionStore,
+    github: &Octocrab,
+    webhook_url: &str,
 ) -> Result<(), serenity::Error> {
     // guild_id only made available in servers, not in DMs
     let Some(guild_id) = cmd.guild_id else {
@@ -125,6 +128,21 @@ async fn handle_subscribe(
             "❌ Please provide a valid repo in `owner/name` format.",
         )
         .await;
+    }
+
+    let (owner, repo_name) = repo.split_once('/').expect("validated above");
+    let payload_url = format!("{webhook_url}/github/webhook");
+
+    // refactor later to pass through WebhookState
+    let secret = std::env::var("GITHUB_WEBHOOK_SECRET").unwrap_or_default();
+
+    match api::register_webhook(github, owner, repo_name, &payload_url, &secret).await {
+        Ok(Some(id)) => info!(repo, hook_id = id, "webhook registered via API"),
+        Ok(None) => info!(repo, "webhook already existed"),
+        Err(e) => {
+            tracing::error!(error = %e, repo, "failed to register webhook");
+            return ephemeral(ctx, cmd, "❌ Could not register webhook on GitHub. Check that your token has `admin:repo_hook` scope.").await;
+        }
     }
 
     let subscription = Subscription {
@@ -250,14 +268,16 @@ async fn handle_link(
                 }
             }
         }
-        Ok(None) => ephemeral(
-            ctx,
-            cmd,
-            &format!(
+        Ok(None) => {
+            ephemeral(
+                ctx,
+                cmd,
+                &format!(
                 "❌ GitHub user **{github_login}** not found. Check the username and try again."
             ),
-        )
-        .await,
+            )
+            .await
+        }
         Err(e) => {
             tracing::error!(error = %e, "GitHub API error during user verification");
             ephemeral(

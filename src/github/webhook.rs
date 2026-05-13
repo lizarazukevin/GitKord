@@ -17,7 +17,7 @@ use axum::{
 };
 use hmac::{Hmac, KeyInit, Mac};
 use octocrab::Octocrab;
-use serenity::all::{ChannelId, Http};
+use serenity::all::{ChannelId, Http, Webhook};
 use sha2::Sha256;
 use tracing::{info, warn};
 
@@ -47,6 +47,9 @@ pub struct WebhookState {
 
     /// Authenticated GitHub API client
     pub github: Arc<Octocrab>,
+
+    /// Publicly reachable URL for this bot, passed to GitHub when registering webhooks
+    pub webhook_url: String,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────

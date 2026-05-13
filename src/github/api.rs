@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 //! GitHub REST API helpers via `octocrab`.
 //!
 //! All functions take an `octocrab::Octocrab` instance built from the
