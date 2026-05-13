@@ -18,7 +18,6 @@ pub struct Config {
     pub github_webhook_secret: String,
 
     /// GitHub personal access token for REST API calls (reviewer assignment, etc.)
-    #[allow(dead_code)]
     pub github_token: String,
 
     /// `SQLite` database URL (e.g. `sqlite://digibot.db`)

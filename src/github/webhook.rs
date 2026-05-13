@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 //! GitHub webhook endpoint.
 //!
 //! Handles `POST /github/webhook`. Every incoming request is verified against
@@ -14,6 +16,7 @@ use axum::{
     response::IntoResponse,
 };
 use hmac::{Hmac, KeyInit, Mac};
+use octocrab::Octocrab;
 use serenity::all::{ChannelId, Http};
 use sha2::Sha256;
 use tracing::{info, warn};
@@ -41,6 +44,9 @@ pub struct WebhookState {
 
     /// Persistent store for channel subscription
     pub sub_store: Arc<dyn SubscriptionStore>,
+
+    /// Authenticated GitHub API client
+    pub github: Arc<Octocrab>,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────

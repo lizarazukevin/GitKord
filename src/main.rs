@@ -18,21 +18,23 @@ mod error;
 mod github;
 mod state;
 
-use anyhow::Result;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use tracing::info;
-
+use crate::github::api;
 use crate::github::webhook::WebhookState;
 use crate::state::db::{
     connect, SqlitePrMessageStore, SqliteSubscriptionStore, SqliteUserLinkStore,
 };
+use anyhow::Result;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
 
     let config = config::Config::from_env()?;
+
+    let github = std::sync::Arc::new(api::build_client(&config.github_token)?);
 
     // Connect to SQLite and initialize tables
     let pool = connect(&config.database_url).await?;
@@ -49,6 +51,7 @@ async fn main() -> Result<()> {
         &config.discord_token,
         Arc::clone(&sub_store),
         Arc::clone(&user_store),
+        Arc::clone(&github),
     )
     .await;
 
@@ -57,6 +60,7 @@ async fn main() -> Result<()> {
         http,
         pr_store,
         sub_store,
+        github,
     };
 
     let http_task = tokio::spawn(serve_http(config.port, webhook_state));

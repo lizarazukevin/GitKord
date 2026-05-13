@@ -4,9 +4,9 @@
 //! and exposes the `Http` handle so the application
 //! can post messages without holding reference to the full client.
 
-use std::sync::Arc;
-
+use octocrab::Octocrab;
 use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Ready};
+use std::sync::Arc;
 use tracing::info;
 
 use crate::discord::commands;
@@ -22,6 +22,7 @@ pub async fn build(
     token: &str,
     sub_store: Arc<dyn SubscriptionStore>,
     user_store: Arc<dyn UserLinkStore>,
+    github: Arc<Octocrab>,
 ) -> (serenity::Client, Arc<Http>) {
     let intents = GatewayIntents::empty();
 
@@ -29,6 +30,7 @@ pub async fn build(
         .event_handler(ReadyHandler {
             sub_store,
             user_store,
+            github,
         })
         .await
         .expect("failed to build Discord client");
@@ -44,6 +46,7 @@ pub async fn build(
 struct ReadyHandler {
     sub_store: Arc<dyn SubscriptionStore>,
     user_store: Arc<dyn UserLinkStore>,
+    github: Arc<Octocrab>,
 }
 
 #[serenity::async_trait]
@@ -62,6 +65,7 @@ impl EventHandler for ReadyHandler {
             &interaction,
             self.sub_store.as_ref(),
             self.user_store.as_ref(),
+            &self.github,
         )
         .await;
     }

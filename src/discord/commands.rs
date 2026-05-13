@@ -3,13 +3,14 @@
 //! All responses are ephemeral — only the invoking user sees them,
 //! keeping the channel free of bot noise.
 
+use crate::github::api;
+use crate::state::traits::{Subscription, SubscriptionStore, UserLink, UserLinkStore};
+use octocrab::Octocrab;
 use serenity::all::{
     Command, CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
     CreateInteractionResponse, CreateInteractionResponseMessage, Interaction,
 };
 use tracing::info;
-
-use crate::state::traits::{Subscription, SubscriptionStore, UserLink, UserLinkStore};
 
 // ── Registration ──────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ pub async fn dispatch(
     interaction: &Interaction,
     sub_store: &dyn SubscriptionStore,
     user_store: &dyn UserLinkStore,
+    github: &Octocrab,
 ) {
     let Interaction::Command(cmd) = interaction else {
         return;
@@ -81,7 +83,7 @@ pub async fn dispatch(
     let result = match cmd.data.name.as_str() {
         "subscribe" => handle_subscribe(ctx, cmd, sub_store).await,
         "unsubscribe" => handle_unsubscribe(ctx, cmd, sub_store).await,
-        "link" => handle_link(ctx, cmd, user_store).await,
+        "link" => handle_link(ctx, cmd, user_store, github).await,
         "unlink" => handle_unlink(ctx, cmd, user_store).await,
         "health" => handle_health(ctx, cmd).await,
         other => {
@@ -201,6 +203,7 @@ async fn handle_link(
     ctx: &Context,
     cmd: &CommandInteraction,
     user_store: &dyn UserLinkStore,
+    github: &Octocrab,
 ) -> Result<(), serenity::Error> {
     let github_login = cmd
         .data
@@ -215,30 +218,52 @@ async fn handle_link(
         return ephemeral(ctx, cmd, "❌ Please provide your GitHub username.").await;
     }
 
-    let discord_id = cmd.user.id.get();
-
-    match user_store
-        .upsert(UserLink {
-            discord_id,
-            github_login: github_login.clone(),
-        })
-        .await
-    {
-        Ok(()) => {
-            info!(discord_id, github_login = %github_login, "user link saved");
-            ephemeral(
-                ctx,
-                cmd,
-                &format!("✅ Linked your Discord account to **{github_login}** on GitHub."),
-            )
-            .await
+    match api::verify_user(github, &github_login).await {
+        Ok(Some(verified_login)) => {
+            let discord_id = cmd.user.id.get();
+            match user_store
+                .upsert(UserLink {
+                    discord_id,
+                    github_login: verified_login.clone(),
+                })
+                .await
+            {
+                Ok(()) => {
+                    info!(discord_id, github_login = %verified_login, "user link saved");
+                    ephemeral(
+                        ctx,
+                        cmd,
+                        &format!(
+                            "✅ Linked your Discord account to **{verified_login}** on GitHub."
+                        ),
+                    )
+                    .await
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to save user link");
+                    ephemeral(
+                        ctx,
+                        cmd,
+                        "❌ Something went wrong saving your link. Try again.",
+                    )
+                    .await
+                }
+            }
         }
+        Ok(None) => ephemeral(
+            ctx,
+            cmd,
+            &format!(
+                "❌ GitHub user **{github_login}** not found. Check the username and try again."
+            ),
+        )
+        .await,
         Err(e) => {
-            tracing::error!(error = %e, "failed to save user link");
+            tracing::error!(error = %e, "GitHub API error during user verification");
             ephemeral(
                 ctx,
                 cmd,
-                "❌ Something went wrong saving your link. Try again.",
+                "❌ Could not verify GitHub username. Try again later.",
             )
             .await
         }
