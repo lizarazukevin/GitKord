@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 //! GitHub webhook endpoint.
 //!
 //! Handles `POST /github/webhook`. Every incoming request is verified against
@@ -23,7 +25,7 @@ use crate::error::AppError;
 use crate::github::types::{
     GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
 };
-use crate::state::{PrMessage, PrMessageStore};
+use crate::state::{PrMessage, PrMessageStore, UserLinkStore};
 
 type HmacSha256 = Hmac<Sha256>;
 
