@@ -10,7 +10,9 @@ use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
 
 use crate::error::AppError;
-use crate::state::traits::{PrMessage, PrMessageStore, UserLink, UserLinkStore};
+use crate::state::traits::{
+    PrMessage, PrMessageStore, Subscription, SubscriptionStore, UserLink, UserLinkStore,
+};
 
 // ── Database initialisation ───────────────────────────────────────────────────
 
@@ -32,8 +34,6 @@ pub async fn connect(database_url: &str) -> Result<SqlitePool, AppError> {
         .await
         .map_err(AppError::Database)?;
 
-    // Create tables if they don't exist yet.
-    // In a later step this will be replaced by sqlx migrations.
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS pr_messages (
             repo       TEXT NOT NULL,
@@ -42,6 +42,18 @@ pub async fn connect(database_url: &str) -> Result<SqlitePool, AppError> {
             message_id INTEGER NOT NULL,
             PRIMARY KEY (repo, pr_number)
         )",
+    )
+    .execute(&pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS subscriptions (
+                repo        TEXT NOT NULL,
+                guild_id    INTEGER NOT NULL,
+                channel_id  INTEGER NOT NULL,
+                PRIMARY KEY (repo, guild_id)
+            )",
     )
     .execute(&pool)
     .await
@@ -115,6 +127,78 @@ impl PrMessageStore for SqlitePrMessageStore {
         sqlx::query("DELETE FROM pr_messages WHERE repo = ?1 AND pr_number = ?2")
             .bind(repo)
             .bind(pr_number.cast_signed())
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+        Ok(())
+    }
+}
+
+// ── SubscriptionStore ─────────────────────────────────────────────────────────
+
+/// `SQLite`-backed implementation of [`SubscriptionStore`].
+pub struct SqliteSubscriptionStore {
+    pool: SqlitePool,
+}
+
+impl SqliteSubscriptionStore {
+    /// Create a new store backed by the given connection pool.
+    #[must_use]
+    pub const fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl SubscriptionStore for SqliteSubscriptionStore {
+    async fn upsert(&self, sub: Subscription) -> Result<(), AppError> {
+        sqlx::query(
+            "INSERT INTO subscriptions (repo, guild_id, channel_id)
+             VALUES (?1, ?2, ?3)
+             ON CONFLICT (repo, guild_id) DO UPDATE SET
+                channel_id = excluded.channel_id",
+        )
+        .bind(&sub.repo)
+        .bind(sub.guild_id.cast_signed())
+        .bind(sub.channel_id.cast_signed())
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(())
+    }
+
+    async fn get(&self, repo: &str, guild_id: u64) -> Result<Option<Subscription>, AppError> {
+        let row = sqlx::query_as::<_, SubscriptionRow>(
+            "SELECT repo, guild_id, channel_id FROM subscriptions
+             WHERE repo = ?1 AND guild_id = ?2",
+        )
+        .bind(repo)
+        .bind(guild_id.cast_signed())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(row.map(Subscription::from))
+    }
+
+    async fn get_all_for_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError> {
+        let rows = sqlx::query_as::<_, SubscriptionRow>(
+            "SELECT repo, guild_id, channel_id FROM subscriptions WHERE repo = ?1",
+        )
+        .bind(repo)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(rows.into_iter().map(Subscription::from).collect())
+    }
+
+    async fn delete(&self, repo: &str, guild_id: u64) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM subscriptions WHERE repo = ?1 AND guild_id = ?2")
+            .bind(repo)
+            .bind(guild_id.cast_signed())
             .execute(&self.pool)
             .await
             .map_err(AppError::Database)?;
@@ -209,6 +293,23 @@ impl From<PrMessageRow> for PrMessage {
             pr_number: row.pr_number.cast_unsigned(),
             channel_id: row.channel_id.cast_unsigned(),
             message_id: row.message_id.cast_unsigned(),
+        }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct SubscriptionRow {
+    repo: String,
+    guild_id: i64,
+    channel_id: i64,
+}
+
+impl From<SubscriptionRow> for Subscription {
+    fn from(row: SubscriptionRow) -> Self {
+        Self {
+            repo: row.repo,
+            guild_id: row.guild_id.cast_unsigned(),
+            channel_id: row.channel_id.cast_unsigned(),
         }
     }
 }

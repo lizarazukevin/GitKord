@@ -14,15 +14,8 @@ pub struct Config {
     /// Discord bot token from the Developer Portal
     pub discord_token: String,
 
-    /// Discord channel ID where PR messages are posted (temporary)
-    pub discord_channel_id: u64,
-
     /// Secret used to verify HMAC-SHA256 signatures on incoming webhook payloads
     pub github_webhook_secret: String,
-
-    /// Repository to watch, in `owner/name` format (e.g. "kevinlizarazu/digibot")
-    /// Tracking a single repository right now, users should be able to subscribe to any
-    pub github_repo: String,
 
     /// GitHub personal access token for REST API calls (reviewer assignment, etc.)
     #[allow(dead_code)]
@@ -44,11 +37,7 @@ impl Config {
     pub fn from_env() -> Result<Self, anyhow::Error> {
         Ok(Self {
             discord_token: require("DISCORD_TOKEN")?,
-            discord_channel_id: require("DISCORD_CHANNEL_ID")?
-                .parse::<u64>()
-                .context("DISCORD_CHANNEL_ID must be a valid channel snowflake ID")?,
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
-            github_repo: require("GITHUB_REPO")?,
             github_token: require("GITHUB_TOKEN")?,
             database_url: require("DATABASE_URL")
                 .unwrap_or_else(|_| "sqlite://digibot.db?mode=rwc".into()),

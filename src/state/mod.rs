@@ -8,4 +8,6 @@ pub mod db;
 pub mod traits;
 
 #[allow(unused_imports)]
-pub use traits::{PrMessage, PrMessageStore, UserLink, UserLinkStore};
+pub use traits::{
+    PrMessage, PrMessageStore, Subscription, SubscriptionStore, UserLink, UserLinkStore,
+};

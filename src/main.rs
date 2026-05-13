@@ -19,37 +19,44 @@ mod github;
 mod state;
 
 use anyhow::Result;
-use serenity::all::ChannelId;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
 
 use crate::github::webhook::WebhookState;
-use crate::state::db::{connect, SqlitePrMessageStore, SqliteUserLinkStore};
-use crate::state::UserLinkStore;
+use crate::state::db::{
+    connect, SqlitePrMessageStore, SqliteSubscriptionStore, SqliteUserLinkStore,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
 
     let config = config::Config::from_env()?;
-    info!("DiGiBot starting — watching {}", config.github_repo);
 
     // Connect to SQLite and initialize tables
     let pool = connect(&config.database_url).await?;
-    let pr_store = Arc::new(SqlitePrMessageStore::new(pool.clone()));
-    let user_store: Arc<dyn UserLinkStore> = Arc::new(SqliteUserLinkStore::new(pool));
+    let pr_store: Arc<dyn state::traits::PrMessageStore> =
+        Arc::new(SqlitePrMessageStore::new(pool.clone()));
+    let sub_store: Arc<dyn state::traits::SubscriptionStore> =
+        Arc::new(SqliteSubscriptionStore::new(pool.clone()));
+    let user_store: Arc<dyn state::traits::UserLinkStore> =
+        Arc::new(SqliteUserLinkStore::new(pool));
 
     // Builds the Discord client and extract the HTTP handle before client
     // is moved into its task, HTTP is Arc-backed so cloning is cheap.
-    let (mut discord_client, http) =
-        discord::bot::build(&config.discord_token, Arc::clone(&user_store)).await;
+    let (mut discord_client, http) = discord::bot::build(
+        &config.discord_token,
+        Arc::clone(&sub_store),
+        Arc::clone(&user_store),
+    )
+    .await;
 
     let webhook_state = WebhookState {
         secret: config.github_webhook_secret,
         http,
-        channel_id: ChannelId::new(config.discord_channel_id),
         pr_store,
+        sub_store,
     };
 
     let http_task = tokio::spawn(serve_http(config.port, webhook_state));

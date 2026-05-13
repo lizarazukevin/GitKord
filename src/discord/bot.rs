@@ -10,7 +10,7 @@ use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Re
 use tracing::info;
 
 use crate::discord::commands;
-use crate::state::traits::UserLinkStore;
+use crate::state::traits::{SubscriptionStore, UserLinkStore};
 
 // ── Client builder ────────────────────────────────────────────────────────────
 
@@ -20,12 +20,16 @@ use crate::state::traits::UserLinkStore;
 /// the webhook handler can post messages independently of the gateway task.
 pub async fn build(
     token: &str,
+    sub_store: Arc<dyn SubscriptionStore>,
     user_store: Arc<dyn UserLinkStore>,
 ) -> (serenity::Client, Arc<Http>) {
     let intents = GatewayIntents::empty();
 
     let client = serenity::Client::builder(token, intents)
-        .event_handler(ReadyHandler { user_store })
+        .event_handler(ReadyHandler {
+            sub_store,
+            user_store,
+        })
         .await
         .expect("failed to build Discord client");
 
@@ -38,6 +42,7 @@ pub async fn build(
 // ── Event handler ─────────────────────────────────────────────────────────────
 
 struct ReadyHandler {
+    sub_store: Arc<dyn SubscriptionStore>,
     user_store: Arc<dyn UserLinkStore>,
 }
 
@@ -52,6 +57,12 @@ impl EventHandler for ReadyHandler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        commands::dispatch(&ctx, &interaction, self.user_store.as_ref()).await;
+        commands::dispatch(
+            &ctx,
+            &interaction,
+            self.sub_store.as_ref(),
+            self.user_store.as_ref(),
+        )
+        .await;
     }
 }
