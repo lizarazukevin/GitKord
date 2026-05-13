@@ -50,7 +50,8 @@ impl Config {
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
             github_repo: require("GITHUB_REPO")?,
             github_token: require("GITHUB_TOKEN")?,
-            database_url: require("DATABASE_URL").unwrap_or_else(|_| "sqlite://digibot.db?mode=rwc".into()),
+            database_url: require("DATABASE_URL")
+                .unwrap_or_else(|_| "sqlite://digibot.db?mode=rwc".into()),
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "3000".into())
                 .parse::<u16>()

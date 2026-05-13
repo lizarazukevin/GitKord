@@ -16,7 +16,7 @@ mod config;
 mod discord;
 mod error;
 mod github;
-pub mod state;
+mod state;
 
 use anyhow::Result;
 use serenity::all::ChannelId;
@@ -25,7 +25,8 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::github::webhook::WebhookState;
-use crate::state::db::{connect, SqlitePrMessageStore};
+use crate::state::db::{connect, SqlitePrMessageStore, SqliteUserLinkStore};
+use crate::state::UserLinkStore;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -36,11 +37,13 @@ async fn main() -> Result<()> {
 
     // Connect to SQLite and initialize tables
     let pool = connect(&config.database_url).await?;
-    let pr_store = Arc::new(SqlitePrMessageStore::new(pool));
+    let pr_store = Arc::new(SqlitePrMessageStore::new(pool.clone()));
+    let user_store: Arc<dyn UserLinkStore> = Arc::new(SqliteUserLinkStore::new(pool));
 
     // Builds the Discord client and extract the HTTP handle before client
     // is moved into its task, HTTP is Arc-backed so cloning is cheap.
-    let (mut discord_client, http) = discord::bot::build(&config.discord_token).await;
+    let (mut discord_client, http) =
+        discord::bot::build(&config.discord_token, Arc::clone(&user_store)).await;
 
     let webhook_state = WebhookState {
         secret: config.github_webhook_secret,

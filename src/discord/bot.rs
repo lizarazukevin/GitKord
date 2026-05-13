@@ -6,8 +6,11 @@
 
 use std::sync::Arc;
 
-use serenity::all::{Context, EventHandler, GatewayIntents, Http, Ready};
+use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Ready};
 use tracing::info;
+
+use crate::discord::commands;
+use crate::state::traits::UserLinkStore;
 
 // ── Client builder ────────────────────────────────────────────────────────────
 
@@ -15,11 +18,14 @@ use tracing::info;
 ///
 /// The `Http` handle is cloned out before `client.start()` is called so
 /// the webhook handler can post messages independently of the gateway task.
-pub async fn build(token: &str) -> (serenity::Client, Arc<Http>) {
+pub async fn build(
+    token: &str,
+    user_store: Arc<dyn UserLinkStore>,
+) -> (serenity::Client, Arc<Http>) {
     let intents = GatewayIntents::empty();
 
     let client = serenity::Client::builder(token, intents)
-        .event_handler(ReadyHandler)
+        .event_handler(ReadyHandler { user_store })
         .await
         .expect("failed to build Discord client");
 
@@ -31,11 +37,21 @@ pub async fn build(token: &str) -> (serenity::Client, Arc<Http>) {
 
 // ── Event handler ─────────────────────────────────────────────────────────────
 
-struct ReadyHandler;
+struct ReadyHandler {
+    user_store: Arc<dyn UserLinkStore>,
+}
 
 #[serenity::async_trait]
 impl EventHandler for ReadyHandler {
-    async fn ready(&self, _ctx: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info!("Discord bot connected as {}", ready.user.name);
+
+        if let Err(e) = commands::register(&ctx).await {
+            tracing::error!(error = %e, "failed to register slash commands");
+        }
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        commands::dispatch(&ctx, &interaction, self.user_store.as_ref()).await;
     }
 }

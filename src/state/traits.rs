@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 //! Store trait abstractions for `DiGiBot`.
 //!
 //! High-level handlers depend on these traits, not on concrete database types.
