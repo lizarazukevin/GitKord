@@ -4,7 +4,7 @@
 //! a formatted Discord message. Editing existing messages (for updates)
 //! will be added once state persistence is in place.
 
-use serenity::all::{ChannelId, CreateMessage, EditMessage, Http, MessageId};
+use serenity::all::{ChannelId, CreateMessage, CreateThread, EditMessage, Http, MessageId};
 use tracing::info;
 
 use crate::error::AppError;
@@ -14,13 +14,13 @@ use crate::github::types::{PullRequestPayload, PullRequestReviewPayload};
 
 /// Post a new PR message to a Discord channel when a pull request is opened.
 ///
-/// Returns the ID of the created message — the caller should persist this
-/// so future events can edit the message in place.
+/// Returns `(message_id, thread_id)` — both must persist so future events
+/// can edit the message and append to the thread respectively.
 pub async fn post_pull_request(
     http: &Http,
     channel_id: ChannelId,
     payload: &PullRequestPayload,
-) -> Result<u64, AppError> {
+) -> Result<(u64, u64), AppError> {
     let pr = &payload.pull_request;
     let content = format_pr_message(payload);
 
@@ -29,14 +29,26 @@ pub async fn post_pull_request(
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
+    let thread_name = format!("PR #{} — audit log", pr.number);
+    let thread = channel_id
+        .create_thread_from_message(
+            http,
+            message.id,
+            CreateThread::new(thread_name)
+                .auto_archive_duration(serenity::all::AutoArchiveDuration::OneWeek),
+        )
+        .await
+        .map_err(|e| AppError::Discord(Box::new(e)))?;
+
     info!(
         channel = %channel_id,
         message = %message.id,
+        thread = %thread.id,
         pr      = pr.number,
         "posted PR message to Discord"
     );
 
-    Ok(message.id.get())
+    Ok((message.id.get(), thread.id.get()))
 }
 
 /// Edit an existing PR message in place when a pull request is updated.
@@ -47,6 +59,7 @@ pub async fn update_pull_request(
     http: &Http,
     channel_id: ChannelId,
     message_id: u64,
+    thread_id: u64,
     payload: &PullRequestPayload,
 ) -> Result<(), AppError> {
     let content = format_pr_message(payload);
@@ -60,9 +73,21 @@ pub async fn update_pull_request(
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
+    let audit_entry = format!(
+        "🔄 **{}** — PR #{} `{}`",
+        chrono_now(),
+        payload.pull_request.number,
+        payload.action,
+    );
+    ChannelId::new(thread_id)
+        .send_message(http, CreateMessage::new().content(audit_entry))
+        .await
+        .map_err(|e| AppError::Discord(Box::new(e)))?;
+
     info!(
         channel = %channel_id,
         message = message_id,
+        thread = thread_id,
         pr      = payload.pull_request.number,
         action  = %payload.action,
         "updated PR message in Discord"
@@ -74,7 +99,7 @@ pub async fn update_pull_request(
 /// Post a review event as a reply in the PR's audit thread.
 pub async fn post_review(
     http: &Http,
-    channel_id: ChannelId,
+    thread_id: u64,
     payload: &PullRequestReviewPayload,
 ) -> Result<(), AppError> {
     let review = &payload.review;
@@ -93,7 +118,7 @@ pub async fn post_review(
         number = pr.number,
     );
 
-    channel_id
+    ChannelId::new(thread_id)
         .send_message(http, CreateMessage::new().content(content))
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
@@ -122,4 +147,9 @@ fn format_pr_message(payload: &PullRequestPayload) -> String {
         head = pr.head.branch,
         url = pr.html_url,
     )
+}
+
+/// Returns a short UTC timestamp string for audit entries.
+fn chrono_now() -> String {
+    chrono::Utc::now().format("%Y-%m-%d %H:%M UTC").to_string()
 }

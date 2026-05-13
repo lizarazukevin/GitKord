@@ -24,6 +24,9 @@ pub struct PrMessage {
 
     /// Discord message ID — used to edit the message in place on future events.
     pub message_id: u64,
+
+    /// Discord thread ID — audit events are appended here rather than posted to the channel
+    pub thread_id: u64,
 }
 
 /// Persist and retrieve the Discord message ID for each open PR.

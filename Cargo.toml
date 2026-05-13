@@ -46,3 +46,4 @@ async-trait = "0.1"
 # Ergonomic error handling
 anyhow = "1"
 thiserror = "2.0.18"
+chrono = "0.4.44"
