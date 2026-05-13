@@ -132,7 +132,7 @@ async fn handle_pull_request(
         "opened" => {
             for sub in &subscriptions {
                 let channel_id = ChannelId::from(sub.channel_id);
-                let message_id =
+                let (message_id, thread_id) =
                     messages::post_pull_request(&state.http, channel_id, &payload).await?;
 
                 state
@@ -142,6 +142,7 @@ async fn handle_pull_request(
                         pr_number: pr.number,
                         channel_id: sub.channel_id,
                         message_id,
+                        thread_id,
                     })
                     .await?;
             }
@@ -157,6 +158,7 @@ async fn handle_pull_request(
                     &state.http,
                     ChannelId::new(record.channel_id),
                     record.message_id,
+                    record.thread_id,
                     &payload,
                 )
                 .await?;
@@ -200,7 +202,7 @@ async fn handle_pull_request_review(
             .await?;
 
         if let Some(record) = record {
-            messages::post_review(&state.http, ChannelId::new(record.channel_id), &payload).await?;
+            messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
     }
 

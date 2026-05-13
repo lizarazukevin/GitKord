@@ -40,6 +40,7 @@ pub async fn connect(database_url: &str) -> Result<SqlitePool, AppError> {
             pr_number  INTEGER NOT NULL,
             channel_id INTEGER NOT NULL,
             message_id INTEGER NOT NULL,
+            thread_id INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (repo, pr_number)
         )",
     )
@@ -91,16 +92,18 @@ impl SqlitePrMessageStore {
 impl PrMessageStore for SqlitePrMessageStore {
     async fn upsert(&self, record: PrMessage) -> Result<(), AppError> {
         sqlx::query(
-            "INSERT INTO pr_messages (repo, pr_number, channel_id, message_id)
-             VALUES (?1, ?2, ?3, ?4)
+            "INSERT INTO pr_messages (repo, pr_number, channel_id, message_id, thread_id)
+             VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT (repo, pr_number) DO UPDATE SET
                 channel_id = excluded.channel_id,
-                message_id = excluded.message_id",
+                message_id = excluded.message_id,
+                thread_id = excluded.thread_id",
         )
         .bind(&record.repo)
         .bind(record.pr_number.cast_signed())
         .bind(record.channel_id.cast_signed())
         .bind(record.message_id.cast_signed())
+        .bind(record.thread_id.cast_signed())
         .execute(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -110,7 +113,7 @@ impl PrMessageStore for SqlitePrMessageStore {
 
     async fn get(&self, repo: &str, pr_number: u64) -> Result<Option<PrMessage>, AppError> {
         let row = sqlx::query_as::<_, PrMessageRow>(
-            "SELECT repo, pr_number, channel_id, message_id
+            "SELECT repo, pr_number, channel_id, message_id, thread_id
              FROM pr_messages
              WHERE repo = ?1 AND pr_number = ?2",
         )
@@ -284,6 +287,7 @@ struct PrMessageRow {
     pr_number: i64,
     channel_id: i64,
     message_id: i64,
+    thread_id: i64,
 }
 
 impl From<PrMessageRow> for PrMessage {
@@ -293,6 +297,7 @@ impl From<PrMessageRow> for PrMessage {
             pr_number: row.pr_number.cast_unsigned(),
             channel_id: row.channel_id.cast_unsigned(),
             message_id: row.message_id.cast_unsigned(),
+            thread_id: row.thread_id.cast_unsigned(),
         }
     }
 }
