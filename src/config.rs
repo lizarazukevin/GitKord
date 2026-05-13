@@ -20,6 +20,10 @@ pub struct Config {
     /// GitHub personal access token for REST API calls (reviewer assignment, etc.)
     pub github_token: String,
 
+    /// Publicly reachable URL for this bot(e.g. Railway domain or ngrok URL)
+    /// Used to register webhooks on GitHub via the API
+    pub webhook_url: String,
+
     /// `SQLite` database URL (e.g. `sqlite://digibot.db`)
     pub database_url: String,
 
@@ -38,6 +42,7 @@ impl Config {
             discord_token: require("DISCORD_TOKEN")?,
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
             github_token: require("GITHUB_TOKEN")?,
+            webhook_url: require("WEBHOOK_URL")?,
             database_url: require("DATABASE_URL")
                 .unwrap_or_else(|_| "sqlite://digibot.db?mode=rwc".into()),
             port: std::env::var("PORT")

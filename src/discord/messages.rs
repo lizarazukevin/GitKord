@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 //! Discord message formatting and creation for PR events.
 //!
 //! Each public function corresponds to a webhook event and produces

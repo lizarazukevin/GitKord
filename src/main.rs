@@ -52,6 +52,7 @@ async fn main() -> Result<()> {
         Arc::clone(&sub_store),
         Arc::clone(&user_store),
         Arc::clone(&github),
+        config.webhook_url.clone(),
     )
     .await;
 
@@ -61,6 +62,7 @@ async fn main() -> Result<()> {
         pr_store,
         sub_store,
         github,
+        webhook_url: config.webhook_url,
     };
 
     let http_task = tokio::spawn(serve_http(config.port, webhook_state));
