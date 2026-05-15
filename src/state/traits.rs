@@ -44,6 +44,9 @@ pub trait PrMessageStore: Send + Sync {
 
     /// Remove the record for a PR once it is merged or deleted.
     async fn delete(&self, repo: &str, pr_number: u64) -> Result<(), AppError>;
+
+    /// Lookup a PR message row by thread ID to fill context.
+    async fn get_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>, AppError>;
 }
 
 // ── Subscription store ────────────────────────────────────────────────────────
@@ -121,7 +124,6 @@ pub trait UserLinkStore: Send + Sync {
     async fn upsert(&self, link: UserLink) -> Result<(), AppError>;
 
     /// Look up a user's GitHub login by their Discord ID.
-    #[allow(dead_code)]
     async fn get_by_discord(&self, discord_id: u64) -> Result<Option<UserLink>, AppError>;
 
     /// Look up a Discord ID by GitHub login.

@@ -96,3 +96,50 @@ pub async fn register_webhook(
         Err(e) => Err(AppError::GitHub(e)),
     }
 }
+
+// ── Reviewer assignment ───────────────────────────────────────────────────────
+
+/// Request a review from a GitHub user on a pull request.
+///
+/// # Errors
+///
+/// Returns [`AppError::GitHub`] if the API call fails or the reviewer
+/// cannot be found on the repository.
+pub async fn assign_reviewer(
+    client: &Octocrab,
+    owner: &str,
+    repo: &str,
+    pr_number: u64,
+    reviewer: &str,
+) -> Result<(), AppError> {
+    client
+        .pulls(owner, repo)
+        .request_reviews(pr_number, vec![reviewer.to_owned()], vec![])
+        .await
+        .map_err(AppError::GitHub)?;
+
+    info!(owner, repo, pr_number, reviewer, "reviewer assigned");
+    Ok(())
+}
+
+/// Remove a review request from a GitHub user on a pull request.
+///
+/// # Errors
+///
+/// Returns [`AppError::GitHub`] if the API call fails.
+pub async fn unassign_reviewer(
+    client: &Octocrab,
+    owner: &str,
+    repo: &str,
+    pr_number: u64,
+    reviewer: &str,
+) -> Result<(), AppError> {
+    client
+        .pulls(owner, repo)
+        .remove_requested_reviewers(pr_number, vec![reviewer.to_owned()], vec![])
+        .await
+        .map_err(AppError::GitHub)?;
+
+    info!(owner, repo, pr_number, reviewer, "reviewer unassigned");
+    Ok(())
+}
