@@ -29,7 +29,10 @@ pub async fn post_pull_request(
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
-    let thread_name = format!("PR #{} — audit log", pr.number);
+    let thread_name = format!(
+        "PR #{} — {} audit log",
+        pr.number, payload.repository.full_name
+    );
     let thread = channel_id
         .create_thread_from_message(
             http,

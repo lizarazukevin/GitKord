@@ -136,6 +136,20 @@ impl PrMessageStore for SqlitePrMessageStore {
 
         Ok(())
     }
+
+    async fn get_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>, AppError> {
+        let row = sqlx::query_as::<_, PrMessageRow>(
+            "SELECT repo, pr_number, channel_id, message_id, thread_id
+                 FROM pr_messages
+                 WHERE thread_id = ?1",
+        )
+        .bind(thread_id.cast_signed())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(row.map(PrMessage::from))
+    }
 }
 
 // ── SubscriptionStore ─────────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ async fn main() -> Result<()> {
     // is moved into its task, HTTP is Arc-backed so cloning is cheap.
     let (mut discord_client, http) = discord::bot::build(
         &config.discord_token,
+        Arc::clone(&pr_store),
         Arc::clone(&sub_store),
         Arc::clone(&user_store),
         Arc::clone(&github),

@@ -11,6 +11,7 @@ use tracing::info;
 
 use crate::discord::commands;
 use crate::state::traits::{SubscriptionStore, UserLinkStore};
+use crate::state::PrMessageStore;
 
 // ── Client builder ────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ use crate::state::traits::{SubscriptionStore, UserLinkStore};
 /// the webhook handler can post messages independently of the gateway task.
 pub async fn build(
     token: &str,
+    pr_store: Arc<dyn PrMessageStore>,
     sub_store: Arc<dyn SubscriptionStore>,
     user_store: Arc<dyn UserLinkStore>,
     github: Arc<Octocrab>,
@@ -30,6 +32,7 @@ pub async fn build(
 
     let client = serenity::Client::builder(token, intents)
         .event_handler(ReadyHandler {
+            pr_store,
             sub_store,
             user_store,
             github,
@@ -48,6 +51,7 @@ pub async fn build(
 // ── Event handler ─────────────────────────────────────────────────────────────
 
 struct ReadyHandler {
+    pr_store: Arc<dyn PrMessageStore>,
     sub_store: Arc<dyn SubscriptionStore>,
     user_store: Arc<dyn UserLinkStore>,
     github: Arc<Octocrab>,
@@ -69,6 +73,7 @@ impl EventHandler for ReadyHandler {
         commands::dispatch(
             &ctx,
             &interaction,
+            self.pr_store.as_ref(),
             self.sub_store.as_ref(),
             self.user_store.as_ref(),
             &self.github,
