@@ -8,8 +8,9 @@ use crate::state::traits::{Subscription, SubscriptionStore, UserLink, UserLinkSt
 use crate::state::PrMessageStore;
 use octocrab::Octocrab;
 use serenity::all::{
-    Command, CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
-    CreateInteractionResponse, CreateInteractionResponseMessage, Interaction,
+    ChannelId, Command, CommandInteraction, CommandOptionType, Context, CreateCommand,
+    CreateCommandOption, CreateInteractionResponse, CreateInteractionResponseMessage,
+    CreateMessage, Interaction,
 };
 use tracing::info;
 // ── Registration ──────────────────────────────────────────────────────────────
@@ -509,6 +510,18 @@ async fn perform_reviewer_action(
             match api::assign_reviewer(github, owner, repo_name, pr_number, &github_login).await {
                 Ok(()) => {
                     info!(pr_number, reviewer = %github_login, repo = %repo, "reviewer assigned");
+
+                    if let Ok(Some(record)) = pr_store.get(&repo, pr_number).await {
+                        let audit = format!(
+                            "👥 **{}** requested review from **{github_login}**",
+                            cmd.user.name
+                        );
+                        ChannelId::new(record.thread_id)
+                            .send_message(&ctx.http, CreateMessage::new().content(audit))
+                            .await
+                            .ok();
+                    }
+
                     ephemeral(
                         ctx,
                         cmd,
@@ -525,10 +538,22 @@ async fn perform_reviewer_action(
             match api::unassign_reviewer(github, owner, repo_name, pr_number, &github_login).await {
                 Ok(()) => {
                     info!(pr_number, reviewer = %github_login, repo = %repo, "reviewer unassigned");
+
+                    if let Ok(Some(record)) = pr_store.get(&repo, pr_number).await {
+                        let audit = format!(
+                            "👤 **{}** removed review request from **{github_login}**",
+                            cmd.user.name
+                        );
+                        ChannelId::new(record.thread_id)
+                            .send_message(&ctx.http, CreateMessage::new().content(audit))
+                            .await
+                            .ok();
+                    }
+
                     ephemeral(
                         ctx,
                         cmd,
-                        &format!("✅ Removed review request from **{github_login}** on PR #{pr_number} in **{repo}**."),
+                        &format!("👤 Removed review request from **{github_login}** on PR #{pr_number} in **{repo}**."),
                     ).await
                 }
                 Err(e) => {
