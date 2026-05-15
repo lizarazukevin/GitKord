@@ -51,6 +51,12 @@ pub async fn post_pull_request(
         "posted PR message to Discord"
     );
 
+    let opening_entry = format!("🟢 **{}** opened this PR", pr.user.login);
+    ChannelId::new(thread.id.get())
+        .send_message(http, CreateMessage::new().content(opening_entry))
+        .await
+        .map_err(|e| AppError::Discord(Box::new(e)))?;
+
     Ok((message.id.get(), thread.id.get()))
 }
 
