@@ -3,13 +3,12 @@
 
 //! `DiGiBot` entrypoint.
 //!
-//! Two long-running tasks share the process:
-//! - An Axum HTTP server — receives GitHub webhook payloads.
-//! - A Serenity Discord client — maintains the gateway connection,
-//!   handles slash commands and button interactions.
+//! Two tasks run concurrently for the lifetime of the process:
+//! - Axum HTTP server — receives GitHub webhook payloads
+//! - Serenity Discord client — handles gateway events and slash commands
 //!
 //! Both are spawned as Tokio tasks so neither blocks the other.
-//! If either task exits unexpectedly the process exits with a non-zero code
+//! If either task exits unexpectedly, the process exits with a non-zero code
 //! so Railway (or any supervisor) knows to restart it.
 
 mod config;
@@ -18,6 +17,7 @@ mod error;
 mod github;
 mod state;
 
+use crate::discord::app_state::AppState;
 use crate::github::api;
 use crate::github::webhook::WebhookState;
 use crate::state::db::{
@@ -33,10 +33,10 @@ async fn main() -> Result<()> {
     init_tracing();
 
     let config = config::Config::from_env()?;
+    info!("DiGiBot starting");
 
-    let github = std::sync::Arc::new(api::build_client(&config.github_token)?);
+    let github = Arc::new(api::build_client(&config.github_token)?);
 
-    // Connect to SQLite and initialize tables
     let pool = connect(&config.database_url).await?;
     let pr_store: Arc<dyn state::traits::PrMessageStore> =
         Arc::new(SqlitePrMessageStore::new(pool.clone()));
@@ -45,26 +45,24 @@ async fn main() -> Result<()> {
     let user_store: Arc<dyn state::traits::UserLinkStore> =
         Arc::new(SqliteUserLinkStore::new(pool));
 
-    // Builds the Discord client and extract the HTTP handle before client
-    // is moved into its task, HTTP is Arc-backed so cloning is cheap.
-    let (mut discord_client, http) = discord::bot::build(
-        &config.discord_token,
-        Arc::clone(&pr_store),
-        Arc::clone(&sub_store),
-        Arc::clone(&user_store),
-        Arc::clone(&github),
-        config.webhook_url.clone(),
-        config.github_webhook_secret.clone(),
-    )
-    .await;
+    // AppState carries everything slash command handlers need.
+    // Bot and webhook handler each hold what they actually use.
+    let app_state = AppState {
+        pr_store: Arc::clone(&pr_store) as Arc<dyn state::PrMessageStore>,
+        sub_store: Arc::clone(&sub_store) as Arc<dyn state::SubscriptionStore>,
+        user_store: Arc::clone(&user_store) as Arc<dyn state::UserLinkStore>,
+        github: Arc::clone(&github),
+        webhook_url: config.webhook_url.clone(),
+        webhook_secret: config.github_webhook_secret.clone(),
+    };
+
+    let (mut discord_client, http) = discord::bot::build(&config.discord_token, app_state).await;
 
     let webhook_state = WebhookState {
         secret: config.github_webhook_secret,
         http,
-        pr_store,
-        sub_store,
-        github,
-        webhook_url: config.webhook_url,
+        pr_store: Arc::clone(&pr_store) as Arc<dyn state::traits::PrMessageStore>,
+        sub_store: Arc::clone(&sub_store) as Arc<dyn state::SubscriptionStore>,
     };
 
     let http_task = tokio::spawn(serve_http(config.port, webhook_state));
@@ -83,8 +81,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// — Initializers —————————————————————————————————————————————————
-
 /// Initialize the global tracing subscriber.
 ///
 /// Verbosity is controlled by `RUST_LOG` environment variable.
@@ -98,7 +94,6 @@ fn init_tracing() {
         .init();
 }
 
-/// Bind a TCP listener and start the Axum HTTP server.
 async fn serve_http(port: u16, state: WebhookState) {
     let app = axum::Router::new()
         .route("/healthz", axum::routing::get(healthz))
@@ -120,9 +115,7 @@ async fn serve_http(port: u16, state: WebhookState) {
         .expect("HTTP server crashed");
 }
 
-// — HTTP Handlers ————————————————————————————————————————————————
-
-/// Liveness probe, returns `200 OK` for uptime monitors and Railway health checks.
+/// Liveness probe for uptime monitors and Railway health checks.
 async fn healthz() -> &'static str {
     "ok"
 }

@@ -1,31 +1,31 @@
 //! Discord message formatting and creation for PR events.
 //!
-//! Each public function corresponds to a webhook event and produces
-//! a formatted Discord message. Editing existing messages (for updates)
-//! will be added once state persistence is in place.
+//! Public functions map to webhook event types and produces
+//! a formatted Discord message.
 
 use serenity::all::{ChannelId, CreateMessage, CreateThread, EditMessage, Http, MessageId};
 use tracing::info;
 
 use crate::error::AppError;
+use crate::error::Result;
 use crate::github::types::{PullRequestPayload, PullRequestReviewPayload};
 
-// ── Message creation ──────────────────────────────────────────────────────────
-
-/// Post a new PR message to a Discord channel when a pull request is opened.
+/// Post the main PR message to a channel and create an audit thread.
 ///
 /// Returns `(message_id, thread_id)` — both must persist so future events
-/// can edit the message and append to the thread respectively.
+/// can edit the message and append to the thread.
 pub async fn post_pull_request(
     http: &Http,
     channel_id: ChannelId,
     payload: &PullRequestPayload,
-) -> Result<(u64, u64), AppError> {
+) -> Result<(u64, u64)> {
     let pr = &payload.pull_request;
-    let content = format_pr_message(payload);
 
     let message = channel_id
-        .send_message(http, CreateMessage::new().content(content))
+        .send_message(
+            http,
+            CreateMessage::new().content(format_pr_message(payload)),
+        )
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
@@ -48,50 +48,45 @@ pub async fn post_pull_request(
         message = %message.id,
         thread = %thread.id,
         pr      = pr.number,
-        "posted PR message to Discord"
+        "posted PR message and created audit thread"
     );
 
-    let opening_entry = format!("🟢 **{}** opened this PR", pr.user.login);
-    ChannelId::new(thread.id.get())
-        .send_message(http, CreateMessage::new().content(opening_entry))
-        .await
-        .map_err(|e| AppError::Discord(Box::new(e)))?;
+    post_to_thread(
+        http,
+        thread.id.get(),
+        &format!("🟢 **{}** opened this PR", pr.user.login),
+    )
+    .await?;
 
     Ok((message.id.get(), thread.id.get()))
 }
 
-/// Edit an existing PR message in place when a pull request is updated.
+/// Edit the main PR message in place and append an entry to the audit thread.
 ///
-/// Used for `synchronize`, `closed`, `reopened` actions — keeps one
-/// message per PR rather than flooding the channel.
+/// Used for `synchronize`, `closed`, `reopened` actions.
 pub async fn update_pull_request(
     http: &Http,
     channel_id: ChannelId,
     message_id: u64,
     thread_id: u64,
     payload: &PullRequestPayload,
-) -> Result<(), AppError> {
-    let content = format_pr_message(payload);
-
+) -> Result<()> {
     channel_id
         .edit_message(
             http,
             MessageId::new(message_id),
-            EditMessage::new().content(content),
+            EditMessage::new().content(format_pr_message(payload)),
         )
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
-    let audit_entry = format!(
+    let content = format!(
         "🔄 **{}** — PR #{} `{}`",
-        chrono_now(),
+        timestamp(),
         payload.pull_request.number,
         payload.action,
     );
-    ChannelId::new(thread_id)
-        .send_message(http, CreateMessage::new().content(audit_entry))
-        .await
-        .map_err(|e| AppError::Discord(Box::new(e)))?;
+    post_to_thread(http, thread_id, &content).await?;
 
     info!(
         channel = %channel_id,
@@ -105,12 +100,12 @@ pub async fn update_pull_request(
     Ok(())
 }
 
-/// Post a review event as a reply in the PR's audit thread.
+/// Post a review event to the PR audit thread.
 pub async fn post_review(
     http: &Http,
     thread_id: u64,
     payload: &PullRequestReviewPayload,
-) -> Result<(), AppError> {
+) -> Result<()> {
     let review = &payload.review;
     let pr = &payload.pull_request;
 
@@ -126,18 +121,22 @@ pub async fn post_review(
         reviewer = review.user.login,
         number = pr.number,
     );
-
-    ChannelId::new(thread_id)
-        .send_message(http, CreateMessage::new().content(content))
-        .await
-        .map_err(|e| AppError::Discord(Box::new(e)))?;
+    post_to_thread(http, thread_id, &content).await?;
 
     Ok(())
 }
 
-// ── Formatting ────────────────────────────────────────────────────────────────
+/// Post an audit entry to a thread. Used by commands (assign/unassign) and
+/// event handlers alike so there is one place to change thread posting behavior.
+pub async fn post_to_thread(http: &Http, thread_id: u64, content: &str) -> Result<()> {
+    ChannelId::new(thread_id)
+        .send_message(http, CreateMessage::new().content(content))
+        .await
+        .map_err(|e| AppError::Discord(Box::new(e)))?;
+    Ok(())
+}
 
-/// Format a PR payload into a Discord message string.
+/// Format a PR payload into the main channel message.
 ///
 /// Plain string for now — will move to embeds once the core flow is
 /// proven end-to-end.
@@ -159,6 +158,6 @@ fn format_pr_message(payload: &PullRequestPayload) -> String {
 }
 
 /// Returns a short UTC timestamp string for audit entries.
-fn chrono_now() -> String {
+fn timestamp() -> String {
     chrono::Utc::now().format("%Y-%m-%d %H:%M UTC").to_string()
 }

@@ -1,8 +1,7 @@
 //! `GitHub` webhook endpoint.
 //!
-//! Handles `POST /github/webhook`. Every incoming request is verified against
-//! the HMAC-SHA256 signature in `X-Hub-Signature-256` before the payload is
-//! parsed — unauthenticated requests are rejected with `401 Unauthorized`.
+//! All requests hit `verify_signature` before any payload parsing happens.
+//! Invalid signatures are rejected with `401 Unauthorized` before we touch the body.
 
 use std::sync::Arc;
 
@@ -14,13 +13,13 @@ use axum::{
     response::IntoResponse,
 };
 use hmac::{Hmac, KeyInit, Mac};
-use octocrab::Octocrab;
 use serenity::all::{ChannelId, Http};
 use sha2::Sha256;
 use tracing::{info, warn};
 
 use crate::discord::messages;
 use crate::error::AppError;
+use crate::error::Result;
 use crate::github::types::{
     GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
 };
@@ -28,38 +27,29 @@ use crate::state::{PrMessage, PrMessageStore, SubscriptionStore};
 
 type HmacSha256 = Hmac<Sha256>;
 
-/// State shared across all webhook handler invocations.
+/// State shared across every webhook handler invocations.
+/// Command-only dependencies live in `CommandContext`.
 #[derive(Clone)]
 pub struct WebhookState {
-    /// HMAC secret for verifying GitHub payloads
+    /// HMAC secret for verifying GitHub payloads.
     pub secret: String,
 
-    /// Serenity HTTP client for posting Discord messages
+    /// Serenity HTTP client for posting Discord messages.
     pub http: Arc<Http>,
 
-    /// Persistent store for PR message IDs
+    /// Stores PR message and thread IDs so events can edit in place.
     pub pr_store: Arc<dyn PrMessageStore>,
 
-    /// Persistent store for channel subscription
+    /// Stores channel subscription per repo and guild.
     pub sub_store: Arc<dyn SubscriptionStore>,
-
-    /// Authenticated GitHub API client
-    #[allow(dead_code)]
-    pub github: Arc<Octocrab>,
-
-    /// Publicly reachable URL for this bot, passed to GitHub when registering webhooks
-    #[allow(dead_code)]
-    pub webhook_url: String,
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
-
-/// Axum handler for `POST /github/webhook`.
+/// Entry point for `POST /github/webhook`.
 pub async fn handle(
     State(state): State<WebhookState>,
     headers: HeaderMap,
     body: Bytes,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<Response> {
     verify_signature(&state.secret, &headers, &body)?;
 
     let event_type = headers
@@ -101,12 +91,7 @@ pub async fn handle(
     }
 }
 
-// ── Event handlers ────────────────────────────────────────────────────────────
-
-async fn handle_pull_request(
-    state: WebhookState,
-    payload: PullRequestPayload,
-) -> Result<Response, AppError> {
+async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -> Result<Response> {
     let pr = &payload.pull_request;
 
     info!(
@@ -115,7 +100,7 @@ async fn handle_pull_request(
         action = %payload.action,
         status = %pr.status_label(),
         title  = %pr.title,
-        "pull_request event received"
+        "pull_request event"
     );
 
     let subscriptions = state
@@ -124,7 +109,7 @@ async fn handle_pull_request(
         .await?;
 
     if subscriptions.is_empty() {
-        info!(repo = %payload.repository.full_name, "no subscriptions found");
+        info!(repo = %payload.repository.full_name, "no subscriptions found, skipping");
         return Ok(StatusCode::OK.into_response());
     }
 
@@ -170,7 +155,7 @@ async fn handle_pull_request(
                         .await?;
                 }
             } else {
-                info!(pr = pr.number, "no stored message for PR — skipping update");
+                info!(pr = pr.number, "no stored message found, skipping update");
             }
         }
         _ => {}
@@ -182,7 +167,7 @@ async fn handle_pull_request(
 async fn handle_pull_request_review(
     state: WebhookState,
     payload: PullRequestReviewPayload,
-) -> Result<Response, AppError> {
+) -> Result<Response> {
     let pr = &payload.pull_request;
     let review = &payload.review;
 
@@ -192,7 +177,7 @@ async fn handle_pull_request_review(
         action   = %payload.action,
         reviewer = %review.user.login,
         verdict  = %review.verdict_emoji(),
-        "pull_request_review event received"
+        "pull_request_review event"
     );
 
     if payload.action == "submitted" {
@@ -210,13 +195,12 @@ async fn handle_pull_request_review(
 }
 
 fn handle_push(payload: &PushPayload) -> StatusCode {
-    // Only care about pushes to the default branch — merges, hotfixes, etc.
     if payload.git_ref == "refs/heads/main" {
         info!(
             repo    = %payload.repository.full_name,
-            sha     = &payload.after[..7], // short SHA
+            sha     = &payload.after[..7],
             commits = payload.commits.len(),
-            "push to main received"
+            "push to main"
         );
     }
     StatusCode::OK
@@ -224,12 +208,10 @@ fn handle_push(payload: &PushPayload) -> StatusCode {
 
 // ── Signature verification ────────────────────────────────────────────────────
 
-/// Verify the `X-Hub-Signature-256` header against the raw request body.
+/// Verify the `X-Hub-Signature-256` against the raw request body using `HMAC-SHA256`.
 ///
-/// GitHub computes `HMAC-SHA256(secret, body)` and sends it as
-/// `sha256=<hex_digest>`. We recompute and compare in constant time to
-/// prevent timing attacks.
-fn verify_signature(secret: &str, headers: &HeaderMap, body: &Bytes) -> Result<(), AppError> {
+/// Compute and compare in constant time to prevent timing attacks.
+fn verify_signature(secret: &str, headers: &HeaderMap, body: &Bytes) -> Result<()> {
     let signature = headers
         .get("x-hub-signature-256")
         .and_then(|v| v.to_str().ok())

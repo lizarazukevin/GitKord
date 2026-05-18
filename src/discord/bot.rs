@@ -1,62 +1,35 @@
-//! Serenity Discord client setup.
+//! Serenity client setup for Discord.
 //!
-//! Builds the client, registers the ready handler,
-//! and exposes the `Http` handle so the application
-//! can post messages without holding reference to the full client.
+//! Builds the client, registers the slash commands on ready,
+//! and exposes the `Http` handle so the webhook handler can
+//! post messages without holding a reference to the full client.
 
-use octocrab::Octocrab;
 use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Ready};
 use std::sync::Arc;
 use tracing::info;
 
+use crate::discord::app_state::AppState;
 use crate::discord::commands;
-use crate::state::traits::{SubscriptionStore, UserLinkStore};
-use crate::state::PrMessageStore;
-
-// ── Client builder ────────────────────────────────────────────────────────────
 
 /// Build a Serenity client and return it alongside a shared `Http` handle.
 ///
-/// The `Http` handle is cloned out before `client.start()` is called so
-/// the webhook handler can post messages independently of the gateway task.
-pub async fn build(
-    token: &str,
-    pr_store: Arc<dyn PrMessageStore>,
-    sub_store: Arc<dyn SubscriptionStore>,
-    user_store: Arc<dyn UserLinkStore>,
-    github: Arc<Octocrab>,
-    webhook_url: String,
-    webhook_secret: String,
-) -> (serenity::Client, Arc<Http>) {
+/// The `Http` handle is cloned out before client moves into its task so
+/// the webhook handler can post messages independently of the gateway connection.
+pub async fn build(token: &str, app_state: AppState) -> (serenity::Client, Arc<Http>) {
     let intents = GatewayIntents::empty();
 
     let client = serenity::Client::builder(token, intents)
-        .event_handler(ReadyHandler {
-            pr_store,
-            sub_store,
-            user_store,
-            github,
-            webhook_url,
-            webhook_secret,
-        })
+        .event_handler(ReadyHandler { app_state })
         .await
         .expect("failed to build Discord client");
 
-    // Clone the Http handle out before we move the client into its task.
     let http = Arc::clone(&client.http);
-
     (client, http)
 }
 
-// ── Event handler ─────────────────────────────────────────────────────────────
-
+/// Event handler stored in the Serenity client.
 struct ReadyHandler {
-    pr_store: Arc<dyn PrMessageStore>,
-    sub_store: Arc<dyn SubscriptionStore>,
-    user_store: Arc<dyn UserLinkStore>,
-    github: Arc<Octocrab>,
-    webhook_url: String,
-    webhook_secret: String,
+    app_state: AppState,
 }
 
 #[serenity::async_trait]
@@ -70,16 +43,6 @@ impl EventHandler for ReadyHandler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        commands::dispatch(
-            &ctx,
-            &interaction,
-            self.pr_store.as_ref(),
-            self.sub_store.as_ref(),
-            self.user_store.as_ref(),
-            &self.github,
-            &self.webhook_url,
-            &self.webhook_secret,
-        )
-        .await;
+        commands::dispatch(&ctx, &interaction, &self.app_state).await;
     }
 }

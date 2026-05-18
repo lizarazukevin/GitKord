@@ -1,135 +1,82 @@
-//! Store trait abstractions for `DiGiBot`.
+//! Store trait abstractions.
 //!
-//! High-level handlers depend on these traits, not on concrete database types.
-//! This means the backing store can be swapped (`SQLite` → `PostgreSQL`, or an
-//! in-memory store for tests) without touching any handler code.
+//! Handlers depend on these traits rather than concrete database types.
+//! Swapping `SQLite` for Postgres, or using in-memory store for tests,
+//! only requires a new impl, no handler changes needed.
 
 use async_trait::async_trait;
 
-use crate::error::AppError;
+use crate::error::Result;
 
-// ── PR message store ──────────────────────────────────────────────────────────
-
-/// Associates a GitHub PR with the Discord message that represents it.
+/// One row per open PR, tracks where Discord message and audit thread live.
 #[derive(Debug, Clone)]
 pub struct PrMessage {
-    /// GitHub repository in `owner/name` format.
     pub repo: String,
-
-    /// Pull request number.
     pub pr_number: u64,
-
-    /// Discord channel the message was posted in.
     pub channel_id: u64,
-
-    /// Discord message ID — used to edit the message in place on future events.
     pub message_id: u64,
-
-    /// Discord thread ID — audit events are appended here rather than posted to the channel
     pub thread_id: u64,
 }
 
-/// Persist and retrieve the Discord message ID for each open PR.
 #[async_trait]
 pub trait PrMessageStore: Send + Sync {
-    /// Save the Discord message ID for a PR.
-    ///
-    /// If a record already exists for `(repo, pr_number)` it is replaced.
-    async fn upsert(&self, record: PrMessage) -> Result<(), AppError>;
+    /// Insert or replace the Discord message record for a PR.
+    async fn upsert(&self, record: PrMessage) -> Result<()>;
 
-    /// Look up the Discord message for a PR.
-    ///
-    /// Returns `None` if no message has been posted for this PR yet.
-    async fn get(&self, repo: &str, pr_number: u64) -> Result<Option<PrMessage>, AppError>;
+    /// Look up the Discord message for a PR. Returns `None` if not found.
+    async fn get(&self, repo: &str, pr_number: u64) -> Result<Option<PrMessage>>;
 
-    /// Remove the record for a PR once it is merged or deleted.
-    async fn delete(&self, repo: &str, pr_number: u64) -> Result<(), AppError>;
+    /// Delete the record when a PR is closed or merged.
+    async fn delete(&self, repo: &str, pr_number: u64) -> Result<()>;
 
-    /// Lookup a PR message row by thread ID to fill context.
-    async fn get_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>, AppError>;
+    /// Lookup a PR record by its audit thread ID.
+    /// Primarily used to infer context for assign/unassign when run inside a thread.
+    async fn get_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>>;
 }
 
-// ── Subscription store ────────────────────────────────────────────────────────
-
-/// A channel subscribed to PR updates for a given repository.
+/// One row per repo per guild, tracks which channel gets PR messages.
 #[derive(Debug, Clone)]
 pub struct Subscription {
-    /// GitHub repository in `owner/name` format.
     pub repo: String,
-
-    /// Discord guild (server) the channel belongs to.
     pub guild_id: u64,
-
-    /// Discord channel that will receive PR messages.
     pub channel_id: u64,
 }
 
-/// Persist and retrieve channel subscriptions.
 #[async_trait]
 pub trait SubscriptionStore: Send + Sync {
-    /// Subscribe a channel to PR updates for a repository.
-    ///
-    /// If a subscription already exists for `(repo, guild_id)` the channel
-    /// is updated — one subscription per repo per guild.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`AppError::Database`] if the query fails.
-    async fn upsert(&self, subscription: Subscription) -> Result<(), AppError>;
+    /// Insert or replace a subscription. One per repo per guild.
+    async fn upsert(&self, subscription: Subscription) -> Result<()>;
 
-    /// Look up the subscribed channel for a repository in a given guild.
-    ///
-    /// Returns `None` if the guild has not subscribed to this repo.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`AppError::Database`] if the query fails.
-    #[allow(dead_code)]
-    async fn get(&self, repo: &str, guild_id: u64) -> Result<Option<Subscription>, AppError>;
+    /// Look up subscription for a specific repo and guild.
+    async fn get(&self, repo: &str, guild_id: u64) -> Result<Option<Subscription>>;
 
-    /// Look up all subscriptions for a repository across all guilds.
-    ///
-    /// Used when a webhook event arrives to find every channel that should
-    /// receive a message.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`AppError::Database`] if the query fails.
-    async fn get_all_for_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError>;
+    /// Find all guilds subscribed to a repo.
+    /// Called on every webhook event to find which channels to post to.
+    async fn get_all_for_repo(&self, repo: &str) -> Result<Vec<Subscription>>;
 
     /// Remove a subscription.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`AppError::Database`] if the query fails.
-    async fn delete(&self, repo: &str, guild_id: u64) -> Result<(), AppError>;
+    async fn delete(&self, repo: &str, guild_id: u64) -> Result<()>;
 }
 
-// ── User link store ───────────────────────────────────────────────────────────
-
-/// A link between a Discord user and their GitHub username.
+/// Maps a Discord user ID to a GitHub login.
 #[derive(Debug, Clone)]
 pub struct UserLink {
-    /// Discord user snowflake ID.
     pub discord_id: u64,
-
-    /// GitHub login handle.
     pub github_login: String,
 }
 
-/// Persist and retrieve Discord ↔ GitHub username mappings.
 #[async_trait]
 pub trait UserLinkStore: Send + Sync {
-    /// Save or update a Discord ↔ GitHub link.
-    async fn upsert(&self, link: UserLink) -> Result<(), AppError>;
+    /// Insert of update a Discord to GitHub link.
+    async fn upsert(&self, link: UserLink) -> Result<()>;
 
-    /// Look up a user's GitHub login by their Discord ID.
-    async fn get_by_discord(&self, discord_id: u64) -> Result<Option<UserLink>, AppError>;
+    /// Look up a GitHub login by Discord ID.
+    async fn get_by_discord(&self, discord_id: u64) -> Result<Option<UserLink>>;
 
     /// Look up a Discord ID by GitHub login.
     #[allow(dead_code)]
-    async fn get_by_github(&self, github_login: &str) -> Result<Option<UserLink>, AppError>;
+    async fn get_by_github(&self, github_login: &str) -> Result<Option<UserLink>>;
 
     /// Remove a link.
-    async fn delete(&self, discord_id: u64) -> Result<(), AppError>;
+    async fn delete(&self, discord_id: u64) -> Result<()>;
 }

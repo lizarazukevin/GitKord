@@ -2,11 +2,11 @@
 
 **Discord Git Bot** — a live pull request companion for Discord, powered by Rust.
 
-[![Rust](https://img.shields.io/badge/rust-1.77%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/discord-slash--commands-5865F2.svg)](https://discord.com)
 
-DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-date Discord message for each open pull request. Reviewer status, commit activity, and PR state stay in sync — no channel clutter, no manual refreshing.
+DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-date Discord message for each open pull request. Reviewer status, commit activity, and PR state stay in sync across every subscribed channel — no manual refreshing, no channel clutter.
 
 > **Status:** Active development — see [Roadmap](#roadmap) for what's landed and what's next.
 
@@ -14,14 +14,16 @@ DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-da
 
 ## Features
 
-- **One message per PR** — title, latest commit, status emoji, and reviewer list update in place as events arrive.
-- **Audit thread** — every event is appended to a private thread under the main message for full traceability.
-- **Reviewer assignment** — assign reviewers via slash command or button; GitHub ↔ Discord username linking means `@mentions` just work.
-- **Smart reminders** — ping reviewers by DM through the bot, with a 3-hour cooldown that resets on new activity.
-- **Push-aware** — `push` events to `main` (including merges) are reflected in the PR's commit line.
-- **Slash commands** — `/subscribe`, `/link`, `/assign`, and more — all ephemeral, no channel spam.
-- **Lightweight persistence** — SQLite-backed subscriptions and user links survive restarts; everything else lives in memory.
-- **Health endpoint** — `GET /healthz` reports bot and GitHub API reachability.
+- **One message per PR** — title, status emoji, author, and branch update in place as events arrive.
+- **Audit thread** — every event (opened, review, assign, close) is appended to a thread on the main message for full traceability.
+- **Auto webhook registration** — `/subscribe` registers the GitHub webhook automatically. No manual setup in repo settings.
+- **Reviewer assignment** — `/assign` and `/unassign` work with GitHub usernames or Discord mentions. Run inside a PR thread and the repo and PR number are inferred automatically.
+- **Discord to GitHub linking** — `/link` verifies the GitHub account exists before saving the mapping.
+- **Self-assignment guard** — the bot rejects review requests where the requester and reviewer are the same person.
+- **Push-aware** — push events to `main` are logged and ready to be reflected in the PR message.
+- **Slash commands** — all ephemeral, no channel noise.
+- **SQLite persistence** — PR message IDs, thread IDs, subscriptions, and user links survive restarts.
+- **Health endpoint** — `GET /healthz` for uptime monitors and Railway health checks.
 
 ---
 
@@ -29,28 +31,28 @@ DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-da
 
 ```
 GitHub webhook (pull_request, pull_request_review, push)
-│
-▼
+        |
+        v
 ┌──────────────────────┐
-│   Axum HTTP server   │  ← verifies HMAC-SHA256 signature
+│   Axum HTTP server   │  <- verifies HMAC-SHA256 signature
 │   /github/webhook    │
 └──────────┬───────────┘
-           │  deserialized event
-           ▼
+           |  deserialized event
+           v
 ┌──────────────────────┐
-│    Event handler     │  ← translates event → message update
+│    Event handler     │  <- translates event into a Discord action
 └──────────┬───────────┘
-           │
-           ▼
+           |
+           v
 ┌──────────────────────┐
-│  Discord (Serenity)  │  ← edits main message, appends to audit thread
+│  Discord (Serenity)  │  <- edits main message, appends to audit thread
 └──────────────────────┘
 ```
 
 1. A pull request is opened, reviewed, or merged on GitHub.
 2. GitHub sends a signed webhook payload to DiGiBot.
-3. DiGiBot updates the corresponding pinned message in the subscribed Discord channel and appends an entry to the audit thread.
-4. Users interact through slash commands and buttons — everything stays in one place.
+3. DiGiBot updates the pinned message in every subscribed channel and appends an entry to the audit thread.
+4. Users interact through slash commands — everything stays in one place.
 
 ---
 
@@ -58,12 +60,24 @@ GitHub webhook (pull_request, pull_request_review, push)
 
 ### Prerequisites
 
-- [Rust](https://www.rust-lang.org/tools/install) 1.9+
+- [Rust](https://www.rust-lang.org/tools/install) 1.91+
 - A [Discord application](https://discord.com/developers/applications) with a bot token
-- A [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope
-- A webhook secret (any cryptographically random string, e.g. `openssl rand -hex 32`)
+- A GitHub fine-grained PAT with **Pull requests** and **Webhooks** read/write permissions
+- A publicly reachable URL (Railway in production, ngrok in development)
 
-### Build & Run
+### Environment Variables
+
+| Variable                 | Required | Description                                                     |
+|--------------------------|----------|-----------------------------------------------------------------|
+| `DISCORD_TOKEN`          | Yes      | Discord bot token                                               |
+| `GITHUB_WEBHOOK_SECRET`  | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
+| `GITHUB_TOKEN`           | Yes      | GitHub PAT (Pull requests + Webhooks read/write)               |
+| `WEBHOOK_URL`            | Yes      | Public URL DiGiBot is reachable at (no trailing slash)         |
+| `DATABASE_URL`           | No       | SQLite path, defaults to `sqlite://digibot.db`                 |
+| `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`                    |
+| `PORT`                   | No       | HTTP listen port, defaults to `3000`                           |
+
+### Build and Run
 
 ```bash
 git clone https://github.com/kevinlizarazu/digibot.git
@@ -71,57 +85,45 @@ cd digibot
 
 cargo build --release
 
-DISCORD_TOKEN=...              \
-GITHUB_WEBHOOK_SECRET=...      \
-GITHUB_REPO=owner/repo         \
-GITHUB_TOKEN=...               \
-RUST_LOG=info                  \
-./target/release/digibot
+DISCORD_TOKEN=...             \
+GITHUB_WEBHOOK_SECRET=...     \
+GITHUB_TOKEN=...              \
+WEBHOOK_URL=https://your-url  \
+./target/release/DiGiBot
 ```
-
-### Deploy on Railway
-
-1. Push the repository to GitHub.
-2. In Railway, create a new project from the repo.
-3. Set the environment variables below in the service settings.
-4. Expose `$PORT` and point your GitHub webhook to `https://<your-domain>/github/webhook`.
-
-### Environment Variables
-
-| Variable                 | Required | Description                                         |
-|--------------------------|----------|-----------------------------------------------------|
-| `DISCORD_TOKEN`          | Yes      | Discord bot token                                   |
-| `GITHUB_WEBHOOK_SECRET`  | Yes      | Secret used to verify HMAC-SHA256 webhook payloads  |
-| `GITHUB_REPO`            | Yes      | Repository to watch (`owner/name`)                  |
-| `GITHUB_TOKEN`           | Yes      | GitHub PAT for API calls (reviewer assignment, etc.)|
-| `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`         |
-| `PORT`                   | No       | HTTP listen port (default: `3000`)                  |
 
 ### Invite the Bot
 
-Generate an OAuth2 invite URL with the following scopes and permissions:
+Generate an OAuth2 URL with these scopes and permissions:
 
 **Scopes:** `bot`, `applications.commands`
 
-**Bot permissions:**
-- Send Messages
-- Create Public Threads
-- Send Messages in Threads
-- Manage Messages
-- Use Slash Commands
+**Permissions:** Send Messages, Create Public Threads, Send Messages in Threads, Manage Messages, Use Slash Commands
+
+### Local Development
+
+Use [ngrok](https://ngrok.com) to expose your local port:
+
+```bash
+ngrok http 3001   # use a port that does not conflict with other local servers
+export PORT=3001
+export WEBHOOK_URL=https://your-ngrok-url.ngrok-free.app
+cargo run
+```
 
 ---
 
 ## Slash Commands
 
-| Command        | Description                                              |
-|----------------|----------------------------------------------------------|
-| `/subscribe`   | Subscribe the current channel to PR updates              |
-| `/unsubscribe` | Remove the channel subscription                          |
-| `/link`        | Link your Discord account to a GitHub username           |
-| `/unlink`      | Remove your Discord ↔ GitHub link                        |
-| `/assign`      | Assign a reviewer to a PR (autocomplete for PR and user) |
-| `/healthz`     | Show bot and GitHub API status                           |
+| Command      | Description                                                                 |
+|--------------|-----------------------------------------------------------------------------|
+| `/subscribe` | Subscribe this channel to PR updates for a repo. Registers the webhook too. |
+| `/unsubscribe` | Stop receiving PR updates for a repo in this channel.                     |
+| `/link`      | Link your Discord account to a GitHub username (verifies the account exists). |
+| `/unlink`    | Remove your Discord to GitHub link.                                         |
+| `/assign`    | Request a review. Run inside a PR thread to skip `repo` and `pr` options.  |
+| `/unassign`  | Remove a review request. Same thread-aware behavior as `/assign`.           |
+| `/health`    | Check if DiGiBot is running.                                                |
 
 ---
 
@@ -139,72 +141,112 @@ Generate an OAuth2 invite URL with the following scopes and permissions:
 
 ## Roadmap
 
-### v0.1 — Core loop ✅
-- Webhook verification and event deserialization
-- Main message creation and in-place updates (PR events)
-- Audit thread logging
-- Slash commands: `/subscribe`, `/unsubscribe`, `/link`, `/healthz`
-- SQLite persistence for subscriptions and user links
+### v0.1 — Foundation ✅
+- Axum HTTP server with `/healthz` and webhook endpoint
+- Serenity Discord client with gateway connection
+- Config loaded from environment variables with fast-fail validation
+- Unified `AppError` with `IntoResponse` for automatic HTTP status mapping
+- `rustfmt` and `clippy` configured for stable linting
 
-### v0.2 — Review lifecycle
-- Reviewer assignment via `/assign` slash command
-- Reviewer approval status display (✅ / ❌)
-- Remind button with DM delivery and 3-hour cooldown
-- Push-to-main reflected in commit line
+### v0.2 — Core loop ✅
+- HMAC-SHA256 webhook signature verification
+- `pull_request` payload deserialization
+- Discord message creation, in-place updates, and audit thread per PR
+- SQLite persistence for PR message IDs and thread IDs
+- `pull_request_review` events posted to audit thread
 
-### v0.3 — Polish
-- Structured logging (JSON-compatible for log aggregators)
-- Multi-repo support
-- GitHub profile auto-discovery for Discord tag resolution
-- Web dashboard for configuration
+### v0.3 — Subscriptions and commands ✅
+- Dynamic subscription store (any channel can subscribe to any repo)
+- `/subscribe` auto-registers the GitHub webhook via API
+- `/link` and `/unlink` with GitHub user verification
+- `/assign` and `/unassign` with Discord mention resolution and self-assignment guard
+- Thread-aware context inference for assign/unassign
+- `CommandContext` struct grouping slash command dependencies
+
+### v0.4 — Deployment and testing
+- Railway deployment with persistent URL
+- Test suite (unit tests for signature verification, store traits, formatters)
+- Message and embed redesign
+- Push-to-main reflected in PR message commit line
+
+### v0.5 — Polish
+- Remind button with DM delivery and cooldown store
+- Review approval status displayed on the main PR message
+- Multi-repo support improvements
+- GitHub OAuth for automatic Discord to GitHub linking
 
 ---
 
+## Architecture
+
+```
+src/
+├── main.rs              # Entrypoint — spawns Axum and Serenity concurrently
+├── config.rs            # Environment variable loading, single source of truth
+├── error.rs             # AppError with IntoResponse for Axum handlers
+├── github/
+│   ├── api.rs           # Octocrab helpers (verify user, register webhook, assign reviewer)
+│   ├── types.rs         # Webhook payload structs
+│   └── webhook.rs       # Axum route, HMAC verification, event dispatch
+├── discord/
+│   ├── context.rs       # CommandContext — shared deps for slash command handlers
+│   ├── bot.rs           # Serenity client setup and event handler
+│   ├── commands.rs      # Slash command registration and handlers
+│   └── messages.rs      # Discord message formatting and posting
+└── state/
+    ├── traits.rs        # PrMessageStore, SubscriptionStore, UserLinkStore
+    ├── db.rs            # SQLite-backed implementations
+    └── mod.rs           # Re-exports
+```
+
 ### Key Dependencies
 
-| Crate       | Purpose                              |
-|-------------|--------------------------------------|
-| `axum`      | HTTP server + webhook endpoint       |
-| `serenity`  | Discord gateway + slash commands     |
-| `octocrab`  | GitHub REST API client               |
-| `sqlx`      | SQLite persistence                   |
-| `tokio`     | Async runtime                        |
-| `tracing`   | Structured logging                   |
+| Crate       | Purpose                               |
+|-------------|---------------------------------------|
+| `axum`      | HTTP server and webhook endpoint      |
+| `serenity`  | Discord gateway and slash commands    |
+| `octocrab`  | GitHub REST API client                |
+| `sqlx`      | SQLite persistence                    |
+| `tokio`     | Async runtime                         |
+| `tracing`   | Structured logging                    |
+| `hmac`/`sha2` | Webhook signature verification      |
 
 ### Design Principles
 
-DiGiBot's module boundaries follow SOLID:
-
-- **Single responsibility** — each module does one thing: webhooks, Discord messaging, GitHub API calls, state persistence.
-- **Open/closed** — state is abstracted behind traits; swap SQLite for PostgreSQL without touching event handlers.
-- **Interface segregation** — separate focused traits for subscriptions, user links, and cooldowns rather than one monolithic store interface.
-- **Dependency inversion** — high-level handlers depend on trait interfaces, not concrete database types.
+- **Single responsibility** — each module does one thing.
+- **Open/closed** — stores sit behind traits; swap the backend without touching handlers.
+- **Interface segregation** — separate focused traits for PR messages, subscriptions, and user links.
+- **Dependency inversion** — handlers depend on trait interfaces, not concrete types.
+- **CommandContext** — slash command dependencies grouped in one struct so dispatch stays readable.
 
 ---
 
 ## Development
 
 ```bash
-# Run with hot-reload (requires cargo-watch)
-cargo watch -x run
+# Run
+cargo run
 
-# Run tests
-cargo test
+# Run with hot reload (requires cargo-watch)
+cargo watch -x run
 
 # Lint
 cargo clippy -- -D warnings
 
-# Check formatting
+# Format check
 cargo fmt -- --check
+
+# Tests
+cargo test
 ```
 
-> **Tip:** Set `RUST_LOG=debug` locally to see full event payloads during webhook development.
+> Set `RUST_LOG=debug` to see full event payloads during webhook development.
 
 ---
 
 ## Contributing
 
-Issues and PRs are welcome. Please run `cargo fmt` and `cargo clippy` before opening a pull request.
+Run `cargo fmt` and `cargo clippy -- -D warnings` before opening a pull request.
 
 ---
 
