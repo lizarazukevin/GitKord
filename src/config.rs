@@ -1,42 +1,35 @@
 //! Runtime configuration for `DiGiBot`.
 //!
-//! [`Config::from_env`] is the single source of truth for all env variables.
-//! Nothing else in the codebase calls [`env::var`] directly, register here.
+//! [`Config::from_env`] is the only place where environment variables are read.
+//! Everywhere else receives values through function arguments or shared state.
 
 use anyhow::{Context, Result};
 
-/// All runtime configuration, loaded once at startup.
-///
-/// Cloning is cheap, pass `Config` by clone into spawned tasks
-/// rather than wrapping it in an `Arc`.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Discord bot token from the Developer Portal
+    /// Discord bot token from the Developer Portal.
     pub discord_token: String,
 
-    /// Secret used to verify HMAC-SHA256 signatures on incoming webhook payloads
+    /// HMAC secret used to verify incoming GitHub webhook payloads.
     pub github_webhook_secret: String,
 
-    /// GitHub personal access token for REST API calls (reviewer assignment, etc.)
+    /// GitHub PAT for API calls (reviewer assignment, webhook reigstration).
     pub github_token: String,
 
-    /// Publicly reachable URL for this bot(e.g. Railway domain or ngrok URL)
-    /// Used to register webhooks on GitHub via the API
+    /// Publicly reachable URL for this bot (e.g. Railway domain or ngrok in dev).
     pub webhook_url: String,
 
-    /// `SQLite` database URL (e.g. `sqlite://digibot.db`)
+    /// `SQLite` connection string. (Defaults to `sqlite://digibot.db`).
     pub database_url: String,
 
     /// TCP port the Axum HTTP server listens on. Defaults to `3000`
-    /// Port assignment conflicts with Vite API routing, change to another port if this happens
+    /// Change this if port 3000 is taken (e.g. by Vite dev server).
     pub port: u16,
 }
 
 impl Config {
-    /// Load all configuration from the process environment.
-    ///
-    /// Returns the error immediately if any required variables are absent.
-    /// A successful return guarantees all fields are valid for the process lifetime.
+    /// Load config from the environment. Fails fast if any required variable
+    /// is missing or a value cannot be parsed.
     pub fn from_env() -> Result<Self, anyhow::Error> {
         Ok(Self {
             discord_token: require("DISCORD_TOKEN")?,

@@ -1,8 +1,7 @@
-//! GitHub REST API helpers via `octocrab`.
+//! GitHub REST API helpers.
 //!
-//! All functions take an `octocrab::Octocrab` instance built from the
-//! `GITHUB_TOKEN` PAT. Callers are responsible for constructing the client
-//! once at startup and passing it through shared state.
+//! All functions take an `Octocrab` instance built from `GITHUB_TOKEN`.
+//! Build the client once at startup and pass it through shared state.
 
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
@@ -10,32 +9,29 @@ use octocrab::Octocrab;
 use tracing::info;
 
 use crate::error::AppError;
-
-// ── Client builder ────────────────────────────────────────────────────────────
+use crate::error::Result;
 
 /// Build an authenticated `Octocrab` client from a personal access token.
 ///
 /// # Errors
 ///
 /// Returns [`AppError::GitHub`] if the client cannot be initialised.
-pub fn build_client(token: &str) -> Result<Octocrab, AppError> {
+pub fn build_client(token: &str) -> Result<Octocrab> {
     Octocrab::builder()
         .personal_token(token.to_owned())
         .build()
         .map_err(AppError::GitHub)
 }
 
-// ── User verification ─────────────────────────────────────────────────────────
-
 /// Verify that a GitHub username exists and return their login.
 ///
-/// Used by `/link` to confirm the username is real before persisting it.
-/// Returns `None` if the user does not exist (404).
+/// Returns `None` on `404` so caller gives a friendly error instead of persisting
+/// a username that does not exist.
 ///
 /// # Errors
 ///
-/// Returns [`AppError::GitHub`] on network or API errors other than 404.
-pub async fn verify_user(client: &Octocrab, username: &str) -> Result<Option<String>, AppError> {
+/// Returns [`AppError::GitHub`] on network or non-404 API errors.
+pub async fn verify_user(client: &Octocrab, username: &str) -> Result<Option<String>> {
     match client.users(username).profile().await {
         Ok(user) => {
             info!(username, "GitHub user verified");
@@ -46,23 +42,20 @@ pub async fn verify_user(client: &Octocrab, username: &str) -> Result<Option<Str
     }
 }
 
-// ── Webhook registration ──────────────────────────────────────────────────────
-
 /// Register a webhook on a GitHub repository.
 ///
-/// Silently succeeds if the webhook already exists (422). Returns the hook ID
-/// if one was created, or `None` if it already existed.
+/// Returns the hook ID if one was created, `None` if it already existed (422).
 ///
 /// # Errors
 ///
-/// Returns [`AppError::GitHub`] if the API call fails for any other reason.
+/// Returns [`AppError::GitHub`] if the API call fails reasons other than hook already existing.
 pub async fn register_webhook(
     client: &Octocrab,
     owner: &str,
     repo: &str,
     payload_url: &str,
     secret: &str,
-) -> Result<Option<u64>, AppError> {
+) -> Result<Option<u64>> {
     let config = HookConfig {
         url: payload_url.to_owned(),
         content_type: Some(HookContentType::Json),
@@ -88,30 +81,28 @@ pub async fn register_webhook(
             info!(owner, repo, hook_id = id, "webhook registered");
             Ok(Some(id))
         }
-        // 422 = hook already exists — treat as success
+
         Err(octocrab::Error::GitHub { source, .. }) if source.status_code == 422 => {
-            info!(owner, repo, "webhook already registered — skipping");
+            info!(owner, repo, "webhook already registered, skipping");
             Ok(None)
         }
         Err(e) => Err(AppError::GitHub(e)),
     }
 }
 
-// ── Reviewer assignment ───────────────────────────────────────────────────────
-
 /// Request a review from a GitHub user on a pull request.
 ///
 /// # Errors
 ///
 /// Returns [`AppError::GitHub`] if the API call fails or the reviewer
-/// cannot be found on the repository.
+/// does not have access to the repository.
 pub async fn assign_reviewer(
     client: &Octocrab,
     owner: &str,
     repo: &str,
     pr_number: u64,
     reviewer: &str,
-) -> Result<(), AppError> {
+) -> Result<()> {
     client
         .pulls(owner, repo)
         .request_reviews(pr_number, vec![reviewer.to_owned()], vec![])
@@ -133,7 +124,7 @@ pub async fn unassign_reviewer(
     repo: &str,
     pr_number: u64,
     reviewer: &str,
-) -> Result<(), AppError> {
+) -> Result<()> {
     client
         .pulls(owner, repo)
         .remove_requested_reviewers(pr_number, vec![reviewer.to_owned()], vec![])
