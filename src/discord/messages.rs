@@ -148,8 +148,10 @@ fn format_pr_message(data: &PrMessageData) -> String {
 
     let repo_base_url = data.url.split("/pull").next().unwrap_or(&data.url);
 
+    let pr_url = format!("<{}>", data.url);
+
     let branches = format!(
-        "[`{head}`]({url}/tree/{head}) → [`{base}`]({url}/tree/{base})",
+        "[`{head}`](<{url}/tree/{head}>) → [`{base}`](<{url}/tree/{base}>)",
         head = data.head,
         base = data.base,
         url = repo_base_url,
@@ -187,18 +189,18 @@ fn format_pr_message(data: &PrMessageData) -> String {
             })
             .collect::<Vec<_>>()
             .join("  →  ");
-        format!("### Checks\n{checks}\n")
+        format!("### Checks\n{checks}")
     };
 
     let reviewers_section = if data.reviews.is_empty() {
-        "*No reviewers assigned (use `/assign` to request a review)*".to_owned()
+        "### Reviewers:\n*No reviewers assigned (use `/assign` to request a review)*".to_owned()
     } else {
         let mut grouped: std::collections::BTreeMap<&str, Vec<String>> =
             std::collections::BTreeMap::new();
 
         for r in &data.reviews {
             let entry = format!(
-                "{}[`{}`](https://github.com/{})",
+                "{}[`{}`](<https://github.com/{}>)",
                 r.discord_tag
                     .as_deref()
                     .map(|d| format!("@{d}  ·  "))
@@ -215,27 +217,29 @@ fn format_pr_message(data: &PrMessageData) -> String {
             grouped.entry(key).or_default().push(entry);
         }
 
-        grouped
+        let body = grouped
             .iter()
             .map(|(emoji, names)| format!("{}  **|**  {}", emoji, names.join("  ·  ")))
             .collect::<Vec<_>>()
-            .join("\n")
+            .join("\n");
+
+        format!("### Reviewers\n{body}")
     };
 
     format!(
         "## {status_emoji} PR #{number} — {title}\n\
-     > ↳ 👤 **{author}**  **·**  🌿 {branches}  **·**  📦 [{repo}]({url})\n\
-     {bar}\n\
-     {stats}\n\
-     {checks_section}\
-     {reviewers_section}\
+     > ↳ 👤 **{author}**  **·**  🌿 {branches}  **·**  📦 [{repo}]({url})\n\n\
+     {bar}\n\n\
+     {stats}\n\n\
+     {checks_section}\n\n\
+     {reviewers_section}\n\n\
      -# *Last updated: {timestamp}*",
         number = data.number,
         title = data.title,
         author = data.author,
         branches = branches,
         repo = data.repo,
-        url = data.url,
+        url = pr_url,
         bar = bar,
         stats = stats,
         checks_section = checks_section,
@@ -246,5 +250,7 @@ fn format_pr_message(data: &PrMessageData) -> String {
 
 /// Returns a short UTC timestamp string for audit entries.
 fn timestamp() -> String {
-    chrono::Utc::now().format("%Y-%m-%d %H:%M UTC").to_string()
+    chrono::Utc::now()
+        .format("%d %b %Y at %H:%M UTC")
+        .to_string()
 }

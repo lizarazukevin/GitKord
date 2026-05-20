@@ -173,7 +173,9 @@ pub async fn fetch_pr_message_data(
         }
         let state = match review.state {
             Some(octocrab::models::pulls::ReviewState::Approved) => ReviewState::Approved,
-            Some(octocrab::models::pulls::ReviewState::ChangesRequested) => ReviewState::ChangesRequested,
+            Some(octocrab::models::pulls::ReviewState::ChangesRequested) => {
+                ReviewState::ChangesRequested
+            }
             // Dismissed means they need to re-review, treat as pending
             Some(octocrab::models::pulls::ReviewState::Dismissed) => ReviewState::Pending,
             _ => ReviewState::Commented,
