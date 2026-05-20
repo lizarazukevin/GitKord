@@ -189,7 +189,7 @@ fn format_pr_message(data: &PrMessageData) -> String {
             })
             .collect::<Vec<_>>()
             .join("  →  ");
-        format!("### Checks\n{checks}")
+        format!("### Checks\n{checks}\n\n")
     };
 
     let reviewers_section = if data.reviews.is_empty() {
@@ -223,7 +223,7 @@ fn format_pr_message(data: &PrMessageData) -> String {
             .collect::<Vec<_>>()
             .join("\n");
 
-        format!("### Reviewers\n{body}")
+        format!("### Reviewers\n{body}\n\n")
     };
 
     format!(
@@ -231,8 +231,8 @@ fn format_pr_message(data: &PrMessageData) -> String {
      > ↳ 👤 **{author}**  **·**  🌿 {branches}  **·**  📦 [{repo}]({url})\n\n\
      {bar}\n\n\
      {stats}\n\n\
-     {checks_section}\n\n\
-     {reviewers_section}\n\n\
+     {checks_section}
+     {reviewers_section}
      -# *Last updated: {timestamp}*",
         number = data.number,
         title = data.title,
