@@ -1,8 +1,9 @@
 //! GitHub webhook payload types.
 //!
 //! Each struct maps to the JSON response GitHub sends for a given event.
-//! Unkown fields are silently ignored so new GitHub fields do not
-//! break deserialization.
+//! If it has a deserializable tag and produced by GitHub it belongs here,
+//! not consumed by other parts of our project. Unkown fields are silently
+//! ignored so new GitHub fields do not break deserialization.
 
 use serde::Deserialize;
 
@@ -39,7 +40,6 @@ pub struct PullRequestPayload {
     pub repository: Repository,
 }
 
-/// A GitHub pull request as it appears in webhook payloads.
 #[derive(Debug, Deserialize)]
 pub struct PullRequest {
     pub number: u64,
@@ -50,6 +50,11 @@ pub struct PullRequest {
     pub user: GitHubUser,
     pub head: PullRequestRef,
     pub base: PullRequestRef,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Repository {
+    pub full_name: String,
 }
 
 impl PullRequest {
@@ -68,6 +73,14 @@ impl PullRequest {
             _ => "🟢",
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GitHubUser {
+    pub login: String,
+
+    #[expect(dead_code)]
+    pub id: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -138,17 +151,4 @@ pub struct CommitAuthor {
     /// GitHub username (only present in push payloads)
     #[expect(dead_code)]
     pub username: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GitHubUser {
-    pub login: String,
-
-    #[expect(dead_code)]
-    pub id: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Repository {
-    pub full_name: String,
 }

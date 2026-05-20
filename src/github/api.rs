@@ -3,13 +3,15 @@
 //! All functions take an `Octocrab` instance built from `GITHUB_TOKEN`.
 //! Build the client once at startup and pass it through shared state.
 
+use crate::error::AppError;
+use crate::error::Result;
+use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
+use crate::github::payloads::PullRequestPayload;
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
 use octocrab::Octocrab;
+use std::collections::HashMap;
 use tracing::info;
-
-use crate::error::AppError;
-use crate::error::Result;
 
 /// Build an authenticated `Octocrab` client from a personal access token.
 ///
@@ -133,4 +135,81 @@ pub async fn unassign_reviewer(
 
     info!(owner, repo, pr_number, reviewer, "reviewer unassigned");
     Ok(())
+}
+
+/// Fetch PR details and reviewer status used to capture current state.
+///
+/// # Errors
+///
+/// Returns [`AppError::GitHub`] if the API call fails
+pub async fn fetch_pr_message_data(
+    client: &Octocrab,
+    owner: &str,
+    repo: &str,
+    pr_number: u64,
+    payload: &PullRequestPayload,
+) -> Result<PrMessageData> {
+    let pr = client
+        .pulls(owner, repo)
+        .get(pr_number)
+        .await
+        .map_err(AppError::GitHub)?;
+
+    let reviewers = client
+        .pulls(owner, repo)
+        .list_reviews(pr_number)
+        .send()
+        .await
+        .map_err(AppError::GitHub)?;
+
+    // Track the latest verdict per reviewer. GitHub returns reviews in
+    // chronological order so overwriting gives us the current state naturally.
+    let mut latest: HashMap<String, ReviewState> = HashMap::new();
+
+    for review in reviewers {
+        let login = review.user.map(|u| u.login).unwrap_or_default();
+        if login.is_empty() {
+            continue;
+        }
+        let state = match review.state {
+            Some(octocrab::models::pulls::ReviewState::Approved) => ReviewState::Approved,
+            Some(octocrab::models::pulls::ReviewState::ChangesRequested) => ReviewState::ChangesRequested,
+            // Dismissed means they need to re-review, treat as pending
+            Some(octocrab::models::pulls::ReviewState::Dismissed) => ReviewState::Pending,
+            _ => ReviewState::Commented,
+        };
+        latest.insert(login, state);
+    }
+
+    // Request to review sent, waiting to accept treated as pending
+    for user in pr.requested_reviewers {
+        latest.entry(user.login).or_insert(ReviewState::Pending);
+    }
+
+    let reviews = latest
+        .into_iter()
+        .map(|(github_login, state)| ReviewSummary {
+            github_login,
+            discord_tag: None,
+            state,
+        })
+        .collect();
+
+    Ok(PrMessageData {
+        status_emoji: payload.pull_request.status_emoji(),
+        number: payload.pull_request.number,
+        title: payload.pull_request.title.clone(),
+        author: payload.pull_request.user.login.clone(),
+        repo: payload.repository.full_name.clone(),
+        head: payload.pull_request.head.branch.clone(),
+        base: payload.pull_request.base.branch.clone(),
+        url: payload.pull_request.html_url.clone(),
+        additions: pr.additions,
+        deletions: pr.deletions,
+        files: pr.changed_files,
+        commits: pr.commits,
+        comments: pr.comments,
+        reviews,
+        checks: vec![],
+    })
 }

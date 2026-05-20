@@ -8,8 +8,13 @@ use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Re
 use std::sync::Arc;
 use tracing::info;
 
-use crate::discord::app_state::AppState;
 use crate::discord::commands;
+use crate::discord::context::AppState;
+
+/// Event handler stored in the Serenity client.
+struct ReadyHandler {
+    app_state: AppState,
+}
 
 /// Build a Serenity client and return it alongside a shared `Http` handle.
 ///
@@ -25,11 +30,6 @@ pub async fn build(token: &str, app_state: AppState) -> (serenity::Client, Arc<H
 
     let http = Arc::clone(&client.http);
     (client, http)
-}
-
-/// Event handler stored in the Serenity client.
-struct ReadyHandler {
-    app_state: AppState,
 }
 
 #[serenity::async_trait]

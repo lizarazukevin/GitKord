@@ -4,7 +4,7 @@
 //! Commands that need repo/PR context will infer from thread,
 //! if not possible through context, otherwise explicitly.
 
-use crate::discord::app_state::AppState;
+use crate::discord::context::AppState;
 use crate::discord::messages;
 use crate::github::api;
 use crate::state::traits::{Subscription, UserLink};
