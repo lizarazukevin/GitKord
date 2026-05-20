@@ -189,11 +189,11 @@ fn format_pr_message(data: &PrMessageData) -> String {
             })
             .collect::<Vec<_>>()
             .join("  →  ");
-        format!("### Checks\n{checks}\n\n")
+        format!("\n### Checks\n{checks}\n")
     };
 
     let reviewers_section = if data.reviews.is_empty() {
-        "### Reviewers:\n*No reviewers assigned (use `/assign` to request a review)*".to_owned()
+        "\n### Reviewers:\n*No reviewers assigned (use `/assign` to request a review)*\n".to_owned()
     } else {
         let mut grouped: std::collections::BTreeMap<&str, Vec<String>> =
             std::collections::BTreeMap::new();
@@ -223,7 +223,7 @@ fn format_pr_message(data: &PrMessageData) -> String {
             .collect::<Vec<_>>()
             .join("\n");
 
-        format!("### Reviewers\n{body}\n\n")
+        format!("\n### Reviewers\n{body}\n")
     };
 
     format!(
@@ -233,7 +233,7 @@ fn format_pr_message(data: &PrMessageData) -> String {
      {stats}\n\n\
      {checks_section}
      {reviewers_section}
-     -# *Last updated: {timestamp}*",
+     \n-# *Last updated: {timestamp}*",
         number = data.number,
         title = data.title,
         author = data.author,
