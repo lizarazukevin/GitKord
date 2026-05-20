@@ -230,10 +230,10 @@ fn format_pr_message(data: &PrMessageData) -> String {
         "## {status_emoji} PR #{number} — {title}\n\
      > ↳ 👤 **{author}**  **·**  🌿 {branches}  **·**  📦 [{repo}]({url})\n\n\
      {bar}\n\n\
-     {stats}\n\n\
-     {checks_section}
-     {reviewers_section}
-     \n-# *Last updated: {timestamp}*",
+     {stats}\
+     {checks_section}\
+     {reviewers_section}\
+     -# *Last updated: {timestamp}*",
         number = data.number,
         title = data.title,
         author = data.author,
