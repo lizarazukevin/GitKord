@@ -6,7 +6,7 @@
 use crate::error::AppError;
 use crate::error::Result;
 use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
-use crate::github::payloads::PullRequestPayload;
+use crate::github::payloads::{PullRequest};
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
 use octocrab::Octocrab;
@@ -146,24 +146,22 @@ pub async fn fetch_pr_message_data(
     client: &Octocrab,
     owner: &str,
     repo: &str,
-    pr_number: u64,
-    payload: &PullRequestPayload,
+    full_name: &str,
+    pr_ref: &PullRequest,
 ) -> Result<PrMessageData> {
     let pr = client
         .pulls(owner, repo)
-        .get(pr_number)
+        .get(pr_ref.number)
         .await
         .map_err(AppError::GitHub)?;
 
     let reviewers = client
         .pulls(owner, repo)
-        .list_reviews(pr_number)
+        .list_reviews(pr_ref.number)
         .send()
         .await
         .map_err(AppError::GitHub)?;
 
-    // Track the latest verdict per reviewer. GitHub returns reviews in
-    // chronological order so overwriting gives us the current state naturally.
     let mut latest: HashMap<String, ReviewState> = HashMap::new();
 
     for review in reviewers {
@@ -176,19 +174,17 @@ pub async fn fetch_pr_message_data(
             Some(octocrab::models::pulls::ReviewState::ChangesRequested) => {
                 ReviewState::ChangesRequested
             }
-            // Dismissed means they need to re-review, treat as pending
             Some(octocrab::models::pulls::ReviewState::Dismissed) => ReviewState::Pending,
             _ => ReviewState::Commented,
         };
         latest.insert(login, state);
     }
 
-    // Request to review sent, waiting to accept treated as pending
     for user in pr.requested_reviewers {
         latest.entry(user.login).or_insert(ReviewState::Pending);
     }
 
-    let reviews = latest
+    let reviews: Vec<ReviewSummary> = latest
         .into_iter()
         .map(|(github_login, state)| ReviewSummary {
             github_login,
@@ -198,14 +194,14 @@ pub async fn fetch_pr_message_data(
         .collect();
 
     Ok(PrMessageData {
-        status_emoji: payload.pull_request.status_emoji(),
-        number: payload.pull_request.number,
-        title: payload.pull_request.title.clone(),
-        author: payload.pull_request.user.login.clone(),
-        repo: payload.repository.full_name.clone(),
-        head: payload.pull_request.head.branch.clone(),
-        base: payload.pull_request.base.branch.clone(),
-        url: payload.pull_request.html_url.clone(),
+        status_emoji: pr_ref.status_emoji(),
+        number: pr_ref.number,
+        title: pr_ref.title.clone(),
+        author: pr_ref.user.login.clone(),
+        repo: full_name.to_owned(),
+        head: pr_ref.head.branch.clone(),
+        base: pr_ref.base.branch.clone(),
+        url: pr_ref.html_url.clone(),
         additions: pr.additions,
         deletions: pr.deletions,
         files: pr.changed_files,

@@ -71,7 +71,8 @@ pub async fn update_pull_request(
     channel_id: ChannelId,
     message_id: u64,
     thread_id: u64,
-    payload: &PullRequestPayload,
+    pr_number: u64,
+    action: &str,
     message_data: &PrMessageData,
 ) -> Result<()> {
     channel_id
@@ -83,20 +84,15 @@ pub async fn update_pull_request(
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
-    let content = format!(
-        "🔄 **{}** — PR #{} `{}`",
-        timestamp(),
-        payload.pull_request.number,
-        payload.action,
-    );
+    let content = format!("🔄 **{}** — PR #{} `{}`", timestamp(), pr_number, action);
     post_to_thread(http, thread_id, &content).await?;
 
     info!(
         channel = %channel_id,
         message = message_id,
-        thread = thread_id,
-        pr      = payload.pull_request.number,
-        action  = %payload.action,
+        thread  = thread_id,
+        pr      = pr_number,
+        action  = %action,
         "updated PR message in Discord"
     );
 

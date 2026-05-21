@@ -99,8 +99,14 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
         return Ok(StatusCode::OK.into_response());
     };
 
-    let message_data =
-        api::fetch_pr_message_data(&state.github, owner, repo_name, pr.number, &payload).await?;
+    let message_data = api::fetch_pr_message_data(
+        &state.github,
+        owner,
+        repo_name,
+        &payload.repository.full_name,
+        &payload.pull_request,
+    )
+    .await?;
 
     match payload.action.as_str() {
         "opened" => {
@@ -122,6 +128,25 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
                     .await?;
             }
         }
+        "review_requested" | "review_request_removed" => {
+            let record = state
+                .pr_store
+                .get(&payload.repository.full_name, pr.number)
+                .await?;
+
+            if let Some(record) = record {
+                messages::update_pull_request(
+                    &state.http,
+                    ChannelId::new(record.channel_id),
+                    record.message_id,
+                    record.thread_id,
+                    pr.number,
+                    &payload.action,
+                    &message_data,
+                )
+                .await?;
+            }
+        }
         "closed" | "reopened" | "synchronize" => {
             let record = state
                 .pr_store
@@ -134,7 +159,8 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
                     ChannelId::new(record.channel_id),
                     record.message_id,
                     record.thread_id,
-                    &payload,
+                    pr.number,
+                    &payload.action,
                     &message_data,
                 )
                 .await?;
@@ -171,13 +197,38 @@ async fn handle_pull_request_review(
         "pull_request_review event"
     );
 
-    if payload.action == "submitted" {
+    if payload.action == "submitted" || payload.action == "dismissed" {
         let record = state
             .pr_store
             .get(&payload.repository.full_name, pr.number)
             .await?;
 
         if let Some(record) = record {
+            let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
+                tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
+                return Ok(StatusCode::OK.into_response());
+            };
+
+            let message_data = api::fetch_pr_message_data(
+                &state.github,
+                owner,
+                repo_name,
+                &payload.repository.full_name,
+                &payload.pull_request,
+            )
+            .await?;
+
+            messages::update_pull_request(
+                &state.http,
+                ChannelId::new(record.channel_id),
+                record.message_id,
+                record.thread_id,
+                pr.number,
+                &payload.action,
+                &message_data,
+            )
+            .await?;
+
             messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
     }
