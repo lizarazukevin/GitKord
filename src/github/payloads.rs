@@ -115,7 +115,7 @@ impl Review {
     pub fn verdict_emoji(&self) -> &'static str {
         match self.state.to_lowercase().as_str() {
             "approved" => "✅",
-            "changes_requested" => "❌",
+            "changes_requested" => "🛑",
             _ => "💬",
         }
     }
