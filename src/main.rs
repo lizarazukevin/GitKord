@@ -17,7 +17,7 @@ mod error;
 mod github;
 mod state;
 
-use crate::discord::app_state::AppState;
+use crate::discord::context::AppState;
 use crate::github::api;
 use crate::github::webhook::WebhookState;
 use crate::state::db::{
@@ -48,9 +48,9 @@ async fn main() -> Result<()> {
     // AppState carries everything slash command handlers need.
     // Bot and webhook handler each hold what they actually use.
     let app_state = AppState {
-        pr_store: Arc::clone(&pr_store) as Arc<dyn state::PrMessageStore>,
-        sub_store: Arc::clone(&sub_store) as Arc<dyn state::SubscriptionStore>,
-        user_store: Arc::clone(&user_store) as Arc<dyn state::UserLinkStore>,
+        pr_store: Arc::clone(&pr_store),
+        sub_store: Arc::clone(&sub_store),
+        user_store: Arc::clone(&user_store),
         github: Arc::clone(&github),
         webhook_url: config.webhook_url.clone(),
         webhook_secret: config.github_webhook_secret.clone(),
@@ -61,8 +61,9 @@ async fn main() -> Result<()> {
     let webhook_state = WebhookState {
         secret: config.github_webhook_secret,
         http,
-        pr_store: Arc::clone(&pr_store) as Arc<dyn state::traits::PrMessageStore>,
-        sub_store: Arc::clone(&sub_store) as Arc<dyn state::SubscriptionStore>,
+        github: Arc::clone(&github),
+        pr_store: Arc::clone(&pr_store),
+        sub_store: Arc::clone(&sub_store),
     };
 
     let http_task = tokio::spawn(serve_http(config.port, webhook_state));

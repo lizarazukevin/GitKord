@@ -3,8 +3,6 @@
 //! All requests hit `verify_signature` before any payload parsing happens.
 //! Invalid signatures are rejected with `401 Unauthorized` before we touch the body.
 
-use std::sync::Arc;
-
 use axum::response::Response;
 use axum::{
     body::Bytes,
@@ -13,36 +11,19 @@ use axum::{
     response::IntoResponse,
 };
 use hmac::{Hmac, KeyInit, Mac};
-use serenity::all::{ChannelId, Http};
+use serenity::all::ChannelId;
 use sha2::Sha256;
 use tracing::{info, warn};
 
 use crate::discord::messages;
 use crate::error::AppError;
 use crate::error::Result;
-use crate::github::types::{
+use crate::github::api;
+pub use crate::github::context::WebhookState;
+use crate::github::payloads::{
     GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
 };
-use crate::state::{PrMessage, PrMessageStore, SubscriptionStore};
-
-type HmacSha256 = Hmac<Sha256>;
-
-/// State shared across every webhook handler invocations.
-/// Command-only dependencies live in `CommandContext`.
-#[derive(Clone)]
-pub struct WebhookState {
-    /// HMAC secret for verifying GitHub payloads.
-    pub secret: String,
-
-    /// Serenity HTTP client for posting Discord messages.
-    pub http: Arc<Http>,
-
-    /// Stores PR message and thread IDs so events can edit in place.
-    pub pr_store: Arc<dyn PrMessageStore>,
-
-    /// Stores channel subscription per repo and guild.
-    pub sub_store: Arc<dyn SubscriptionStore>,
-}
+use crate::state::PrMessage;
 
 /// Entry point for `POST /github/webhook`.
 pub async fn handle(
@@ -113,12 +94,27 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
         return Ok(StatusCode::OK.into_response());
     }
 
+    let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
+        tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
+        return Ok(StatusCode::OK.into_response());
+    };
+
+    let message_data = api::fetch_pr_message_data(
+        &state.github,
+        owner,
+        repo_name,
+        &payload.repository.full_name,
+        &payload.pull_request,
+    )
+    .await?;
+
     match payload.action.as_str() {
         "opened" => {
             for sub in &subscriptions {
                 let channel_id = ChannelId::from(sub.channel_id);
                 let (message_id, thread_id) =
-                    messages::post_pull_request(&state.http, channel_id, &payload).await?;
+                    messages::post_pull_request(&state.http, channel_id, &payload, &message_data)
+                        .await?;
 
                 state
                     .pr_store
@@ -130,6 +126,25 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
                         thread_id,
                     })
                     .await?;
+            }
+        }
+        "review_requested" | "review_request_removed" => {
+            let record = state
+                .pr_store
+                .get(&payload.repository.full_name, pr.number)
+                .await?;
+
+            if let Some(record) = record {
+                messages::update_pull_request(
+                    &state.http,
+                    ChannelId::new(record.channel_id),
+                    record.message_id,
+                    record.thread_id,
+                    pr.number,
+                    &payload.action,
+                    &message_data,
+                )
+                .await?;
             }
         }
         "closed" | "reopened" | "synchronize" => {
@@ -144,7 +159,9 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
                     ChannelId::new(record.channel_id),
                     record.message_id,
                     record.thread_id,
-                    &payload,
+                    pr.number,
+                    &payload.action,
+                    &message_data,
                 )
                 .await?;
 
@@ -180,13 +197,38 @@ async fn handle_pull_request_review(
         "pull_request_review event"
     );
 
-    if payload.action == "submitted" {
+    if payload.action == "submitted" || payload.action == "dismissed" {
         let record = state
             .pr_store
             .get(&payload.repository.full_name, pr.number)
             .await?;
 
         if let Some(record) = record {
+            let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
+                tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
+                return Ok(StatusCode::OK.into_response());
+            };
+
+            let message_data = api::fetch_pr_message_data(
+                &state.github,
+                owner,
+                repo_name,
+                &payload.repository.full_name,
+                &payload.pull_request,
+            )
+            .await?;
+
+            messages::update_pull_request(
+                &state.http,
+                ChannelId::new(record.channel_id),
+                record.message_id,
+                record.thread_id,
+                pr.number,
+                &payload.action,
+                &message_data,
+            )
+            .await?;
+
             messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
     }
@@ -207,6 +249,7 @@ fn handle_push(payload: &PushPayload) -> StatusCode {
 }
 
 // ── Signature verification ────────────────────────────────────────────────────
+pub type HmacSha256 = Hmac<Sha256>;
 
 /// Verify the `X-Hub-Signature-256` against the raw request body using `HMAC-SHA256`.
 ///
