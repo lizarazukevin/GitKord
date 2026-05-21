@@ -21,7 +21,8 @@ use crate::error::Result;
 use crate::github::api;
 pub use crate::github::context::WebhookState;
 use crate::github::payloads::{
-    GitHubEvent, PullRequestPayload, PullRequestReviewPayload, PushPayload,
+    GitHubEvent, GitHubUser, IssueCommentPayload, PullRequest, PullRequestPayload, PullRequestRef,
+    PullRequestReviewPayload, PushPayload,
 };
 use crate::state::PrMessage;
 
@@ -63,6 +64,12 @@ pub async fn handle(
             let payload: PushPayload =
                 serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
             Ok(handle_push(&payload).into_response())
+        }
+
+        GitHubEvent::IssueComment => {
+            let payload: IssueCommentPayload =
+                serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
+            handle_issue_comment(state, payload).await
         }
 
         GitHubEvent::Unknown(name) => {
@@ -258,7 +265,6 @@ async fn handle_pull_request_review(
             .await?;
 
         if let Some(record) = record {
-
             let message_data = api::fetch_pr_message_data(
                 &state.github,
                 owner,
@@ -279,6 +285,90 @@ async fn handle_pull_request_review(
             messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
     }
+
+    Ok(StatusCode::OK.into_response())
+}
+
+async fn handle_issue_comment(
+    state: WebhookState,
+    payload: IssueCommentPayload,
+) -> Result<Response> {
+    // issue_comment fires for both issues and PRs — ignore pure issues
+    if payload.issue.pull_request.is_none() {
+        return Ok(StatusCode::OK.into_response());
+    }
+
+    if payload.action != "created" {
+        return Ok(StatusCode::OK.into_response());
+    }
+
+    let pr_number = payload.issue.number;
+
+    info!(
+        repo   = %payload.repository.full_name,
+        pr     = pr_number,
+        action = %payload.action,
+        "issue_comment event on PR"
+    );
+
+    let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
+        tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
+        return Ok(StatusCode::OK.into_response());
+    };
+
+    let record = state
+        .pr_store
+        .get(&payload.repository.full_name, pr_number)
+        .await?;
+
+    let Some(record) = record else {
+        info!(pr = pr_number, "no stored message found, skipping update");
+        return Ok(StatusCode::OK.into_response());
+    };
+
+    let pr = state
+        .github
+        .pulls(owner, repo_name)
+        .get(pr_number)
+        .await
+        .map_err(AppError::GitHub)?;
+
+    let pr_ref = PullRequest {
+        number: pr_number,
+        title: pr.title.clone(),
+        state: format!("{:?}", pr.state).to_lowercase(),
+        merged: Some(pr.merged),
+        html_url: pr.html_url.clone().to_string(),
+        user: GitHubUser {
+            login: pr.user.login,
+            id: pr.user.id.0,
+        },
+        head: PullRequestRef {
+            branch: pr.head.ref_field.clone(),
+            sha: pr.head.sha.clone(),
+        },
+        base: PullRequestRef {
+            branch: pr.base.ref_field.clone(),
+            sha: pr.base.sha.clone(),
+        },
+    };
+
+    let message_data = api::fetch_pr_message_data(
+        &state.github,
+        owner,
+        repo_name,
+        &payload.repository.full_name,
+        &pr_ref,
+    )
+    .await?;
+
+    messages::update_pull_request(
+        &state.http,
+        ChannelId::new(record.channel_id),
+        record.message_id,
+        &message_data,
+    )
+    .await?;
 
     Ok(StatusCode::OK.into_response())
 }

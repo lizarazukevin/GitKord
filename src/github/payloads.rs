@@ -13,6 +13,7 @@ pub enum GitHubEvent {
     PullRequest,
     PullRequestReview,
     Push,
+    IssueComment,
 
     /// Sent by GitHub when webhook is first registered.
     Ping,
@@ -27,6 +28,7 @@ impl From<&str> for GitHubEvent {
             "pull_request" => Self::PullRequest,
             "pull_request_review" => Self::PullRequestReview,
             "push" => Self::Push,
+            "issue_comment" => Self::IssueComment,
             "ping" => Self::Ping,
             other => Self::Unknown(other.to_owned()),
         }
@@ -151,4 +153,23 @@ pub struct CommitAuthor {
     /// GitHub username (only present in push payloads)
     #[expect(dead_code)]
     pub username: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueCommentPayload {
+    pub action: String,
+    pub issue: Issue,
+    pub repository: Repository,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Issue {
+    pub number: u64,
+    pub pull_request: Option<IssuePullRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssuePullRequest {
+    #[allow(dead_code)]
+    pub url: String,
 }

@@ -206,7 +206,7 @@ pub async fn fetch_pr_message_data(
         deletions: pr.deletions,
         files: pr.changed_files,
         commits: pr.commits,
-        comments: pr.comments,
+        comments: pr.comments + pr.review_comments,
         reviews,
         checks: vec![],
     })
