@@ -1,4 +1,4 @@
-//! Domain models owned by `DiGiBot`.
+//! Domain models owned by `GitKord`.
 //!
 //! These are distinct from `payloads.rs` which mirrors GitHub's JSON shapes.
 //! Types here are produced by `api.rs` and consumed by `messages.rs`.
