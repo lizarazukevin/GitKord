@@ -62,6 +62,7 @@ async fn main() -> Result<()> {
         secret: config.github_webhook_secret,
         http,
         github: Arc::clone(&github),
+        user_store: Arc::clone(&user_store),
         pr_store: Arc::clone(&pr_store),
         sub_store: Arc::clone(&sub_store),
     };
