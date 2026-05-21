@@ -63,16 +63,13 @@ pub async fn post_pull_request(
     Ok((message.id.get(), thread.id.get()))
 }
 
-/// Edit the main PR message in place and append an entry to the audit thread.
+/// Edit the main PR message in place.
 ///
-/// Used for `synchronize`, `closed`, `reopened` actions.
+/// Used for `closed`, `reopened` actions.
 pub async fn update_pull_request(
     http: &Http,
     channel_id: ChannelId,
     message_id: u64,
-    thread_id: u64,
-    pr_number: u64,
-    action: &str,
     message_data: &PrMessageData,
 ) -> Result<()> {
     channel_id
@@ -84,18 +81,18 @@ pub async fn update_pull_request(
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
+    Ok(())
+}
+
+/// Post an audit entry to the PR thread.
+pub async fn post_pr_update(
+    http: &Http,
+    thread_id: u64,
+    pr_number: u64,
+    action: &str,
+) -> Result<()> {
     let content = format!("🔄 **{}** — PR #{} `{}`", timestamp(), pr_number, action);
     post_to_thread(http, thread_id, &content).await?;
-
-    info!(
-        channel = %channel_id,
-        message = message_id,
-        thread  = thread_id,
-        pr      = pr_number,
-        action  = %action,
-        "updated PR message in Discord"
-    );
-
     Ok(())
 }
 

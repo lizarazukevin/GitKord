@@ -99,86 +99,135 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
         return Ok(StatusCode::OK.into_response());
     };
 
+    match payload.action.as_str() {
+        "opened" => handle_pr_opened(&state, &payload, &subscriptions, owner, repo_name).await?,
+        "review_requested" | "review_request_removed" => {
+            handle_pr_reviewer_change(&state, &payload, owner, repo_name).await?;
+        }
+        "closed" | "reopened" => handle_pr_state_change(&state, &payload, owner, repo_name).await?,
+        _ => {}
+    }
+
+    Ok(StatusCode::OK.into_response())
+}
+
+async fn handle_pr_opened(
+    state: &WebhookState,
+    payload: &PullRequestPayload,
+    subscriptions: &[crate::state::traits::Subscription],
+    owner: &str,
+    repo_name: &str,
+) -> Result<()> {
+    let pr = &payload.pull_request;
+
     let message_data = api::fetch_pr_message_data(
         &state.github,
         owner,
         repo_name,
         &payload.repository.full_name,
-        &payload.pull_request,
+        pr,
     )
     .await?;
 
-    match payload.action.as_str() {
-        "opened" => {
-            for sub in &subscriptions {
-                let channel_id = ChannelId::from(sub.channel_id);
-                let (message_id, thread_id) =
-                    messages::post_pull_request(&state.http, channel_id, &payload, &message_data)
-                        .await?;
+    for sub in subscriptions {
+        let channel_id = ChannelId::from(sub.channel_id);
+        let (message_id, thread_id) =
+            messages::post_pull_request(&state.http, channel_id, payload, &message_data).await?;
 
-                state
-                    .pr_store
-                    .upsert(PrMessage {
-                        repo: payload.repository.full_name.clone(),
-                        pr_number: pr.number,
-                        channel_id: sub.channel_id,
-                        message_id,
-                        thread_id,
-                    })
-                    .await?;
-            }
-        }
-        "review_requested" | "review_request_removed" => {
-            let record = state
-                .pr_store
-                .get(&payload.repository.full_name, pr.number)
-                .await?;
-
-            if let Some(record) = record {
-                messages::update_pull_request(
-                    &state.http,
-                    ChannelId::new(record.channel_id),
-                    record.message_id,
-                    record.thread_id,
-                    pr.number,
-                    &payload.action,
-                    &message_data,
-                )
-                .await?;
-            }
-        }
-        "closed" | "reopened" | "synchronize" => {
-            let record = state
-                .pr_store
-                .get(&payload.repository.full_name, pr.number)
-                .await?;
-
-            if let Some(record) = record {
-                messages::update_pull_request(
-                    &state.http,
-                    ChannelId::new(record.channel_id),
-                    record.message_id,
-                    record.thread_id,
-                    pr.number,
-                    &payload.action,
-                    &message_data,
-                )
-                .await?;
-
-                if payload.action == "closed" {
-                    state
-                        .pr_store
-                        .delete(&payload.repository.full_name, pr.number)
-                        .await?;
-                }
-            } else {
-                info!(pr = pr.number, "no stored message found, skipping update");
-            }
-        }
-        _ => {}
+        state
+            .pr_store
+            .upsert(PrMessage {
+                repo: payload.repository.full_name.clone(),
+                pr_number: pr.number,
+                channel_id: sub.channel_id,
+                message_id,
+                thread_id,
+            })
+            .await?;
     }
 
-    Ok(StatusCode::OK.into_response())
+    Ok(())
+}
+
+async fn handle_pr_reviewer_change(
+    state: &WebhookState,
+    payload: &PullRequestPayload,
+    owner: &str,
+    repo_name: &str,
+) -> Result<()> {
+    let pr = &payload.pull_request;
+
+    let Some(record) = state
+        .pr_store
+        .get(&payload.repository.full_name, pr.number)
+        .await?
+    else {
+        info!(pr = pr.number, "no stored message found, skipping update");
+        return Ok(());
+    };
+
+    let message_data = api::fetch_pr_message_data(
+        &state.github,
+        owner,
+        repo_name,
+        &payload.repository.full_name,
+        pr,
+    )
+    .await?;
+
+    messages::update_pull_request(
+        &state.http,
+        ChannelId::new(record.channel_id),
+        record.message_id,
+        &message_data,
+    )
+    .await
+}
+
+async fn handle_pr_state_change(
+    state: &WebhookState,
+    payload: &PullRequestPayload,
+    owner: &str,
+    repo_name: &str,
+) -> Result<()> {
+    let pr = &payload.pull_request;
+
+    let Some(record) = state
+        .pr_store
+        .get(&payload.repository.full_name, pr.number)
+        .await?
+    else {
+        info!(pr = pr.number, "no stored message found, skipping update");
+        return Ok(());
+    };
+
+    let message_data = api::fetch_pr_message_data(
+        &state.github,
+        owner,
+        repo_name,
+        &payload.repository.full_name,
+        pr,
+    )
+    .await?;
+
+    messages::update_pull_request(
+        &state.http,
+        ChannelId::new(record.channel_id),
+        record.message_id,
+        &message_data,
+    )
+    .await?;
+
+    messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action).await?;
+
+    if payload.action == "closed" {
+        state
+            .pr_store
+            .delete(&payload.repository.full_name, pr.number)
+            .await?;
+    }
+
+    Ok(())
 }
 
 async fn handle_pull_request_review(
@@ -222,12 +271,12 @@ async fn handle_pull_request_review(
                 &state.http,
                 ChannelId::new(record.channel_id),
                 record.message_id,
-                record.thread_id,
-                pr.number,
-                &payload.action,
                 &message_data,
             )
             .await?;
+
+            messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action)
+                .await?;
 
             messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
