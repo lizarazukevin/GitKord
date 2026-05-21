@@ -6,7 +6,7 @@
 use crate::error::AppError;
 use crate::error::Result;
 use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
-use crate::github::payloads::{PullRequest};
+use crate::github::payloads::PullRequest;
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
 use octocrab::Octocrab;
