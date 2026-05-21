@@ -108,7 +108,7 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
 
     match payload.action.as_str() {
         "opened" => handle_pr_opened(&state, &payload, &subscriptions, owner, repo_name).await?,
-        "review_requested" | "review_request_removed" => {
+        "review_requested" | "review_request_removed" | "synchronize" => {
             handle_pr_reviewer_change(&state, &payload, owner, repo_name).await?;
         }
         "closed" | "reopened" => handle_pr_state_change(&state, &payload, owner, repo_name).await?,
@@ -129,6 +129,7 @@ async fn handle_pr_opened(
 
     let message_data = api::fetch_pr_message_data(
         &state.github,
+        &state.user_store,
         owner,
         repo_name,
         &payload.repository.full_name,
@@ -175,6 +176,7 @@ async fn handle_pr_reviewer_change(
 
     let message_data = api::fetch_pr_message_data(
         &state.github,
+        &state.user_store,
         owner,
         repo_name,
         &payload.repository.full_name,
@@ -210,6 +212,7 @@ async fn handle_pr_state_change(
 
     let message_data = api::fetch_pr_message_data(
         &state.github,
+        &state.user_store,
         owner,
         repo_name,
         &payload.repository.full_name,
@@ -267,6 +270,7 @@ async fn handle_pull_request_review(
         if let Some(record) = record {
             let message_data = api::fetch_pr_message_data(
                 &state.github,
+                &state.user_store,
                 owner,
                 repo_name,
                 &payload.repository.full_name,
@@ -355,6 +359,7 @@ async fn handle_issue_comment(
 
     let message_data = api::fetch_pr_message_data(
         &state.github,
+        &state.user_store,
         owner,
         repo_name,
         &payload.repository.full_name,

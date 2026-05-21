@@ -7,10 +7,12 @@ use crate::error::AppError;
 use crate::error::Result;
 use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
 use crate::github::payloads::PullRequest;
+use crate::state::UserLinkStore;
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
 use octocrab::Octocrab;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::info;
 
 /// Build an authenticated `Octocrab` client from a personal access token.
@@ -144,6 +146,7 @@ pub async fn unassign_reviewer(
 /// Returns [`AppError::GitHub`] if the API call fails
 pub async fn fetch_pr_message_data(
     client: &Octocrab,
+    user_store: &Arc<dyn UserLinkStore>,
     owner: &str,
     repo: &str,
     full_name: &str,
@@ -184,7 +187,7 @@ pub async fn fetch_pr_message_data(
         latest.entry(user.login).or_insert(ReviewState::Pending);
     }
 
-    let reviews: Vec<ReviewSummary> = latest
+    let mut reviews: Vec<ReviewSummary> = latest
         .into_iter()
         .map(|(github_login, state)| ReviewSummary {
             github_login,
@@ -192,6 +195,12 @@ pub async fn fetch_pr_message_data(
             state,
         })
         .collect();
+
+    for review in &mut reviews {
+        if let Ok(Some(link)) = user_store.get_by_github(&review.github_login).await {
+            review.discord_tag = Some(format!("<@{}>", link.discord_id));
+        }
+    }
 
     Ok(PrMessageData {
         status_emoji: pr_ref.status_emoji(),
