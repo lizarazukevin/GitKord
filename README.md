@@ -1,4 +1,4 @@
-# DiGiBot
+# GitKord
 
 **Discord Git Bot** — a live pull request companion for Discord, powered by Rust.
 
@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/discord-slash--commands-5865F2.svg)](https://discord.com)
 
-DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-date Discord message for each open pull request. Reviewer status, commit activity, and PR state stay in sync across every subscribed channel — no manual refreshing, no channel clutter.
+GitKord listens to GitHub webhook events and maintains a single, always-up-to-date Discord message for each open pull request. Reviewer status, commit activity, and PR state stay in sync across every subscribed channel — no manual refreshing, no channel clutter.
 
 > **Status:** Active development — see [Roadmap](#roadmap) for what's landed and what's next.
 
@@ -50,8 +50,8 @@ GitHub webhook (pull_request, pull_request_review, issue_comment, push)
 ```
 
 1. A pull request is opened, reviewed, or merged on GitHub.
-2. GitHub sends a signed webhook payload to DiGiBot.
-3. DiGiBot updates the pinned message in every subscribed channel and appends an entry to the audit thread.
+2. GitHub sends a signed webhook payload to GitKord.
+3. GitKord updates the pinned message in every subscribed channel and appends an entry to the audit thread.
 4. Users interact through slash commands — everything stays in one place.
 
 ---
@@ -67,21 +67,21 @@ GitHub webhook (pull_request, pull_request_review, issue_comment, push)
 
 ### Environment Variables
 
-| Variable                 | Required | Description                                                     |
-|--------------------------|----------|-----------------------------------------------------------------|
-| `DISCORD_TOKEN`          | Yes      | Discord bot token                                               |
+| Variable                 | Required | Description                                                         |
+|--------------------------|----------|---------------------------------------------------------------------|
+| `DISCORD_TOKEN`          | Yes      | Discord bot token                                                   |
 | `GITHUB_WEBHOOK_SECRET`  | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
-| `GITHUB_TOKEN`           | Yes      | GitHub PAT (Pull requests + Webhooks read/write)               |
-| `WEBHOOK_URL`            | Yes      | Public URL DiGiBot is reachable at (no trailing slash)         |
-| `DATABASE_URL`           | No       | SQLite path, defaults to `sqlite://digibot.db?mode=rwc`       |
-| `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`                    |
-| `PORT`                   | No       | HTTP listen port, defaults to `3000`                           |
+| `GITHUB_TOKEN`           | Yes      | GitHub PAT (Pull requests + Webhooks read/write)                    |
+| `WEBHOOK_URL`            | Yes      | Public URL GitKord is reachable at (no trailing slash)              |
+| `DATABASE_URL`           | No       | SQLite path, defaults to `sqlite://gitkord.db?mode=rwc`             |
+| `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
+| `PORT`                   | No       | HTTP listen port, defaults to `3000`                                |
 
 ### Build and Run
 
 ```bash
-git clone https://github.com/kevinlizarazu/digibot.git
-cd digibot
+git clone https://github.com/kevinlizarazu/gitkord.git
+cd gitkord
 
 cargo build --release
 
@@ -89,7 +89,7 @@ DISCORD_TOKEN=...             \
 GITHUB_WEBHOOK_SECRET=...     \
 GITHUB_TOKEN=...              \
 WEBHOOK_URL=https://your-url  \
-./target/release/DiGiBot
+./target/release/GitKord
 ```
 
 ### Invite the Bot
@@ -123,7 +123,7 @@ cargo run
 | `/unlink`    | Remove your Discord to GitHub link.                                         |
 | `/assign`    | Request a review. Run inside a PR thread to skip `repo` and `pr` options.  |
 | `/unassign`  | Remove a review request. Same thread-aware behavior as `/assign`.           |
-| `/health`    | Check if DiGiBot is running.                                                |
+| `/health`    | Check if GitKord is running.                                                |
 
 ---
 

@@ -32,7 +32,7 @@ pub async fn register(ctx: &Context) -> Result<(), serenity::Error> {
                     CreateCommandOption::new(
                         CommandOptionType::String,
                         "repo",
-                        "Repository to watch in owner/name format (e.g. kevinlizarazu/digibot)",
+                        "Repository to watch in owner/name format (e.g. kevinlizarazu/gitkord)",
                     )
                     .required(true),
                 ),
@@ -57,7 +57,7 @@ pub async fn register(ctx: &Context) -> Result<(), serenity::Error> {
                     .required(true),
                 ),
             CreateCommand::new("unlink").description("Remove your Discord to GitHub account link"),
-            CreateCommand::new("health").description("Check if DiGiBot is running"),
+            CreateCommand::new("health").description("Check if GitKord is running"),
             CreateCommand::new("assign")
                 .description(
                     "Request a review on a PR. Run inside a PR thread to skip `repo` and `pr`.",
@@ -344,7 +344,7 @@ async fn handle_unlink(
 }
 
 async fn handle_health(ctx: &Context, cmd: &CommandInteraction) -> Result<(), serenity::Error> {
-    ephemeral(ctx, cmd, "`DiGiBot` is online and healthy.").await
+    ephemeral(ctx, cmd, "`GitKord` is online and healthy.").await
 }
 
 enum ReviewerAction {

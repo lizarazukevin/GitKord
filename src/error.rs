@@ -1,4 +1,4 @@
-//! Unified error types for `DiGiBot`.
+//! Unified error types for `GitKord`.
 //!
 //! [`AppError`] is returned by all Axum handlers.
 //! [`IntoResponse`] impl Axum converts it directly into an HTTP response,

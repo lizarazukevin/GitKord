@@ -1,7 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 #![allow(clippy::multiple_crate_versions)] // transitive deps — not in our control
 
-//! `DiGiBot` entrypoint.
+//! `GitKord` entrypoint.
 //!
 //! Two tasks run concurrently for the lifetime of the process:
 //! - Axum HTTP server — receives GitHub webhook payloads
@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
     init_tracing();
 
     let config = config::Config::from_env()?;
-    info!("DiGiBot starting");
+    info!("GitKord starting");
 
     let github = Arc::new(api::build_client(&config.github_token)?);
 

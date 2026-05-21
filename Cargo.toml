@@ -1,10 +1,10 @@
 [package]
-name = "DiGiBot"
+name = "GitKord"
 version = "0.1.0"
 edition = "2021"
 description = "A live pull request companion for Discord, powered by Rust"
 license = "MIT"
-repository = "https://github.com/lizarazukevin/DiGiBot"
+repository = "https://github.com/lizarazukevin/GitKord"
 keywords = ["discord", "github", "bot", "webhook"]
 categories = ["web-programming"]
 
