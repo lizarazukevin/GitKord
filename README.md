@@ -18,9 +18,9 @@ DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-da
 - **Audit thread** — every event (opened, review, assign, close) is appended to a thread on the main message for full traceability.
 - **Auto webhook registration** — `/subscribe` registers the GitHub webhook automatically. No manual setup in repo settings.
 - **Reviewer assignment** — `/assign` and `/unassign` work with GitHub usernames or Discord mentions. Run inside a PR thread and the repo and PR number are inferred automatically.
-- **Discord to GitHub linking** — `/link` verifies the GitHub account exists before saving the mapping.
+- **Discord to GitHub linking** — `/link` verifies the GitHub account exists before saving the mapping. Linked reviewers display as Discord mentions in the automated messages.
 - **Self-assignment guard** — the bot rejects review requests where the requester and reviewer are the same person.
-- **Push-aware** — push events to `main` are logged and ready to be reflected in the PR message.
+- **Commit-push aware** — pushes to an open PR trigger a `pull_request synchronize` event that updates the PR message in place.
 - **Slash commands** — all ephemeral, no channel noise.
 - **SQLite persistence** — PR message IDs, thread IDs, subscriptions, and user links survive restarts.
 - **Health endpoint** — `GET /healthz` for uptime monitors and Railway health checks.
@@ -30,7 +30,7 @@ DiGiBot listens to GitHub webhook events and maintains a single, always-up-to-da
 ## How It Works
 
 ```
-GitHub webhook (pull_request, pull_request_review, push)
+GitHub webhook (pull_request, pull_request_review, issue_comment, push)
         |
         v
 ┌──────────────────────┐
@@ -73,7 +73,7 @@ GitHub webhook (pull_request, pull_request_review, push)
 | `GITHUB_WEBHOOK_SECRET`  | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
 | `GITHUB_TOKEN`           | Yes      | GitHub PAT (Pull requests + Webhooks read/write)               |
 | `WEBHOOK_URL`            | Yes      | Public URL DiGiBot is reachable at (no trailing slash)         |
-| `DATABASE_URL`           | No       | SQLite path, defaults to `sqlite://digibot.db`                 |
+| `DATABASE_URL`           | No       | SQLite path, defaults to `sqlite://digibot.db?mode=rwc`       |
 | `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`                    |
 | `PORT`                   | No       | HTTP listen port, defaults to `3000`                           |
 
@@ -132,10 +132,10 @@ cargo run
 | Emoji | Meaning         |
 |-------|-----------------|
 | 🟢    | Open            |
-| 💬    | Review activity |
-| 🟣    | Merged          |
 | 🔴    | Closed          |
-| ❌    | Deleted         |
+| 🟣    | Merged          |
+
+Review verdicts in the audit thread use separate emojis: ✅ approved, 🛑 changes requested, 💬 commented, 🟡 pending.
 
 ---
 
@@ -162,12 +162,13 @@ cargo run
 - `/assign` and `/unassign` with Discord mention resolution and self-assignment guard
 - Thread-aware context inference for assign/unassign
 - `CommandContext` struct grouping slash command dependencies
+- `UserLinkStore` threaded into webhook handler for reviewer Discord mention resolution
 
 ### v0.4 — Deployment and testing
 - Railway deployment with persistent URL
 - Test suite (unit tests for signature verification, store traits, formatters)
 - Message and embed redesign
-- Push-to-main reflected in PR message commit line
+- Commit-push triggers PR message update via `pull_request synchronize`
 
 ### v0.5 — Polish
 - Remind button with DM delivery and cooldown store
@@ -185,11 +186,13 @@ src/
 ├── config.rs            # Environment variable loading, single source of truth
 ├── error.rs             # AppError with IntoResponse for Axum handlers
 ├── github/
-│   ├── api.rs           # Octocrab helpers (verify user, register webhook, assign reviewer)
-│   ├── types.rs         # Webhook payload structs
+│   ├── api.rs           # Octocrab helpers (verify user, register webhook, assign reviewer, fetch PR data)
+│   ├── context.rs       # WebhookState — shared deps for webhook event handlers
+│   ├── models.rs        # Domain models (PrMessageData, ReviewSummary, CheckSummary)
+│   ├── payloads.rs      # Webhook payload structs (PullRequest, Review, PushPayload, etc.)
 │   └── webhook.rs       # Axum route, HMAC verification, event dispatch
 ├── discord/
-│   ├── context.rs       # CommandContext — shared deps for slash command handlers
+│   ├── context.rs       # AppState — shared deps for slash command handlers
 │   ├── bot.rs           # Serenity client setup and event handler
 │   ├── commands.rs      # Slash command registration and handlers
 │   └── messages.rs      # Discord message formatting and posting
