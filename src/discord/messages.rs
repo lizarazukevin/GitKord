@@ -31,10 +31,7 @@ pub async fn post_pull_request(
         .await
         .map_err(|e| AppError::Discord(Box::new(e)))?;
 
-    let thread_name = format!(
-        "PR #{} — audit log",
-        pr.number,
-    );
+    let thread_name = format!("PR #{} — audit log", pr.number);
     let thread = channel_id
         .create_thread_from_message(
             http,
@@ -192,11 +189,16 @@ fn format_pr_message(data: &PrMessageData) -> String {
             std::collections::BTreeMap::new();
 
         for r in &data.reviews {
-            let entry = if let Some(ref tag) = r.discord_tag {
-                tag.clone()
-            } else {
-                format!("[`{}`](<https://github.com/{}>)", r.github_login, r.github_login)
-            };
+            let entry = r.discord_tag.as_ref().map_or_else(
+                || {
+                    format!(
+                        "[`{}`](<https://github.com/{}>)",
+                        r.github_login, r.github_login
+                    )
+                },
+                std::clone::Clone::clone,
+            );
+
             let key = match r.state {
                 ReviewState::Approved => "✅",
                 ReviewState::ChangesRequested => "🛑",
