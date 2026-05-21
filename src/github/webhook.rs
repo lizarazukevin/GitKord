@@ -108,7 +108,7 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
 
     match payload.action.as_str() {
         "opened" => handle_pr_opened(&state, &payload, &subscriptions, owner, repo_name).await?,
-        "review_requested" | "review_request_removed" => {
+        "review_requested" | "review_request_removed" | "synchronize" => {
             handle_pr_reviewer_change(&state, &payload, owner, repo_name).await?;
         }
         "closed" | "reopened" => handle_pr_state_change(&state, &payload, owner, repo_name).await?,
