@@ -246,6 +246,11 @@ async fn handle_pull_request_review(
         "pull_request_review event"
     );
 
+    let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
+        tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
+        return Ok(StatusCode::OK.into_response());
+    };
+
     if payload.action == "submitted" || payload.action == "dismissed" {
         let record = state
             .pr_store
@@ -253,10 +258,6 @@ async fn handle_pull_request_review(
             .await?;
 
         if let Some(record) = record {
-            let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
-                tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
-                return Ok(StatusCode::OK.into_response());
-            };
 
             let message_data = api::fetch_pr_message_data(
                 &state.github,
@@ -274,9 +275,6 @@ async fn handle_pull_request_review(
                 &message_data,
             )
             .await?;
-
-            messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action)
-                .await?;
 
             messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
