@@ -24,9 +24,11 @@ use crate::github::payloads::{
     GitHubEvent, GitHubUser, IssueCommentPayload, PullRequest, PullRequestPayload, PullRequestRef,
     PullRequestReviewPayload, PushPayload,
 };
-use crate::state::PrMessage;
+use crate::state::models::PrChannelMessage;
 
-/// Entry point for `POST /github/webhook`.
+/// Axum entry point for `POST /github/webhook`.
+/// Verifies the HMAC signature before touching the body, then deserializes
+/// and dispatches to the appropriate handler based on X-GitHub-Event.
 pub async fn handle(
     State(state): State<WebhookState>,
     headers: HeaderMap,
@@ -48,29 +50,10 @@ pub async fn handle(
             Ok(StatusCode::OK.into_response())
         }
 
-        GitHubEvent::PullRequest => {
-            let payload: PullRequestPayload =
-                serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
-            handle_pull_request(state, payload).await
-        }
-
-        GitHubEvent::PullRequestReview => {
-            let payload: PullRequestReviewPayload =
-                serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
-            handle_pull_request_review(state, payload).await
-        }
-
-        GitHubEvent::Push => {
-            let payload: PushPayload =
-                serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
-            Ok(handle_push(&payload).into_response())
-        }
-
-        GitHubEvent::IssueComment => {
-            let payload: IssueCommentPayload =
-                serde_json::from_slice(&body).map_err(|e| AppError::Internal(e.into()))?;
-            handle_issue_comment(state, payload).await
-        }
+        GitHubEvent::PullRequest => on_pull_request(state, deserialize(&body)?).await,
+        GitHubEvent::PullRequestReview => on_pull_request_review(state, deserialize(&body)?).await,
+        GitHubEvent::IssueComment => on_issue_comment(state, deserialize(&body)?).await,
+        GitHubEvent::Push => Ok(on_push(&deserialize(&body)?).into_response()),
 
         GitHubEvent::Unknown(name) => {
             info!(event = %name, "ignoring unhandled event type");
@@ -79,7 +62,10 @@ pub async fn handle(
     }
 }
 
-async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -> Result<Response> {
+/// Routes `pull_request` actions to the right internal handler.
+/// opened -> post new message, `synchronize/review_requested` -> update in place,
+/// closed/reopened -> lifecycle change with audit entry.
+async fn on_pull_request(state: WebhookState, payload: PullRequestPayload) -> Result<Response> {
     let pr = &payload.pull_request;
 
     info!(
@@ -91,156 +77,22 @@ async fn handle_pull_request(state: WebhookState, payload: PullRequestPayload) -
         "pull_request event"
     );
 
-    let subscriptions = state
-        .sub_store
-        .get_all_for_repo(&payload.repository.full_name)
-        .await?;
-
-    if subscriptions.is_empty() {
-        info!(repo = %payload.repository.full_name, "no subscriptions found, skipping");
-        return Ok(StatusCode::OK.into_response());
-    }
-
-    let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
-        tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
-        return Ok(StatusCode::OK.into_response());
-    };
-
     match payload.action.as_str() {
-        "opened" => handle_pr_opened(&state, &payload, &subscriptions, owner, repo_name).await?,
+        "opened" => on_pr_opened(&state, &payload).await?,
         "review_requested" | "review_request_removed" | "synchronize" => {
-            handle_pr_reviewer_change(&state, &payload, owner, repo_name).await?;
+            on_pr_message_update(&state, &payload).await?;
         }
-        "closed" | "reopened" => handle_pr_state_change(&state, &payload, owner, repo_name).await?,
+        "closed" | "reopened" => on_pr_lifecycle_change(&state, &payload).await?,
         _ => {}
     }
 
     Ok(StatusCode::OK.into_response())
 }
 
-async fn handle_pr_opened(
-    state: &WebhookState,
-    payload: &PullRequestPayload,
-    subscriptions: &[crate::state::traits::Subscription],
-    owner: &str,
-    repo_name: &str,
-) -> Result<()> {
-    let pr = &payload.pull_request;
-
-    let message_data = api::fetch_pr_message_data(
-        &state.github,
-        &state.user_store,
-        owner,
-        repo_name,
-        &payload.repository.full_name,
-        pr,
-    )
-    .await?;
-
-    for sub in subscriptions {
-        let channel_id = ChannelId::from(sub.channel_id);
-        let (message_id, thread_id) =
-            messages::post_pull_request(&state.http, channel_id, payload, &message_data).await?;
-
-        state
-            .pr_store
-            .upsert(PrMessage {
-                repo: payload.repository.full_name.clone(),
-                pr_number: pr.number,
-                channel_id: sub.channel_id,
-                message_id,
-                thread_id,
-            })
-            .await?;
-    }
-
-    Ok(())
-}
-
-async fn handle_pr_reviewer_change(
-    state: &WebhookState,
-    payload: &PullRequestPayload,
-    owner: &str,
-    repo_name: &str,
-) -> Result<()> {
-    let pr = &payload.pull_request;
-
-    let Some(record) = state
-        .pr_store
-        .get(&payload.repository.full_name, pr.number)
-        .await?
-    else {
-        info!(pr = pr.number, "no stored message found, skipping update");
-        return Ok(());
-    };
-
-    let message_data = api::fetch_pr_message_data(
-        &state.github,
-        &state.user_store,
-        owner,
-        repo_name,
-        &payload.repository.full_name,
-        pr,
-    )
-    .await?;
-
-    messages::update_pull_request(
-        &state.http,
-        ChannelId::new(record.channel_id),
-        record.message_id,
-        &message_data,
-    )
-    .await
-}
-
-async fn handle_pr_state_change(
-    state: &WebhookState,
-    payload: &PullRequestPayload,
-    owner: &str,
-    repo_name: &str,
-) -> Result<()> {
-    let pr = &payload.pull_request;
-
-    let Some(record) = state
-        .pr_store
-        .get(&payload.repository.full_name, pr.number)
-        .await?
-    else {
-        info!(pr = pr.number, "no stored message found, skipping update");
-        return Ok(());
-    };
-
-    let message_data = api::fetch_pr_message_data(
-        &state.github,
-        &state.user_store,
-        owner,
-        repo_name,
-        &payload.repository.full_name,
-        pr,
-    )
-    .await?;
-
-    messages::update_pull_request(
-        &state.http,
-        ChannelId::new(record.channel_id),
-        record.message_id,
-        &message_data,
-    )
-    .await?;
-
-    messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action).await?;
-
-    if payload.action == "closed" {
-        state
-            .pr_store
-            .delete(&payload.repository.full_name, pr.number)
-            .await?;
-    }
-
-    Ok(())
-}
-
-async fn handle_pull_request_review(
+/// Handles submitted and dismissed review events.
+/// Updates the PR message to reflect the new reviewer verdict and posts
+/// the review to the audit thread.
+async fn on_pull_request_review(
     state: WebhookState,
     payload: PullRequestReviewPayload,
 ) -> Result<Response> {
@@ -256,36 +108,17 @@ async fn handle_pull_request_review(
         "pull_request_review event"
     );
 
-    let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
-        tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
-        return Ok(StatusCode::OK.into_response());
-    };
-
     if payload.action == "submitted" || payload.action == "dismissed" {
-        let record = state
-            .pr_store
-            .get(&payload.repository.full_name, pr.number)
-            .await?;
+        let records = broadcast_pr_update(
+            &state,
+            &payload.repository.owner.login,
+            &payload.repository.name,
+            &payload.repository.full_name,
+            &payload.pull_request,
+        )
+        .await?;
 
-        if let Some(record) = record {
-            let message_data = api::fetch_pr_message_data(
-                &state.github,
-                &state.user_store,
-                owner,
-                repo_name,
-                &payload.repository.full_name,
-                &payload.pull_request,
-            )
-            .await?;
-
-            messages::update_pull_request(
-                &state.http,
-                ChannelId::new(record.channel_id),
-                record.message_id,
-                &message_data,
-            )
-            .await?;
-
+        for record in &records {
             messages::post_review(&state.http, record.thread_id, &payload).await?;
         }
     }
@@ -293,16 +126,12 @@ async fn handle_pull_request_review(
     Ok(StatusCode::OK.into_response())
 }
 
-async fn handle_issue_comment(
-    state: WebhookState,
-    payload: IssueCommentPayload,
-) -> Result<Response> {
+/// Handles new comments posted directly on the PR conversation (not reviews).
+/// Fetches the latest PR state from GitHub and broadcasts an update to all
+/// channels so the comment count stays accurate.
+async fn on_issue_comment(state: WebhookState, payload: IssueCommentPayload) -> Result<Response> {
     // issue_comment fires for both issues and PRs — ignore pure issues
-    if payload.issue.pull_request.is_none() {
-        return Ok(StatusCode::OK.into_response());
-    }
-
-    if payload.action != "created" {
+    if payload.issue.pull_request.is_none() || payload.action != "created" {
         return Ok(StatusCode::OK.into_response());
     }
 
@@ -315,24 +144,9 @@ async fn handle_issue_comment(
         "issue_comment event on PR"
     );
 
-    let Some((owner, repo_name)) = payload.repository.full_name.split_once('/') else {
-        tracing::error!(repo = %payload.repository.full_name, "malformed repository full_name");
-        return Ok(StatusCode::OK.into_response());
-    };
-
-    let record = state
-        .pr_store
-        .get(&payload.repository.full_name, pr_number)
-        .await?;
-
-    let Some(record) = record else {
-        info!(pr = pr_number, "no stored message found, skipping update");
-        return Ok(StatusCode::OK.into_response());
-    };
-
     let pr = state
         .github
-        .pulls(owner, repo_name)
+        .pulls(&payload.repository.owner.login, &payload.repository.name)
         .get(pr_number)
         .await
         .map_err(AppError::GitHub)?;
@@ -357,28 +171,25 @@ async fn handle_issue_comment(
         },
     };
 
-    let message_data = api::fetch_pr_message_data(
-        &state.github,
-        &state.user_store,
-        owner,
-        repo_name,
+    let records = broadcast_pr_update(
+        &state,
+        &payload.repository.owner.login,
+        &payload.repository.name,
         &payload.repository.full_name,
         &pr_ref,
     )
     .await?;
 
-    messages::update_pull_request(
-        &state.http,
-        ChannelId::new(record.channel_id),
-        record.message_id,
-        &message_data,
-    )
-    .await?;
+    if records.is_empty() {
+        info!(pr = pr_number, "no stored messages found, skipping");
+    }
 
     Ok(StatusCode::OK.into_response())
 }
 
-fn handle_push(payload: &PushPayload) -> StatusCode {
+/// Logs pushes to main. Reserved for updating the commit line on open PRs
+/// once that feature is implemented.
+fn on_push(payload: &PushPayload) -> StatusCode {
     if payload.git_ref == "refs/heads/main" {
         info!(
             repo    = %payload.repository.full_name,
@@ -387,15 +198,102 @@ fn handle_push(payload: &PushPayload) -> StatusCode {
             "push to main"
         );
     }
+
     StatusCode::OK
 }
 
-// ── Signature verification ────────────────────────────────────────────────────
+/// Called when a PR is first opened.
+/// Fetches full PR data from `GitHub`, posts to every subscribed channel,
+/// and stores the message and thread IDs for future updates.
+async fn on_pr_opened(state: &WebhookState, payload: &PullRequestPayload) -> Result<()> {
+    let pr = &payload.pull_request;
+
+    let message_data = api::assemble_pr_view(
+        &state.github,
+        state.user_store.as_ref(),
+        &payload.repository.owner.login,
+        &payload.repository.name,
+        &payload.repository.full_name,
+        pr,
+    )
+    .await?;
+
+    let subscriptions = state
+        .sub_store
+        .get_all_for_repo(&payload.repository.full_name)
+        .await?;
+
+    if subscriptions.is_empty() {
+        info!(repo = %payload.repository.full_name, "no subscriptions found, skipping");
+        return Ok(());
+    }
+
+    for sub in subscriptions {
+        let channel_id = ChannelId::from(sub.channel_id);
+        let posted_pr =
+            messages::post_pull_request_message(&state.http, channel_id, &message_data).await?;
+
+        state
+            .pr_store
+            .upsert(PrChannelMessage {
+                repo: payload.repository.full_name.clone(),
+                pr_number: pr.number,
+                channel_id: sub.channel_id,
+                message_id: posted_pr.message_id,
+                thread_id: posted_pr.thread_id,
+            })
+            .await?;
+    }
+
+    Ok(())
+}
+
+/// Refreshes the PR message across all subscribed channels without posting
+/// an audit entry. Used for reviewer assignment changes and force pushes.
+async fn on_pr_message_update(state: &WebhookState, payload: &PullRequestPayload) -> Result<()> {
+    broadcast_pr_update(
+        state,
+        &payload.repository.owner.login,
+        &payload.repository.name,
+        &payload.repository.full_name,
+        &payload.pull_request,
+    )
+    .await?;
+    Ok(())
+}
+
+/// Refreshes the PR message and posts an audit entry to each thread.
+/// On closed, cleans up all stored message records for the PR.
+async fn on_pr_lifecycle_change(state: &WebhookState, payload: &PullRequestPayload) -> Result<()> {
+    let pr = &payload.pull_request;
+    let records = broadcast_pr_update(
+        state,
+        &payload.repository.owner.login,
+        &payload.repository.name,
+        &payload.repository.full_name,
+        &payload.pull_request,
+    )
+    .await?;
+
+    for record in &records {
+        messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action).await?;
+    }
+
+    if payload.action == "closed" {
+        state
+            .pr_store
+            .delete_all_for_pr(&payload.repository.full_name, pr.number)
+            .await?;
+    }
+
+    Ok(())
+}
+
+// ── Helpers ────────────────────────────────────────────────────
 pub type HmacSha256 = Hmac<Sha256>;
 
-/// Verify the `X-Hub-Signature-256` against the raw request body using `HMAC-SHA256`.
-///
-/// Compute and compare in constant time to prevent timing attacks.
+/// Verifies X-Hub-Signature-256 against the raw body using HMAC-SHA256.
+/// Constant-time comparison prevents timing attacks.
 fn verify_signature(secret: &str, headers: &HeaderMap, body: &Bytes) -> Result<()> {
     let signature = headers
         .get("x-hub-signature-256")
@@ -413,4 +311,51 @@ fn verify_signature(secret: &str, headers: &HeaderMap, body: &Bytes) -> Result<(
         warn!("webhook signature mismatch — request rejected");
         AppError::InvalidSignature
     })
+}
+
+fn deserialize<T: serde::de::DeserializeOwned>(body: &Bytes) -> Result<T> {
+    serde_json::from_slice(body).map_err(|e| AppError::Internal(e.into()))
+}
+
+/// Fetches fresh PR data and edits the message in every channel that has
+/// a stored record for this PR. Returns the records so callers can post
+/// audit entries if needed.
+async fn broadcast_pr_update(
+    state: &WebhookState,
+    owner: &str,
+    repo_name: &str,
+    repo_full: &str,
+    pr: &PullRequest,
+) -> Result<Vec<PrChannelMessage>> {
+    let message_data = api::assemble_pr_view(
+        &state.github,
+        state.user_store.as_ref(),
+        owner,
+        repo_name,
+        repo_full,
+        pr,
+    )
+    .await?;
+
+    let records = state
+        .pr_store
+        .get_all_by_repo_and_pr(repo_full, pr.number)
+        .await?;
+
+    if records.is_empty() {
+        info!(repo = %repo_full, pr = %pr.number, "no stored messages, skipping broadcast");
+        return Ok(records);
+    }
+
+    for record in &records {
+        messages::update_pull_request_message(
+            &state.http,
+            ChannelId::from(record.channel_id),
+            record.message_id,
+            &message_data,
+        )
+        .await?;
+    }
+
+    Ok(records)
 }

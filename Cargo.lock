@@ -13,6 +13,7 @@ dependencies = [
  "hex",
  "hmac 0.13.0",
  "http",
+ "indexmap",
  "octocrab",
  "serde",
  "serde_json",

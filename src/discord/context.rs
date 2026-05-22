@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
-use crate::state::{PrMessageStore, SubscriptionStore, UserLinkStore};
+use crate::state::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
 use octocrab::Octocrab;
 
 pub struct AppState {
     /// PR message store for thread ID lookups and audit posting.
-    pub pr_store: Arc<dyn PrMessageStore>,
+    pub pr_store: Arc<dyn PrChannelMessageStore>,
 
     /// Subscription store for validating repo subscriptions.
     pub sub_store: Arc<dyn SubscriptionStore>,

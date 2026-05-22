@@ -18,11 +18,11 @@ mod github;
 mod state;
 
 use crate::discord::context::AppState;
-use crate::github::api;
 use crate::github::webhook::WebhookState;
-use crate::state::db::{
-    connect, SqlitePrMessageStore, SqliteSubscriptionStore, SqliteUserLinkStore,
-};
+use crate::state::sqlite::pr_channel_messages::SqlitePrChannelMessageStore;
+use crate::state::sqlite::schema::connect;
+use crate::state::sqlite::subscriptions::SqliteSubscriptionStore;
+use crate::state::sqlite::user_links::SqliteUserLinkStore;
 use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -35,18 +35,16 @@ async fn main() -> Result<()> {
     let config = config::Config::from_env()?;
     info!("GitKord starting");
 
-    let github = Arc::new(api::build_client(&config.github_token)?);
+    let github = Arc::new(github::client::build(&config.github_token)?);
 
     let pool = connect(&config.database_url).await?;
-    let pr_store: Arc<dyn state::traits::PrMessageStore> =
-        Arc::new(SqlitePrMessageStore::new(pool.clone()));
+    let pr_store: Arc<dyn state::traits::PrChannelMessageStore> =
+        Arc::new(SqlitePrChannelMessageStore::new(pool.clone()));
     let sub_store: Arc<dyn state::traits::SubscriptionStore> =
         Arc::new(SqliteSubscriptionStore::new(pool.clone()));
     let user_store: Arc<dyn state::traits::UserLinkStore> =
         Arc::new(SqliteUserLinkStore::new(pool));
 
-    // AppState carries everything slash command handlers need.
-    // Bot and webhook handler each hold what they actually use.
     let app_state = AppState {
         pr_store: Arc::clone(&pr_store),
         sub_store: Arc::clone(&sub_store),
@@ -56,7 +54,7 @@ async fn main() -> Result<()> {
         webhook_secret: config.github_webhook_secret.clone(),
     };
 
-    let (mut discord_client, http) = discord::bot::build(&config.discord_token, app_state).await;
+    let (mut discord_client, http) = discord::client::build(&config.discord_token, app_state).await;
 
     let webhook_state = WebhookState {
         secret: config.github_webhook_secret,
