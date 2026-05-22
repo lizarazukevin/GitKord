@@ -51,8 +51,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         sqlx::query(
             "INSERT INTO pr_channel_messages (repo, pr_number, channel_id, message_id, thread_id)
              VALUES (?1, ?2, ?3, ?4, ?5)
-             ON CONFLICT (repo, pr_number) DO UPDATE SET
-                channel_id = excluded.channel_id,
+             ON CONFLICT (repo, pr_number, channel_id) DO UPDATE SET
                 message_id = excluded.message_id,
                 thread_id = excluded.thread_id",
         )
