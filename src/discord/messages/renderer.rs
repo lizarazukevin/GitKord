@@ -49,7 +49,7 @@ fn format_diff_bar(data: &PrMessageData) -> String {
     let del_filled = 10 - add_filled;
 
     format!(
-        "**+{}**  {}{}  **-{}**",
+        "+{}  {}{}  -{}",
         data.additions,
         "🟩 ".repeat(add_filled),
         "🟥 ".repeat(del_filled),

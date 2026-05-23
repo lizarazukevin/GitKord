@@ -279,13 +279,6 @@ async fn on_pr_lifecycle_change(state: &WebhookState, payload: &PullRequestPaylo
         messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action).await?;
     }
 
-    if payload.action == "closed" {
-        state
-            .pr_store
-            .delete_all_for_pr(&payload.repository.full_name, pr.number)
-            .await?;
-    }
-
     Ok(())
 }
 

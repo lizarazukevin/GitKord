@@ -91,7 +91,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         pr_number: u64,
     ) -> crate::error::Result<Vec<PrChannelMessage>> {
         let rows = sqlx::query_as::<_, PrChannelMessageRow>(
-            "SELECT repo, pr_number, channel_id, message_id, thread_id FROM pr_channel_messages WHERE repo = ?1, pr_number = ?2)",
+            "SELECT repo, pr_number, channel_id, message_id, thread_id FROM pr_channel_messages WHERE repo = ?1, pr_number = ?2",
         )
             .bind(repo)
             .bind(pr_number.cast_signed())

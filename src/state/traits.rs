@@ -33,6 +33,7 @@ pub trait PrChannelMessageStore: Send + Sync {
     /// Removes all stored Discord message mappings for a PR.
     ///
     /// Used when a pull request is closed or cleaned up.
+    #[expect(dead_code)]
     async fn delete_all_for_pr(&self, repo: &str, pr_number: u64) -> Result<()>;
 
     /// Lookup a PR record by its audit thread ID.
