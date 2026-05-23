@@ -8,24 +8,11 @@ use crate::error::Result;
 use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
 use crate::github::payloads::PullRequest;
 use crate::state::UserLinkStore;
+use indexmap::IndexMap;
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
 use octocrab::Octocrab;
-use std::collections::HashMap;
-use std::sync::Arc;
 use tracing::info;
-
-/// Build an authenticated `Octocrab` client from a personal access token.
-///
-/// # Errors
-///
-/// Returns [`AppError::GitHub`] if the client cannot be initialised.
-pub fn build_client(token: &str) -> Result<Octocrab> {
-    Octocrab::builder()
-        .personal_token(token.to_owned())
-        .build()
-        .map_err(AppError::GitHub)
-}
 
 /// Verify that a GitHub username exists and return their login.
 ///
@@ -139,14 +126,15 @@ pub async fn unassign_reviewer(
     Ok(())
 }
 
-/// Fetch PR details and reviewer status used to capture current state.
+/// Builds message content from fetching PR details and reviewer
+/// status used to snapshot its current state.
 ///
 /// # Errors
 ///
 /// Returns [`AppError::GitHub`] if the API call fails
-pub async fn fetch_pr_message_data(
+pub async fn assemble_pr_view(
     client: &Octocrab,
-    user_store: &Arc<dyn UserLinkStore>,
+    user_store: &dyn UserLinkStore,
     owner: &str,
     repo: &str,
     full_name: &str,
@@ -158,49 +146,36 @@ pub async fn fetch_pr_message_data(
         .await
         .map_err(AppError::GitHub)?;
 
-    let reviewers = client
+    let raw_reviewers = client
         .pulls(owner, repo)
         .list_reviews(pr_ref.number)
         .send()
         .await
         .map_err(AppError::GitHub)?;
 
-    let mut latest: HashMap<String, ReviewState> = HashMap::new();
+    // Deduplicate reviews, keeps latest verdict per reviewer.
+    // IndexMap preserves insertion order so display is stable across updates.
+    let mut reviewers_by_login: IndexMap<String, ReviewState> = IndexMap::new();
 
-    for review in reviewers {
+    for review in raw_reviewers {
         let login = review.user.map(|u| u.login).unwrap_or_default();
         if login.is_empty() {
             continue;
         }
-        let state = match review.state {
-            Some(octocrab::models::pulls::ReviewState::Approved) => ReviewState::Approved,
-            Some(octocrab::models::pulls::ReviewState::ChangesRequested) => {
-                ReviewState::ChangesRequested
-            }
-            Some(octocrab::models::pulls::ReviewState::Dismissed) => ReviewState::Pending,
-            _ => ReviewState::Commented,
-        };
-        latest.insert(login, state);
+        let state = map_review_state(review.state);
+        reviewers_by_login.insert(login, state);
     }
 
+    // Requested reviewer with no submitted review or comments are pending.
     for user in pr.requested_reviewers {
-        latest.entry(user.login).or_insert(ReviewState::Pending);
+        reviewers_by_login
+            .entry(user.login)
+            .or_insert(ReviewState::Pending);
     }
 
-    let mut reviews: Vec<ReviewSummary> = latest
-        .into_iter()
-        .map(|(github_login, state)| ReviewSummary {
-            github_login,
-            discord_tag: None,
-            state,
-        })
-        .collect();
+    let reviews = resolve_discord_tags(reviewers_by_login, user_store).await;
 
-    for review in &mut reviews {
-        if let Ok(Some(link)) = user_store.get_by_github(&review.github_login).await {
-            review.discord_tag = Some(format!("<@{}>", link.discord_id));
-        }
-    }
+    let total_comments = pr.comments + pr.review_comments;
 
     Ok(PrMessageData {
         status_emoji: pr_ref.status_emoji(),
@@ -215,8 +190,45 @@ pub async fn fetch_pr_message_data(
         deletions: pr.deletions,
         files: pr.changed_files,
         commits: pr.commits,
-        comments: pr.comments + pr.review_comments,
+        comments: total_comments,
         reviews,
         checks: vec![],
     })
+}
+
+/// Map octocrab's review state to our domain type.
+const fn map_review_state(state: Option<octocrab::models::pulls::ReviewState>) -> ReviewState {
+    match state {
+        Some(octocrab::models::pulls::ReviewState::Approved) => ReviewState::Approved,
+        Some(octocrab::models::pulls::ReviewState::ChangesRequested) => {
+            ReviewState::ChangesRequested
+        }
+        Some(octocrab::models::pulls::ReviewState::Dismissed) => ReviewState::Dismissed,
+        _ => ReviewState::Commented,
+    }
+}
+
+/// Look up Discord tags for each reviewer and attach them if found.
+async fn resolve_discord_tags(
+    reviewers: IndexMap<String, ReviewState>,
+    user_store: &dyn UserLinkStore,
+) -> Vec<ReviewSummary> {
+    let mut result = Vec::with_capacity(reviewers.len());
+
+    for (github_login, state) in reviewers {
+        let discord_tag = user_store
+            .get_by_github(&github_login)
+            .await
+            .ok()
+            .flatten()
+            .map(|link| format!("<@{}>", link.discord_id));
+
+        result.push(ReviewSummary {
+            github_login,
+            discord_tag,
+            state,
+        });
+    }
+
+    result
 }

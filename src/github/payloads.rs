@@ -57,6 +57,13 @@ pub struct PullRequest {
 #[derive(Debug, Deserialize)]
 pub struct Repository {
     pub full_name: String,
+    pub name: String,
+    pub owner: RepositoryOwner,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RepositoryOwner {
+    pub login: String,
 }
 
 impl PullRequest {

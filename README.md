@@ -14,13 +14,14 @@ GitKord listens to GitHub webhook events and maintains a single, always-up-to-da
 
 ## Features
 
+- **Multi-channel subscriptions** — subscribe the same repo in multiple channels of the same server; each channel gets its own PR message and audit thread.
 - **One message per PR** — title, status emoji, author, and branch update in place as events arrive.
 - **Audit thread** — every event (opened, review, assign, close) is appended to a thread on the main message for full traceability.
 - **Auto webhook registration** — `/subscribe` registers the GitHub webhook automatically. No manual setup in repo settings.
 - **Reviewer assignment** — `/assign` and `/unassign` work with GitHub usernames or Discord mentions. Run inside a PR thread and the repo and PR number are inferred automatically.
 - **Discord to GitHub linking** — `/link` verifies the GitHub account exists before saving the mapping. Linked reviewers display as Discord mentions in the automated messages.
 - **Self-assignment guard** — the bot rejects review requests where the requester and reviewer are the same person.
-- **Commit-push aware** — pushes to an open PR trigger a `pull_request synchronize` event that updates the PR message in place.
+- **Commit-push aware** — pushes to an open PR trigger a `pull_request synchronize` event that updates the PR message in every subscribed channel.
 - **Slash commands** — all ephemeral, no channel noise.
 - **SQLite persistence** — PR message IDs, thread IDs, subscriptions, and user links survive restarts.
 - **Health endpoint** — `GET /healthz` for uptime monitors and Railway health checks.
@@ -163,6 +164,8 @@ Review verdicts in the audit thread use separate emojis: ✅ approved, 🛑 chan
 - Thread-aware context inference for assign/unassign
 - `CommandContext` struct grouping slash command dependencies
 - `UserLinkStore` threaded into webhook handler for reviewer Discord mention resolution
+- Multi-channel subscriptions — same repo in multiple channels of the same guild
+- `SubscriptionStore::get_by_guild` returns `Vec<Subscription>` for per-channel delete and list
 
 ### v0.4 — Deployment and testing
 - Railway deployment with persistent URL
@@ -187,19 +190,38 @@ src/
 ├── error.rs             # AppError with IntoResponse for Axum handlers
 ├── github/
 │   ├── api.rs           # Octocrab helpers (verify user, register webhook, assign reviewer, fetch PR data)
+│   ├── client.rs        # GitHub HTTP client construction
 │   ├── context.rs       # WebhookState — shared deps for webhook event handlers
 │   ├── models.rs        # Domain models (PrMessageData, ReviewSummary, CheckSummary)
 │   ├── payloads.rs      # Webhook payload structs (PullRequest, Review, PushPayload, etc.)
 │   └── webhook.rs       # Axum route, HMAC verification, event dispatch
 ├── discord/
 │   ├── context.rs       # AppState — shared deps for slash command handlers
-│   ├── bot.rs           # Serenity client setup and event handler
-│   ├── commands.rs      # Slash command registration and handlers
-│   └── messages.rs      # Discord message formatting and posting
+│   ├── models.rs        # Domain models (ReadyHandler, PostedPullRequest, ReviewerRequest)
+│   ├── client.rs        # Serenity client construction and Http handle extraction
+│   ├── bot.rs           # Serenity event handler (slash command dispatch on interaction)
+│   ├── commands/
+│   │   ├── mod.rs       # Slash command registration and dispatch
+│   │   ├── health.rs    # /health handler
+│   │   ├── subscription.rs  # /subscribe and /unsubscribe handlers
+│   │   ├── user_link.rs # /link and /unlink handlers
+│   │   ├── reviewer.rs  # /assign and /unassign handlers
+│   │   └── shared.rs    # Ephemeral reply and option parsing helpers
+│   └── messages/
+│       ├── mod.rs       # Public message API (post, update, audit)
+│       ├── renderer.rs  # Embed construction and formatting
+│       ├── transport.rs # Serenity HTTP helpers (send, edit, create thread)
+│       └── audit.rs     # Audit thread helpers for review/state events
 └── state/
-    ├── traits.rs        # PrMessageStore, SubscriptionStore, UserLinkStore
-    ├── db.rs            # SQLite-backed implementations
-    └── mod.rs           # Re-exports
+    ├── mod.rs           # Re-exports (PrChannelMessageStore, SubscriptionStore, UserLinkStore)
+    ├── models.rs        # Data models (PrChannelMessage, Subscription, UserLink)
+    ├── traits.rs        # Store trait abstractions
+    └── sqlite/
+        ├── mod.rs       # SqliteStore re-exports
+        ├── schema.rs    # Connection and table creation
+        ├── pr_channel_messages.rs  # PrChannelMessageStore impl
+        ├── subscriptions.rs       # SubscriptionStore impl
+        └── user_links.rs          # UserLinkStore impl
 ```
 
 ### Key Dependencies
@@ -213,6 +235,7 @@ src/
 | `tokio`     | Async runtime                         |
 | `tracing`   | Structured logging                    |
 | `hmac`/`sha2` | Webhook signature verification      |
+| `indexmap`    | Ordered reviewer tracking           |
 
 ### Design Principles
 

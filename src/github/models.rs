@@ -37,6 +37,7 @@ pub enum ReviewState {
     ChangesRequested,
     Commented,
     Pending,
+    Dismissed,
 }
 
 #[expect(dead_code)]
