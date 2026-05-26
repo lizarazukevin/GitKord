@@ -53,7 +53,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
              VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT (repo, pr_number, channel_id) DO UPDATE SET
                 message_id = excluded.message_id,
-                thread_id = excluded.thread_id",
+                thread_id = excluded.thread_id"
         )
         .bind(&record.repo)
         .bind(record.pr_number.cast_signed())
@@ -74,7 +74,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
     ) -> crate::error::Result<Option<PrChannelMessage>> {
         let row = sqlx::query_as::<_, PrChannelMessageRow>(
             "SELECT repo, pr_number, channel_id, message_id, thread_id
-             FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2",
+             FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2"
         )
         .bind(repo)
         .bind(pr_number.cast_signed())
@@ -91,7 +91,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         pr_number: u64,
     ) -> crate::error::Result<Vec<PrChannelMessage>> {
         let rows = sqlx::query_as::<_, PrChannelMessageRow>(
-            "SELECT repo, pr_number, channel_id, message_id, thread_id FROM pr_channel_messages WHERE repo = ?1, pr_number = ?2",
+            "SELECT repo, pr_number, channel_id, message_id, thread_id FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2"
         )
             .bind(repo)
             .bind(pr_number.cast_signed())
@@ -109,7 +109,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         channel_id: u64,
     ) -> crate::error::Result<()> {
         sqlx::query(
-            "DELETE FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2 AND channel_id = ?3",
+            "DELETE FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2 AND channel_id = ?3"
         )
             .bind(repo)
             .bind(pr_number.cast_signed())
@@ -139,7 +139,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         let row = sqlx::query_as::<_, PrChannelMessageRow>(
             "SELECT repo, pr_number, channel_id, message_id, thread_id
                  FROM pr_channel_messages
-                 WHERE thread_id = ?1",
+                 WHERE thread_id = ?1"
         )
         .bind(thread_id.cast_signed())
         .fetch_optional(&self.pool)
