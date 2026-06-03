@@ -22,7 +22,7 @@ pub async fn handle_health(
     ephemeral(
         ctx,
         cmd,
-        &format!("`{APP_NAME}` is online and healthy.\n✅ Bot\n{github_status}"),
+        &format!("`{APP_NAME}` is online and healthy **·** ✅ Bot\n{github_status}"),
     )
     .await
 }
