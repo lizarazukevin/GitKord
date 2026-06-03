@@ -9,7 +9,7 @@ use crate::discord::context::AppState;
 use crate::discord::messages;
 use crate::discord::models::{ReviewerAction, ReviewerRequest};
 use crate::github::api;
-use crate::github::client::{installation_client_from_id};
+use crate::github::client::installation_client_from_id;
 use octocrab::Octocrab;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
@@ -55,7 +55,11 @@ async fn validate_reviewer_request(
         return Ok(None);
     };
 
-    match app_state.sub_store.get_by_guild(&repo, guild_id.get()).await {
+    match app_state
+        .sub_store
+        .get_by_guild(&repo, guild_id.get())
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             ephemeral(
@@ -63,7 +67,7 @@ async fn validate_reviewer_request(
                 cmd,
                 &format!("**{repo}** is not subscribed in this server. Run `/subscribe` first."),
             )
-                .await?;
+            .await?;
             return Ok(None);
         }
         Err(e) => {

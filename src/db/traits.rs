@@ -56,6 +56,10 @@ pub trait SubscriptionStore: Send + Sync {
 
     /// Get installation ID for a repo.
     async fn get_installation_id(&self, repo: &str) -> Result<Option<u64>>;
+
+    /// Remove all subscriptions for a repository.
+    /// Called when the GitHub App is uninstalled from a repo.
+    async fn delete_all_for_repo(&self, repo: &str) -> Result<()>;
 }
 
 #[async_trait]

@@ -117,4 +117,14 @@ impl SubscriptionStore for PostgresSubscriptionStore {
 
         Ok(row.map(|(id,)| id.cast_unsigned()))
     }
+
+    async fn delete_all_for_repo(&self, repo: &str) -> crate::error::Result<()> {
+        sqlx::query("DELETE FROM subscriptions WHERE repo = $1")
+            .bind(repo)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+        Ok(())
+    }
 }

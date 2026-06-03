@@ -23,8 +23,8 @@ use crate::github::api;
 use crate::github::client::installation_client_from_id;
 pub use crate::github::context::WebhookState;
 use crate::github::payloads::{
-    GitHubEvent, GitHubUser, IssueCommentPayload, PullRequest, PullRequestPayload, PullRequestRef,
-    PullRequestReviewPayload, PushPayload,
+    GitHubEvent, GitHubUser, InstallationPayload, IssueCommentPayload, PullRequest,
+    PullRequestPayload, PullRequestRef, PullRequestReviewPayload, PushPayload,
 };
 
 /// Axum entry point for `POST /github/webhook`.
@@ -55,6 +55,11 @@ pub async fn handle(
         GitHubEvent::PullRequestReview => on_pull_request_review(state, deserialize(&body)?).await,
         GitHubEvent::IssueComment => on_issue_comment(state, deserialize(&body)?).await,
         GitHubEvent::Push => Ok(on_push(&deserialize(&body)?).into_response()),
+
+        GitHubEvent::Installation => {
+            let payload: InstallationPayload = deserialize(&body)?;
+            on_installation(state, payload).await
+        }
 
         GitHubEvent::Unknown(name) => {
             info!(event = %name, "ignoring unhandled event type");
@@ -145,7 +150,11 @@ async fn on_issue_comment(state: WebhookState, payload: IssueCommentPayload) -> 
         "issue_comment event on PR"
     );
 
-    let Some(installation_id) = state.sub_store.get_installation_id(&payload.repository.full_name).await? else {
+    let Some(installation_id) = state
+        .sub_store
+        .get_installation_id(&payload.repository.full_name)
+        .await?
+    else {
         info!(repo = %payload.repository.full_name, "no subscriptions found, skipping issue_comment");
         return Ok(StatusCode::OK.into_response());
     };
@@ -231,10 +240,7 @@ async fn on_pr_opened(state: &WebhookState, payload: &PullRequestPayload) -> Res
     )
     .await?;
 
-    let subscriptions = state
-        .sub_store
-        .get_all_for_repo(repo_full)
-        .await?;
+    let subscriptions = state.sub_store.get_all_for_repo(repo_full).await?;
 
     if subscriptions.is_empty() {
         info!(repo = %payload.repository.full_name, "no subscriptions found, skipping");
@@ -295,6 +301,34 @@ async fn on_pr_lifecycle_change(state: &WebhookState, payload: &PullRequestPaylo
     Ok(())
 }
 
+async fn on_installation(state: WebhookState, payload: InstallationPayload) -> Result<Response> {
+    match payload.action.as_str() {
+        "created" => {
+            info!(
+                installation_id = payload.installation.id.0,
+                account = %payload.installation.account.login,
+                "app installed"
+            );
+        }
+        "deleted" => {
+            info!(
+                installation_id = payload.installation.id.0,
+                account = %payload.installation.account.login,
+                "app uninstalled — cleaning up subscriptions"
+            );
+
+            for repo in &payload.repositories {
+                if let Err(e) = state.sub_store.delete_all_for_repo(&repo.full_name).await {
+                    tracing::error!(error = %e, repo = %repo.full_name, "failed to clean up subscriptions");
+                }
+            }
+        }
+        _ => {}
+    }
+
+    Ok(StatusCode::OK.into_response())
+}
+
 // ── Helpers ────────────────────────────────────────────────────
 pub type HmacSha256 = Hmac<Sha256>;
 
@@ -334,7 +368,10 @@ async fn broadcast_pr_update(
     pr: &PullRequest,
 ) -> Result<Vec<PrChannelMessage>> {
     let installation_id = state.sub_store.get_installation_id(repo_full).await?;
-    let Some(installation) = installation_id.map(|id| installation_client_from_id(&state.github, id)).transpose()? else {
+    let Some(installation) = installation_id
+        .map(|id| installation_client_from_id(&state.github, id))
+        .transpose()?
+    else {
         info!(repo = %repo_full, "no subscriptions found, skipping broadcast");
         return Ok(vec![]);
     };
