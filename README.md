@@ -10,6 +10,8 @@
 
 GitKord listens to GitHub webhook events and maintains a single, always-up-to-date Discord message for each open pull request. Reviewer status, commit activity, and PR state stay in sync across every subscribed channel — no manual refreshing, no channel clutter.
 
+test
+
 > **Status:** Active development — see [Roadmap](#roadmap) for what's landed and what's next.
 
 ---
