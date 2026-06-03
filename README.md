@@ -68,15 +68,15 @@ GitHub webhook (pull_request, pull_request_review, issue_comment, push)
 
 ### Environment Variables
 
-| Variable                 | Required | Description                                                         |
-|--------------------------|----------|---------------------------------------------------------------------|
-| `DISCORD_TOKEN`          | Yes      | Discord bot token                                                   |
-| `GITHUB_WEBHOOK_SECRET`  | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
-| `GITHUB_TOKEN`           | Yes      | GitHub PAT (Pull requests + Webhooks read/write)                    |
-| `WEBHOOK_URL`            | Yes      | Public URL GitKord is reachable at (no trailing slash)              |
-| `DATABASE_URL`           | No       | Postgres connection url                                             |
-| `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
-| `PORT`                   | No       | HTTP listen port, defaults to `3000`                                |
+| Variable                | Required | Description                                                         |
+|-------------------------|----------|---------------------------------------------------------------------|
+| `DISCORD_TOKEN`         | Yes      | Discord bot token                                                   |
+| `GITHUB_WEBHOOK_SECRET` | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
+| `GITHUB_TOKEN`          | Yes      | GitHub PAT (Pull requests + Webhooks read/write)                    |
+| `PUBLIC_DOMAIN`         | Yes      | Public domain GitKord is reachable at (no trailing slashes)         |
+| `DATABASE_URL`          | No       | Postgres connection url                                             |
+| `RUST_LOG`              | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
+| `PORT`                  | No       | HTTP listen port, defaults to `3000`                                |
 
 ### Build and Run
 
@@ -89,7 +89,7 @@ cargo build --release
 DISCORD_TOKEN=...             \
 GITHUB_WEBHOOK_SECRET=...     \
 GITHUB_TOKEN=...              \
-WEBHOOK_URL=https://your-url  \
+PUBLIC_DOMAIN=...  \
 ./target/release/GitKord
 ```
 
@@ -108,7 +108,7 @@ Use [ngrok](https://ngrok.com) to expose your local port:
 ```bash
 ngrok http 3001   # use a port that does not conflict with other local servers
 export PORT=3001
-export WEBHOOK_URL=https://your-ngrok-url.ngrok-free.app
+export PUBLIC_DOMAIN=your-ngrok-url.ngrok-free.app
 cargo run
 ```
 

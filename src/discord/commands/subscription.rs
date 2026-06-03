@@ -30,7 +30,7 @@ pub async fn handle_subscribe(
     }
 
     let (owner, repo_name) = repo.split_once('/').expect("checked above");
-    let payload_url = format!("{}/github/webhook", app_state.webhook_url);
+    let payload_url = format!("https://{}/github/webhook", app_state.public_domain);
 
     match api::register_webhook(
         &app_state.github,

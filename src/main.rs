@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         sub_store: Arc::clone(&sub_store),
         user_store: Arc::clone(&user_store),
         github: Arc::clone(&github),
-        webhook_url: config.webhook_url.clone(),
+        public_domain: config.public_domain.clone(),
         webhook_secret: config.github_webhook_secret.clone(),
     };
 

@@ -16,8 +16,8 @@ pub struct Config {
     /// GitHub PAT for API calls (reviewer assignment, webhook reigstration).
     pub github_token: String,
 
-    /// Publicly reachable URL for this bot (e.g. Railway domain or ngrok in dev).
-    pub webhook_url: String,
+    /// Publicly reachable domain name for this bot (e.g. Railway domain or ngrok in dev).
+    pub public_domain: String,
 
     /// `Postgres` connection string.
     pub database_url: String,
@@ -35,7 +35,7 @@ impl Config {
             discord_token: require("DISCORD_TOKEN")?,
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
             github_token: require("GITHUB_TOKEN")?,
-            webhook_url: require("WEBHOOK_URL")?,
+            public_domain: require("PUBLIC_DOMAIN")?,
             database_url: require("DATABASE_URL")?,
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "3000".into())
