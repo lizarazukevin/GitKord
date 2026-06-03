@@ -315,25 +315,35 @@ async fn post_reviewer_audit(
     reviewer: &str,
     assigned: bool,
 ) {
-    match app_state.pr_store.get(repo, pr_number).await {
-        Ok(Some(record)) => {
-            if let Err(e) = messages::post_reviewer_change(
-                &ctx.http,
-                record.thread_id,
-                actor,
-                reviewer,
-                assigned,
-            )
-            .await
-            {
-                tracing::error!(error = %e, "failed to post reviewer audit entry to thread");
+    match app_state
+        .pr_store
+        .get_all_by_repo_and_pr(repo, pr_number)
+        .await
+    {
+        Ok(records) if records.is_empty() => {
+            tracing::warn!(
+                repo,
+                pr_number,
+                "no PR message records found for audit post"
+            );
+        }
+        Ok(records) => {
+            for record in records {
+                if let Err(e) = messages::post_reviewer_change(
+                    &ctx.http,
+                    record.thread_id,
+                    actor,
+                    reviewer,
+                    assigned,
+                )
+                .await
+                {
+                    tracing::error!(error = %e, "failed to post reviewer audit entry to thread");
+                }
             }
         }
-        Ok(None) => {
-            tracing::warn!(repo, pr_number, "no PR message record found for audit post");
-        }
         Err(e) => {
-            tracing::error!(error = %e, "failed to look up PR record for audit post");
+            tracing::error!(error = %e, "failed to look up PR records for audit post");
         }
     }
 }

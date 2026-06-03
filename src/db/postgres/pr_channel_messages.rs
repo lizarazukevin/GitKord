@@ -68,24 +68,6 @@ impl PrChannelMessageStore for PostgresPrChannelMessageStore {
         Ok(())
     }
 
-    async fn get(
-        &self,
-        repo: &str,
-        pr_number: u64,
-    ) -> crate::error::Result<Option<PrChannelMessage>> {
-        let row = sqlx::query_as::<_, PrChannelMessageRow>(
-            "SELECT repo, pr_number, channel_id, message_id, thread_id
-             FROM pr_channel_messages WHERE repo = $1 AND pr_number = $2",
-        )
-        .bind(repo)
-        .bind(pr_number.cast_signed())
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        Ok(row.map(PrChannelMessage::from))
-    }
-
     async fn get_all_by_repo_and_pr(
         &self,
         repo: &str,
