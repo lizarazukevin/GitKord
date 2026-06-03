@@ -4,7 +4,7 @@
 //! so the backing store can be swapped without touching handler code.
 
 pub mod models;
-pub mod sqlite;
+pub mod postgres;
 pub mod traits;
 
 pub use traits::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};

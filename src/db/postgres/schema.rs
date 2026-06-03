@@ -1,8 +1,7 @@
 use crate::error::AppError;
-use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
-/// Connect to `SQLite` and create all tables if they do not exist.
+/// Connect to `Postgres` and create all tables if they do not exist.
 ///
 /// Call once at startup before constructing any store. Fails fast if
 /// the database file cannot be created or the schema cannot be applied.
@@ -10,23 +9,18 @@ use sqlx::SqlitePool;
 /// # Errors
 ///
 /// Returns [`AppError::Database`] if the connection or any table creation fails.
-pub async fn connect(database_url: &str) -> crate::error::Result<SqlitePool> {
-    let opts = database_url
-        .parse::<SqliteConnectOptions>()
-        .map_err(AppError::Database)?
-        .create_if_missing(true);
-
-    let pool = SqlitePool::connect_with(opts)
+pub async fn connect(database_url: &str) -> crate::error::Result<PgPool> {
+    let pool = PgPool::connect(database_url)
         .await
         .map_err(AppError::Database)?;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS pr_channel_messages (
             repo       TEXT NOT NULL,
-            pr_number  INTEGER NOT NULL,
-            channel_id INTEGER NOT NULL,
-            message_id INTEGER NOT NULL,
-            thread_id INTEGER NOT NULL,
+            pr_number  BIGINT NOT NULL,
+            channel_id BIGINT NOT NULL,
+            message_id BIGINT NOT NULL,
+            thread_id BIGINT NOT NULL,
             PRIMARY KEY (repo, pr_number, channel_id)
         )",
     )
@@ -37,8 +31,8 @@ pub async fn connect(database_url: &str) -> crate::error::Result<SqlitePool> {
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS subscriptions (
                 repo        TEXT NOT NULL,
-                guild_id    INTEGER NOT NULL,
-                channel_id  INTEGER NOT NULL,
+                guild_id    BIGINT NOT NULL,
+                channel_id  BIGINT NOT NULL,
                 PRIMARY KEY (repo, guild_id, channel_id)
             )",
     )
@@ -48,7 +42,7 @@ pub async fn connect(database_url: &str) -> crate::error::Result<SqlitePool> {
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS user_links (
-            discord_id   INTEGER PRIMARY KEY,
+            discord_id   BIGINT PRIMARY KEY,
             github_login TEXT NOT NULL UNIQUE
         )",
     )

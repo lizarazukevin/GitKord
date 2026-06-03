@@ -21,8 +21,8 @@ serenity = { version = "0.12", features = ["client", "gateway", "model", "cache"
 # GitHub REST API client
 octocrab = "0.50"
 
-# SQLite persistence (compile-time checked queries)
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "migrate"] }
+# Postgres persistence (compile-time checked queries)
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "migrate"] }
 
 # Structured logging
 tracing = "0.1"

@@ -12,17 +12,17 @@
 //! so Railway (or any supervisor) knows to restart it.
 
 mod config;
+mod db;
 mod discord;
 mod error;
 mod github;
-mod state;
 
+use crate::db::postgres::pr_channel_messages::PostgresPrChannelMessageStore;
+use crate::db::postgres::schema::connect;
+use crate::db::postgres::subscriptions::PostgresSubscriptionStore;
+use crate::db::postgres::user_links::PgPoolUserLinkStore;
 use crate::discord::context::AppState;
 use crate::github::webhook::WebhookState;
-use crate::state::sqlite::pr_channel_messages::SqlitePrChannelMessageStore;
-use crate::state::sqlite::schema::connect;
-use crate::state::sqlite::subscriptions::SqliteSubscriptionStore;
-use crate::state::sqlite::user_links::SqliteUserLinkStore;
 use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -38,12 +38,11 @@ async fn main() -> Result<()> {
     let github = Arc::new(github::client::build(&config.github_token)?);
 
     let pool = connect(&config.database_url).await?;
-    let pr_store: Arc<dyn state::traits::PrChannelMessageStore> =
-        Arc::new(SqlitePrChannelMessageStore::new(pool.clone()));
-    let sub_store: Arc<dyn state::traits::SubscriptionStore> =
-        Arc::new(SqliteSubscriptionStore::new(pool.clone()));
-    let user_store: Arc<dyn state::traits::UserLinkStore> =
-        Arc::new(SqliteUserLinkStore::new(pool));
+    let pr_store: Arc<dyn db::traits::PrChannelMessageStore> =
+        Arc::new(PostgresPrChannelMessageStore::new(pool.clone()));
+    let sub_store: Arc<dyn db::traits::SubscriptionStore> =
+        Arc::new(PostgresSubscriptionStore::new(pool.clone()));
+    let user_store: Arc<dyn db::traits::UserLinkStore> = Arc::new(PgPoolUserLinkStore::new(pool));
 
     let app_state = AppState {
         pr_store: Arc::clone(&pr_store),

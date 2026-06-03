@@ -1,13 +1,13 @@
+use crate::db::models::PrChannelMessage;
+use crate::db::PrChannelMessageStore;
 use crate::error::AppError;
-use crate::state::models::PrChannelMessage;
-use crate::state::PrChannelMessageStore;
 use async_trait::async_trait;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
-/// `SQLite` row representation of a pull request channel message mapping.
+/// `Postgres` row representation of a pull request channel message mapping.
 ///
 /// Stores the Discord message and audit thread associated with a PR
-/// in a subscribed channel. `SQLite` uses signed `i64` INTEGER values,
+/// in a subscribed channel. `Postgres` uses signed `i64` BIGINT values,
 /// so Discord snowflakes are converted at the persistence boundary.
 #[derive(sqlx::FromRow)]
 pub struct PrChannelMessageRow {
@@ -30,30 +30,31 @@ impl From<PrChannelMessageRow> for PrChannelMessage {
     }
 }
 
-/// `SQLite`-backed implementation of `PrChannelMessageStore`.
+/// `Postgres`-backed implementation of `PrChannelMessageStore`.
 ///
 /// Stores the Discord message + audit thread associated with a PR
 /// for each subscribed channel.
-pub struct SqlitePrChannelMessageStore {
-    pool: SqlitePool,
+pub struct PostgresPrChannelMessageStore {
+    pool: PgPool,
 }
 
-impl SqlitePrChannelMessageStore {
+impl PostgresPrChannelMessageStore {
     #[must_use]
-    pub const fn new(pool: SqlitePool) -> Self {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
 
 #[async_trait]
-impl PrChannelMessageStore for SqlitePrChannelMessageStore {
+impl PrChannelMessageStore for PostgresPrChannelMessageStore {
     async fn upsert(&self, record: PrChannelMessage) -> crate::error::Result<()> {
         sqlx::query(
             "INSERT INTO pr_channel_messages (repo, pr_number, channel_id, message_id, thread_id)
-             VALUES (?1, ?2, ?3, ?4, ?5)
+             VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (repo, pr_number, channel_id) DO UPDATE SET
-                message_id = excluded.message_id,
-                thread_id = excluded.thread_id"
+                message_id = EXCLUDED.message_id,
+                thread_id = EXCLUDED.thread_id",
         )
         .bind(&record.repo)
         .bind(record.pr_number.cast_signed())
@@ -74,7 +75,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
     ) -> crate::error::Result<Option<PrChannelMessage>> {
         let row = sqlx::query_as::<_, PrChannelMessageRow>(
             "SELECT repo, pr_number, channel_id, message_id, thread_id
-             FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2"
+             FROM pr_channel_messages WHERE repo = $1 AND pr_number = $2",
         )
         .bind(repo)
         .bind(pr_number.cast_signed())
@@ -91,7 +92,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         pr_number: u64,
     ) -> crate::error::Result<Vec<PrChannelMessage>> {
         let rows = sqlx::query_as::<_, PrChannelMessageRow>(
-            "SELECT repo, pr_number, channel_id, message_id, thread_id FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2"
+            "SELECT repo, pr_number, channel_id, message_id, thread_id FROM pr_channel_messages WHERE repo = $1 AND pr_number = $2"
         )
             .bind(repo)
             .bind(pr_number.cast_signed())
@@ -109,7 +110,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         channel_id: u64,
     ) -> crate::error::Result<()> {
         sqlx::query(
-            "DELETE FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2 AND channel_id = ?3"
+            "DELETE FROM pr_channel_messages WHERE repo = $1 AND pr_number = $2 AND channel_id = $3"
         )
             .bind(repo)
             .bind(pr_number.cast_signed())
@@ -122,7 +123,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
     }
 
     async fn delete_all_for_pr(&self, repo: &str, pr_number: u64) -> crate::error::Result<()> {
-        sqlx::query("DELETE FROM pr_channel_messages WHERE repo = ?1 AND pr_number = ?2")
+        sqlx::query("DELETE FROM pr_channel_messages WHERE repo = $1 AND pr_number = $2")
             .bind(repo)
             .bind(pr_number.cast_signed())
             .execute(&self.pool)
@@ -139,7 +140,7 @@ impl PrChannelMessageStore for SqlitePrChannelMessageStore {
         let row = sqlx::query_as::<_, PrChannelMessageRow>(
             "SELECT repo, pr_number, channel_id, message_id, thread_id
                  FROM pr_channel_messages
-                 WHERE thread_id = ?1"
+                 WHERE thread_id = $1",
         )
         .bind(thread_id.cast_signed())
         .fetch_optional(&self.pool)

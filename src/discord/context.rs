@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::state::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
+use crate::db::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
 use octocrab::Octocrab;
 
 pub struct AppState {

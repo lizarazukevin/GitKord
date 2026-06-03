@@ -23,7 +23,7 @@ GitKord listens to GitHub webhook events and maintains a single, always-up-to-da
 - **Self-assignment guard** — the bot rejects review requests where the requester and reviewer are the same person.
 - **Commit-push aware** — pushes to an open PR trigger a `pull_request synchronize` event that updates the PR message in every subscribed channel.
 - **Slash commands** — all ephemeral, no channel noise.
-- **SQLite persistence** — PR message IDs, thread IDs, subscriptions, and user links survive restarts.
+- **Postgres persistence** — PR message IDs, thread IDs, subscriptions, and user links survive restarts.
 - **Health endpoint** — `GET /healthz` for uptime monitors and Railway health checks.
 
 ---
@@ -74,7 +74,7 @@ GitHub webhook (pull_request, pull_request_review, issue_comment, push)
 | `GITHUB_WEBHOOK_SECRET`  | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
 | `GITHUB_TOKEN`           | Yes      | GitHub PAT (Pull requests + Webhooks read/write)                    |
 | `WEBHOOK_URL`            | Yes      | Public URL GitKord is reachable at (no trailing slash)              |
-| `DATABASE_URL`           | No       | SQLite path, defaults to `sqlite://gitkord.db?mode=rwc`             |
+| `DATABASE_URL`           | No       | Postgres connection url                                             |
 | `RUST_LOG`               | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
 | `PORT`                   | No       | HTTP listen port, defaults to `3000`                                |
 
@@ -153,7 +153,7 @@ Review verdicts in the audit thread use separate emojis: ✅ approved, 🛑 chan
 - HMAC-SHA256 webhook signature verification
 - `pull_request` payload deserialization
 - Discord message creation, in-place updates, and audit thread per PR
-- SQLite persistence for PR message IDs and thread IDs
+- Postgres persistence for PR message IDs and thread IDs
 - `pull_request_review` events posted to audit thread
 
 ### v0.3 — Subscriptions and commands ✅
@@ -212,12 +212,12 @@ src/
 │       ├── renderer.rs  # Embed construction and formatting
 │       ├── transport.rs # Serenity HTTP helpers (send, edit, create thread)
 │       └── audit.rs     # Audit thread helpers for review/state events
-└── state/
+└── db/
     ├── mod.rs           # Re-exports (PrChannelMessageStore, SubscriptionStore, UserLinkStore)
     ├── models.rs        # Data models (PrChannelMessage, Subscription, UserLink)
     ├── traits.rs        # Store trait abstractions
-    └── sqlite/
-        ├── mod.rs       # SqliteStore re-exports
+    └── postgres/
+        ├── mod.rs       # PostgresStore re-exports
         ├── schema.rs    # Connection and table creation
         ├── pr_channel_messages.rs  # PrChannelMessageStore impl
         ├── subscriptions.rs       # SubscriptionStore impl
@@ -226,16 +226,16 @@ src/
 
 ### Key Dependencies
 
-| Crate       | Purpose                               |
-|-------------|---------------------------------------|
-| `axum`      | HTTP server and webhook endpoint      |
-| `serenity`  | Discord gateway and slash commands    |
-| `octocrab`  | GitHub REST API client                |
-| `sqlx`      | SQLite persistence                    |
-| `tokio`     | Async runtime                         |
-| `tracing`   | Structured logging                    |
-| `hmac`/`sha2` | Webhook signature verification      |
-| `indexmap`    | Ordered reviewer tracking           |
+| Crate       | Purpose                            |
+|-------------|------------------------------------|
+| `axum`      | HTTP server and webhook endpoint   |
+| `serenity`  | Discord gateway and slash commands |
+| `octocrab`  | GitHub REST API client             |
+| `sqlx`      | Postgres persistence               |
+| `tokio`     | Async runtime                      |
+| `tracing`   | Structured logging                 |
+| `hmac`/`sha2` | Webhook signature verification     |
+| `indexmap`    | Ordered reviewer tracking          |
 
 ### Design Principles
 
