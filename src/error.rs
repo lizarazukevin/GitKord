@@ -21,7 +21,7 @@ pub enum AppError {
     #[error("Discord error: {0}")]
     Discord(#[from] Box<serenity::Error>),
 
-    /// `SQLite` query error.
+    /// `Postgres` query error.
     #[error("internal error: {0}")]
     Database(sqlx::Error),
 

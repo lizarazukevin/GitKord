@@ -1,7 +1,7 @@
 //! Runtime configuration for `GitKord`.
 //!
 //! [`Config::from_env`] is the only place where environment variables are read.
-//! Everywhere else receives values through function arguments or shared state.
+//! Everywhere else receives values through function arguments or shared db.
 
 use anyhow::{Context, Result};
 
@@ -19,7 +19,7 @@ pub struct Config {
     /// Publicly reachable URL for this bot (e.g. Railway domain or ngrok in dev).
     pub webhook_url: String,
 
-    /// `SQLite` connection string. (Defaults to `sqlite://gitkord.db`).
+    /// `Postgres` connection string.
     pub database_url: String,
 
     /// TCP port the Axum HTTP server listens on. Defaults to `3000`
@@ -36,8 +36,7 @@ impl Config {
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
             github_token: require("GITHUB_TOKEN")?,
             webhook_url: require("WEBHOOK_URL")?,
-            database_url: require("DATABASE_URL")
-                .unwrap_or_else(|_| "sqlite://gitkord.db?mode=rwc".into()),
+            database_url: require("DATABASE_URL")?,
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "3000".into())
                 .parse::<u16>()

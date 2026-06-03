@@ -15,6 +15,7 @@ use serenity::all::ChannelId;
 use sha2::Sha256;
 use tracing::{info, warn};
 
+use crate::db::models::PrChannelMessage;
 use crate::discord::messages;
 use crate::error::AppError;
 use crate::error::Result;
@@ -24,7 +25,6 @@ use crate::github::payloads::{
     GitHubEvent, GitHubUser, IssueCommentPayload, PullRequest, PullRequestPayload, PullRequestRef,
     PullRequestReviewPayload, PushPayload,
 };
-use crate::state::models::PrChannelMessage;
 
 /// Axum entry point for `POST /github/webhook`.
 /// Verifies the HMAC signature before touching the body, then deserializes
@@ -127,7 +127,7 @@ async fn on_pull_request_review(
 }
 
 /// Handles new comments posted directly on the PR conversation (not reviews).
-/// Fetches the latest PR state from GitHub and broadcasts an update to all
+/// Fetches the latest PR db from GitHub and broadcasts an update to all
 /// channels so the comment count stays accurate.
 async fn on_issue_comment(state: WebhookState, payload: IssueCommentPayload) -> Result<Response> {
     // issue_comment fires for both issues and PRs — ignore pure issues

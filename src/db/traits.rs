@@ -1,11 +1,9 @@
 //! Store trait abstractions.
 //!
 //! Handlers depend on these traits rather than concrete database types.
-//! Swapping `SQLite` for Postgres, or using in-memory store for tests,
-//! only requires a new impl, no handler changes needed.
 
+use crate::db::models::{PrChannelMessage, Subscription, UserLink};
 use crate::error::Result;
-use crate::state::models::{PrChannelMessage, Subscription, UserLink};
 use async_trait::async_trait;
 
 #[async_trait]

@@ -14,7 +14,7 @@ use crate::github::payloads::PullRequestReviewPayload;
 /// Append a PR lifecycle change to the audit thread.
 ///
 /// Used for opened, closed, reopened, synchronize — anything that changes
-/// the PR's overall state rather than reviewer verdicts.
+/// the PR's overall db rather than reviewer verdicts.
 pub async fn post_pr_update(
     http: &Http,
     thread_id: u64,

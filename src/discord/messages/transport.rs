@@ -64,7 +64,7 @@ pub async fn post_pull_request_message(
 
 /// Edit the main PR message in place with refreshed data.
 ///
-/// Called on any event that changes visible PR state — review verdicts,
+/// Called on any event that changes visible PR db — review verdicts,
 /// comment counts, lifecycle changes, etc.
 pub async fn update_pull_request_message(
     http: &Http,

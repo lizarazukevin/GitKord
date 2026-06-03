@@ -1,13 +1,13 @@
 //! GitHub REST API helpers.
 //!
 //! All functions take an `Octocrab` instance built from `GITHUB_TOKEN`.
-//! Build the client once at startup and pass it through shared state.
+//! Build the client once at startup and pass it through shared db.
 
+use crate::db::UserLinkStore;
 use crate::error::AppError;
 use crate::error::Result;
 use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
 use crate::github::payloads::PullRequest;
-use crate::state::UserLinkStore;
 use indexmap::IndexMap;
 use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
 use octocrab::models::webhook_events::WebhookEventType;
@@ -127,7 +127,7 @@ pub async fn unassign_reviewer(
 }
 
 /// Builds message content from fetching PR details and reviewer
-/// status used to snapshot its current state.
+/// status used to snapshot its current db.
 ///
 /// # Errors
 ///
@@ -196,7 +196,7 @@ pub async fn assemble_pr_view(
     })
 }
 
-/// Map octocrab's review state to our domain type.
+/// Map octocrab's review db to our domain type.
 const fn map_review_state(state: Option<octocrab::models::pulls::ReviewState>) -> ReviewState {
     match state {
         Some(octocrab::models::pulls::ReviewState::Approved) => ReviewState::Approved,

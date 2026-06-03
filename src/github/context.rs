@@ -1,6 +1,6 @@
 //! Shared dependencies for GitHub's webhook handlers.
 
-use crate::state::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
+use crate::db::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
 use octocrab::Octocrab;
 use serenity::all::Http;
 use std::sync::Arc;

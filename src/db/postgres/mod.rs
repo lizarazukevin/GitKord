@@ -1,4 +1,4 @@
-//! `SQLite` implementations and schemas for data storage.
+//! `Postgres` implementations and schemas for data storage.
 
 pub mod pr_channel_messages;
 pub mod schema;

@@ -4,10 +4,10 @@
 //! repository. Subscribing also registers a GitHub webhook so events
 //! start flowing immediately.
 
+use crate::db::models::Subscription;
 use crate::discord::commands::shared::{ephemeral, string_option};
 use crate::discord::context::AppState;
 use crate::github::api;
-use crate::state::models::Subscription;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
 

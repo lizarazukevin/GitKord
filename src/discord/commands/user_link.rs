@@ -4,10 +4,10 @@
 //! Linked users are @mentioned in PR messages instead of showing their
 //! GitHub login, and can be used as reviewer targets via Discord mention.
 
+use crate::db::models::UserLink;
 use crate::discord::commands::shared::{ephemeral, string_option};
 use crate::discord::context::AppState;
 use crate::github::api;
-use crate::state::models::UserLink;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
 
