@@ -12,11 +12,13 @@
 //! so Railway (or any supervisor) knows to restart it.
 
 mod config;
+mod constants;
 mod db;
 mod discord;
 mod error;
 mod github;
 
+use crate::constants::APP_NAME;
 use crate::db::postgres::pr_channel_messages::PostgresPrChannelMessageStore;
 use crate::db::postgres::schema::connect;
 use crate::db::postgres::subscriptions::PostgresSubscriptionStore;
@@ -33,7 +35,7 @@ async fn main() -> Result<()> {
     init_tracing();
 
     let config = config::Config::from_env()?;
-    info!("GitKord starting");
+    info!("{APP_NAME} starting");
 
     let github = Arc::new(github::client::build(
         config.github_app_id,

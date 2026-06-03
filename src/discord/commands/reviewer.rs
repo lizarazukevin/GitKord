@@ -4,6 +4,7 @@
 //! Commands can be run inside a PR audit thread to infer context,
 //! or with explicit `repo` and `pr` options from any channel.
 
+use crate::constants::{APP_NAME, GITHUB_APP_URL};
 use crate::discord::commands::shared::{ephemeral, number_option, string_option};
 use crate::discord::context::AppState;
 use crate::discord::messages;
@@ -164,8 +165,8 @@ async fn assign(
         }
         Err(e) => {
             tracing::error!(error = %e, "failed to assign reviewer");
-            ephemeral(ctx, cmd, "Could not assign the reviewer. Check the PR number and that the reviewer has access to the repo. \
-            Also make sure GitKord is installed: https://github.com/apps/gitkord").await
+            ephemeral(ctx, cmd, &format!("Could not assign the reviewer. Check the PR number and that the reviewer has access to the repo. \
+            Also make sure {APP_NAME} is installed: {GITHUB_APP_URL}")).await
         }
     }
 }
@@ -213,8 +214,10 @@ async fn unassign(
             ephemeral(
                 ctx,
                 cmd,
-                "Could not remove the reviewer. Check the PR number and reviewer. \
-                Also make sure GitKord is installed: https://github.com/apps/gitkord",
+                &format!(
+                    "Could not remove the reviewer. Check the PR number and reviewer. \
+                Also make sure {APP_NAME} is installed: {GITHUB_APP_URL}"
+                ),
             )
             .await
         }
@@ -367,7 +370,12 @@ async fn get_installation(
         })?;
 
     let Some(id) = installation_id else {
-        ephemeral(ctx, cmd, "GitKord is not installed on that repository.").await?;
+        ephemeral(
+            ctx,
+            cmd,
+            &format!("{APP_NAME} is not installed on that repository."),
+        )
+        .await?;
         return Ok(None);
     };
 

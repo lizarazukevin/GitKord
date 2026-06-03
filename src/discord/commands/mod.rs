@@ -7,6 +7,7 @@
 //! Each command group lives in its own submodule to keep this file
 //! focused on routing only.
 
+use crate::constants::APP_NAME;
 use crate::discord::commands::health::handle_health;
 use crate::discord::commands::reviewer::perform_reviewer_action;
 use crate::discord::commands::subscription::{handle_subscribe, handle_unsubscribe};
@@ -67,7 +68,7 @@ pub async fn register(ctx: &Context) -> Result<(), serenity::Error> {
                     .required(true),
                 ),
             CreateCommand::new("unlink").description("Remove your Discord to GitHub account link"),
-            CreateCommand::new("health").description("Check if GitKord is running"),
+            CreateCommand::new("health").description(format!("Check if {APP_NAME} is running")),
             CreateCommand::new("assign")
                 .description(
                     "Request a review on a PR. Run inside a PR thread to skip `repo` and `pr`.",

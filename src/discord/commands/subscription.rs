@@ -4,6 +4,7 @@
 //! repository. Subscribing verifies the GitHub App is installed on the
 //! repository so webhook events start flowing automatically.
 
+use crate::constants::{APP_NAME, GITHUB_APP_URL};
 use crate::db::models::Subscription;
 use crate::discord::commands::shared::{ephemeral, string_option};
 use crate::discord::context::AppState;
@@ -40,9 +41,11 @@ pub async fn handle_subscribe(
                 return ephemeral(
                     ctx,
                     cmd,
-                    "GitKord is not installed on that repository. \
-         Install it at https://github.com/apps/gitkord first, \
-         then run `/subscribe` again.",
+                    &format!(
+                        "{APP_NAME} is not installed on that repository. \
+         Install it at {GITHUB_APP_URL} first, \
+         then run `/subscribe` again."
+                    ),
                 )
                 .await;
             }
