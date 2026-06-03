@@ -15,13 +15,20 @@ use tracing::info;
 
 /// Verify that a GitHub username exists and return their login.
 ///
+/// Uses a separate unauthenticated client because the app-level client
+/// is scoped to installation contexts and cannot access the public user
+/// endpoint (`GET /users/{username}`) without user-level auth.
+/// The user profile endpoint is public and does not require authentication.
+///
 /// Returns `None` on `404` so caller gives a friendly error instead of persisting
 /// a username that does not exist.
 ///
 /// # Errors
 ///
 /// Returns [`AppError::GitHub`] on network or non-404 API errors.
-pub async fn verify_user(client: &Octocrab, username: &str) -> Result<Option<String>> {
+pub async fn verify_user(username: &str) -> Result<Option<String>> {
+    let client = Octocrab::builder().build().map_err(AppError::GitHub)?;
+
     match client.users(username).profile().await {
         Ok(user) => {
             info!(username, "GitHub user verified");

@@ -26,7 +26,7 @@ GitKord listens to GitHub webhook events and maintains a single, always-up-to-da
 - **Commit-push aware** — pushes to an open PR trigger a `pull_request synchronize` event that updates the PR message in every subscribed channel.
 - **Slash commands** — all ephemeral, no channel noise.
 - **Postgres persistence** — PR message IDs, thread IDs, subscriptions, and user links survive restarts.
-- **Health endpoint** — `GET /healthz` for uptime monitors and Railway health checks.
+- **Health checks** — `GET /healthz` HTTP endpoint for uptime monitors, plus `/health` slash command reporting Bot + GitHub App status.
 
 ---
 
@@ -198,7 +198,7 @@ cargo run
 | `/unlink`    | Remove your Discord to GitHub link.                                         |
 | `/assign`    | Request a review. Run inside a PR thread to skip `repo` and `pr` options.  |
 | `/unassign`  | Remove a review request. Same thread-aware behavior as `/assign`.           |
-| `/health`    | Check if GitKord is running.                                                |
+| `/health`    | Check if GitKord and its GitHub App integration are online.                 |
 
 ---
 

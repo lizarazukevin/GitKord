@@ -144,7 +144,7 @@ pub async fn dispatch(ctx: &Context, interaction: &Interaction, app_state: &AppS
         "unsubscribe" => handle_unsubscribe(ctx, cmd, app_state).await,
         "link" => handle_link(ctx, cmd, app_state).await,
         "unlink" => handle_unlink(ctx, cmd, app_state).await,
-        "health" => handle_health(ctx, cmd).await,
+        "health" => handle_health(ctx, cmd, app_state).await,
         "assign" => perform_reviewer_action(ctx, cmd, app_state, ReviewerAction::Assign).await,
         "unassign" => perform_reviewer_action(ctx, cmd, app_state, ReviewerAction::Unassign).await,
         other => {

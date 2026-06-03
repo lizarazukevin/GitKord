@@ -164,7 +164,8 @@ async fn assign(
         }
         Err(e) => {
             tracing::error!(error = %e, "failed to assign reviewer");
-            ephemeral(ctx, cmd, "Could not assign the reviewer. Check the PR number and that the reviewer has access to the repo.").await
+            ephemeral(ctx, cmd, "Could not assign the reviewer. Check the PR number and that the reviewer has access to the repo. \
+            Also make sure GitKord is installed: https://github.com/apps/gitkord").await
         }
     }
 }
@@ -212,7 +213,8 @@ async fn unassign(
             ephemeral(
                 ctx,
                 cmd,
-                "Could not remove the reviewer. Check the PR number and reviewer.",
+                "Could not remove the reviewer. Check the PR number and reviewer. \
+                Also make sure GitKord is installed: https://github.com/apps/gitkord",
             )
             .await
         }
