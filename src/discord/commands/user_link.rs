@@ -26,7 +26,7 @@ pub async fn handle_link(
         return ephemeral(ctx, cmd, "Provide your GitHub username.").await;
     }
 
-    match api::verify_user(&app_state.github, &github_login).await {
+    match api::verify_user(&github_login).await {
         Ok(Some(verified)) => {
             let discord_id = cmd.user.id.get();
             match app_state

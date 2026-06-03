@@ -41,7 +41,8 @@ pub async fn handle_subscribe(
                     ctx,
                     cmd,
                     "GitKord is not installed on that repository. \
-                 Install it at github.com/apps/gitkord first.",
+         Install it at https://github.com/apps/gitkord first, \
+         then run `/subscribe` again.",
                 )
                 .await;
             }
