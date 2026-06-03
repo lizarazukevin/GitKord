@@ -7,4 +7,4 @@
 pub const APP_NAME: &str = "GitKord";
 
 /// Base URL for installing the GitHub App.
-pub const GITHUB_APP_URL: &str = "https://github.com/apps/gitkord";
+pub const GITHUB_APP_URL: &str = "<https://github.com/apps/gitkord>";
