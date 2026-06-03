@@ -5,6 +5,8 @@
 [![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/discord-slash--commands-5865F2.svg)](https://discord.com)
+[![GitHub App](https://img.shields.io/badge/GitHub-App-181717?logo=github)](https://github.com/apps/gitkord)
+[![Invite Bot](https://img.shields.io/badge/Discord-Invite-5865F2?logo=discord)](https://discord.com/oauth2/authorize?client_id=1503129643467673762)
 
 GitKord listens to GitHub webhook events and maintains a single, always-up-to-date Discord message for each open pull request. Reviewer status, commit activity, and PR state stay in sync across every subscribed channel — no manual refreshing, no channel clutter.
 
@@ -17,7 +19,7 @@ GitKord listens to GitHub webhook events and maintains a single, always-up-to-da
 - **Multi-channel subscriptions** — subscribe the same repo in multiple channels of the same server; each channel gets its own PR message and audit thread.
 - **One message per PR** — title, status emoji, author, and branch update in place as events arrive.
 - **Audit thread** — every event (opened, review, assign, close) is appended to a thread on the main message for full traceability.
-- **Auto webhook registration** — `/subscribe` registers the GitHub webhook automatically. No manual setup in repo settings.
+- **GitHub App auth** — uses a GitHub App with installation-based authentication instead of a personal access token (PAT). No manual webhook registration needed.
 - **Reviewer assignment** — `/assign` and `/unassign` work with GitHub usernames or Discord mentions. Run inside a PR thread and the repo and PR number are inferred automatically.
 - **Discord to GitHub linking** — `/link` verifies the GitHub account exists before saving the mapping. Linked reviewers display as Discord mentions in the automated messages.
 - **Self-assignment guard** — the bot rejects review requests where the requester and reviewer are the same person.
@@ -29,6 +31,8 @@ GitKord listens to GitHub webhook events and maintains a single, always-up-to-da
 ---
 
 ## How It Works
+
+### Webhook Event Flow
 
 ```
 GitHub webhook (pull_request, pull_request_review, issue_comment, push)
@@ -50,10 +54,70 @@ GitHub webhook (pull_request, pull_request_review, issue_comment, push)
 └──────────────────────┘
 ```
 
-1. A pull request is opened, reviewed, or merged on GitHub.
-2. GitHub sends a signed webhook payload to GitKord.
-3. GitKord updates the pinned message in every subscribed channel and appends an entry to the audit thread.
-4. Users interact through slash commands — everything stays in one place.
+### Authentication Flow
+
+GitKord authenticates as a GitHub App installation. The flow from startup to repo-scoped API calls looks like this:
+
+```
+Startup
+  │
+  v
+┌──────────────────────────────┐
+│  Sign JWT with private key   │  <- jsonwebtoken crate + GITHUB_APP_PRIVATE_KEY
+│  GITHUB_APP_ID in header     │
+└──────────┬───────────────────┘
+           │
+           v
+┌──────────────────────────────┐
+│  Build app-level Octocrab    │  <- authenticated as the App itself
+│  client using JWT            │
+└──────────┬───────────────────┘
+           │
+           ▼   /subscribe command
+┌──────────────────────────────┐
+│  GET /repos/{owner}/{repo}   │
+│  /installation               │  ← returns installation_id
+└──────────┬───────────────────┘
+           │
+           ▼
+┌──────────────────────────────┐
+│  Store installation_id in    │
+│  Postgres subscription row   │
+└──────────┬───────────────────┘
+           │
+           ▼   webhook event or /assign command
+┌──────────────────────────────┐
+│  Look up installation_id     │
+│  from the subscription store │
+└──────────┬───────────────────┘
+           │
+           ▼
+┌──────────────────────────────┐
+│  Build installation-scoped   │
+│  Octocrab client             │  ← POST /app/installations/{id}/access_tokens
+│  (short-lived access token,  │
+│   auto-refreshed by octocrab)│
+└──────────┬───────────────────┘
+           │
+           ▼
+┌──────────────────────────────┐
+│  Make repo-scoped API calls  │  ← PR data, reviews, assignments
+│  (Octocrab pulls, reviews)   │
+└──────────────────────────────┘
+```
+
+Installation tokens expire after 1 hour. Octocrab transparently refreshes them when making subsequent API calls.
+
+Ref: [Authenticating as a GitHub App installation](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation)
+
+### Lifecycle
+
+1. A user installs the [GitKord GitHub App](https://github.com/apps/gitkord) on their repository and invites the [Discord bot](https://discord.com/oauth2/authorize?client_id=1503129643467673762) to their server.
+2. In a Discord channel, a user runs `/subscribe owner/repo` — the bot verifies the App is installed, fetches the `installation_id`, and persists it alongside the channel subscription.
+3. A pull request is opened, reviewed, or merged on GitHub.
+4. GitHub sends a signed webhook payload to GitKord.
+5. GitKord builds an installation-scoped client from the stored `installation_id`, fetches fresh PR data (title, diff stats, reviews, checks), edits the message in every subscribed channel, and appends an entry to the audit thread.
+6. Users interact through slash commands — everything stays in one place.
 
 ---
 
@@ -63,20 +127,27 @@ GitHub webhook (pull_request, pull_request_review, issue_comment, push)
 
 - [Rust](https://www.rust-lang.org/tools/install) 1.91+
 - A [Discord application](https://discord.com/developers/applications) with a bot token
-- A GitHub fine-grained PAT with **Pull requests** and **Webhooks** read/write permissions
-- A publicly reachable URL (Railway in production, ngrok in development)
+- A [GitHub App](https://github.com/settings/apps) with **Pull requests** (read/write) and **Webhooks** permissions, installed on your repositories
+- A publicly reachable URL (Railway in production, ngrok in development) — configured as the webhook URL in the GitHub App settings
+
+### Interactive Links
+
+| Action | Link |
+|--------|------|
+| Install the GitHub App | [github.com/apps/gitkord](https://github.com/apps/gitkord) |
+| Invite the Discord Bot | [Add to Server](https://discord.com/oauth2/authorize?client_id=1503129643467673762) |
 
 ### Environment Variables
 
-| Variable                | Required | Description                                                         |
-|-------------------------|----------|---------------------------------------------------------------------|
-| `DISCORD_TOKEN`         | Yes      | Discord bot token                                                   |
-| `GITHUB_WEBHOOK_SECRET` | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
-| `GITHUB_TOKEN`          | Yes      | GitHub PAT (Pull requests + Webhooks read/write)                    |
-| `PUBLIC_DOMAIN`         | Yes      | Public domain GitKord is reachable at (no trailing slashes)         |
-| `DATABASE_URL`          | No       | Postgres connection url                                             |
-| `RUST_LOG`              | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
-| `PORT`                  | No       | HTTP listen port, defaults to `3000`                                |
+| Variable                   | Required | Description                                                         |
+|----------------------------|----------|---------------------------------------------------------------------|
+| `DISCORD_TOKEN`            | Yes      | Discord bot token                                                   |
+| `GITHUB_WEBHOOK_SECRET`    | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
+| `GITHUB_APP_ID`            | Yes      | GitHub App ID from the app settings page                            |
+| `GITHUB_APP_PRIVATE_KEY`   | Yes      | GitHub App private key in PEM format (the full file contents)       |
+| `DATABASE_URL`             | No       | Postgres connection url                                             |
+| `RUST_LOG`                 | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
+| `PORT`                     | No       | HTTP listen port, defaults to `3000`                                |
 
 ### Build and Run
 
@@ -86,10 +157,10 @@ cd gitkord
 
 cargo build --release
 
-DISCORD_TOKEN=...             \
-GITHUB_WEBHOOK_SECRET=...     \
-GITHUB_TOKEN=...              \
-PUBLIC_DOMAIN=...  \
+DISCORD_TOKEN=...                  \
+GITHUB_WEBHOOK_SECRET=...          \
+GITHUB_APP_ID=...                  \
+GITHUB_APP_PRIVATE_KEY="$(cat /path/to/private-key.pem)"  \
 ./target/release/GitKord
 ```
 
@@ -101,6 +172,8 @@ Generate an OAuth2 URL with these scopes and permissions:
 
 **Permissions:** Send Messages, Create Public Threads, Send Messages in Threads, Manage Messages, Use Slash Commands
 
+Or use the direct invite link: [Add GitKord to your server](https://discord.com/oauth2/authorize?client_id=1503129643467673762)
+
 ### Local Development
 
 Use [ngrok](https://ngrok.com) to expose your local port:
@@ -108,17 +181,18 @@ Use [ngrok](https://ngrok.com) to expose your local port:
 ```bash
 ngrok http 3001   # use a port that does not conflict with other local servers
 export PORT=3001
-export PUBLIC_DOMAIN=your-ngrok-url.ngrok-free.app
 cargo run
 ```
 
+> **Note:** Copy the ngrok URL (e.g. `https://your-ngrok-url.ngrok-free.app`) into your GitHub App's **Webhook URL** setting on the app configuration page.
+> _Currently disabled path_
 ---
 
 ## Slash Commands
 
 | Command      | Description                                                                 |
 |--------------|-----------------------------------------------------------------------------|
-| `/subscribe` | Subscribe this channel to PR updates for a repo. Registers the webhook too. |
+| `/subscribe` | Subscribe this channel to PR updates for a repo. The webhook is handled automatically by the GitHub App. |
 | `/unsubscribe` | Stop receiving PR updates for a repo in this channel.                     |
 | `/link`      | Link your Discord account to a GitHub username (verifies the account exists). |
 | `/unlink`    | Remove your Discord to GitHub link.                                         |
@@ -158,7 +232,8 @@ Review verdicts in the audit thread use separate emojis: ✅ approved, 🛑 chan
 
 ### v0.3 — Subscriptions and commands ✅
 - Dynamic subscription store (any channel can subscribe to any repo)
-- `/subscribe` auto-registers the GitHub webhook via API
+- `/subscribe` verifies the GitHub App installation and stores the subscription
+- Installation-based auth — JWT signing, installation ID lookup, repo-scoped API calls
 - `/link` and `/unlink` with GitHub user verification
 - `/assign` and `/unassign` with Discord mention resolution and self-assignment guard
 - Thread-aware context inference for assign/unassign
@@ -189,8 +264,8 @@ src/
 ├── config.rs            # Environment variable loading, single source of truth
 ├── error.rs             # AppError with IntoResponse for Axum handlers
 ├── github/
-│   ├── api.rs           # Octocrab helpers (verify user, register webhook, assign reviewer, fetch PR data)
-│   ├── client.rs        # GitHub HTTP client construction
+│   ├── api.rs           # Octocrab helpers (verify user, assign reviewer, fetch PR data)
+│   ├── client.rs        # GitHub HTTP client construction (JWT app client + installation client)
 │   ├── context.rs       # WebhookState — shared deps for webhook event handlers
 │   ├── models.rs        # Domain models (PrMessageData, ReviewSummary, CheckSummary)
 │   ├── payloads.rs      # Webhook payload structs (PullRequest, Review, PushPayload, etc.)
@@ -235,6 +310,7 @@ src/
 | `tokio`     | Async runtime                      |
 | `tracing`   | Structured logging                 |
 | `hmac`/`sha2` | Webhook signature verification     |
+| `jsonwebtoken` | GitHub App JWT generation         |
 | `indexmap`    | Ordered reviewer tracking          |
 
 ### Design Principles

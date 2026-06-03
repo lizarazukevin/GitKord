@@ -5,6 +5,7 @@
 //! not consumed by other parts of our project. Unkown fields are silently
 //! ignored so new GitHub fields do not break deserialization.
 
+use octocrab::models::Installation;
 use serde::Deserialize;
 
 /// The `X-GitHub-Event` header, identifies event type delivered.
@@ -14,6 +15,7 @@ pub enum GitHubEvent {
     PullRequestReview,
     Push,
     IssueComment,
+    Installation,
 
     /// Sent by GitHub when webhook is first registered.
     Ping,
@@ -29,6 +31,7 @@ impl From<&str> for GitHubEvent {
             "pull_request_review" => Self::PullRequestReview,
             "push" => Self::Push,
             "issue_comment" => Self::IssueComment,
+            "installation" => Self::Installation,
             "ping" => Self::Ping,
             other => Self::Unknown(other.to_owned()),
         }
@@ -179,4 +182,16 @@ pub struct Issue {
 pub struct IssuePullRequest {
     #[allow(dead_code)]
     pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InstallationPayload {
+    pub action: String,
+    pub installation: Installation,
+    pub repositories: Vec<InstallationRepository>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InstallationRepository {
+    pub full_name: String,
 }

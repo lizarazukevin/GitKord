@@ -9,6 +9,8 @@ use crate::discord::context::AppState;
 use crate::discord::messages;
 use crate::discord::models::{ReviewerAction, ReviewerRequest};
 use crate::github::api;
+use crate::github::client::installation_client_from_id;
+use octocrab::Octocrab;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
 
@@ -58,7 +60,8 @@ async fn validate_reviewer_request(
         .get_by_guild(&repo, guild_id.get())
         .await
     {
-        Ok(subs) if subs.is_empty() => {
+        Ok(Some(_)) => {}
+        Ok(None) => {
             ephemeral(
                 ctx,
                 cmd,
@@ -67,7 +70,6 @@ async fn validate_reviewer_request(
             .await?;
             return Ok(None);
         }
-        Ok(_) => {}
         Err(e) => {
             tracing::error!(error = %e, "subscription lookup failed");
             ephemeral(ctx, cmd, "Something went wrong. Try again.").await?;
@@ -112,103 +114,107 @@ async fn execute_reviewer_action(
     req: ReviewerRequest,
     action: ReviewerAction,
 ) -> Result<(), serenity::Error> {
-    match action {
-        ReviewerAction::Assign => {
-            match api::assign_reviewer(
-                &app_state.github,
-                &req.owner,
-                &req.repo_name,
-                req.pr_number,
-                &req.github_login,
-            )
-            .await
-            {
-                Ok(()) => {
-                    info!(
-                        req.pr_number,
-                        reviewer = %req.github_login,
-                        repo     = %req.repo,
-                        "reviewer assigned"
-                    );
-                    post_reviewer_audit(
-                        ctx,
-                        app_state,
-                        &req.repo,
-                        req.pr_number,
-                        &cmd.user.name,
-                        &req.github_login,
-                        true,
-                    )
-                    .await;
-                    ephemeral(
-                        ctx,
-                        cmd,
-                        &format!(
-                            "Requested review from **{}** on PR #**{}** in **{}**",
-                            req.github_login, req.pr_number, req.repo,
-                        ),
-                    )
-                    .await
-                }
-                Err(e) => {
-                    tracing::error!(error = %e, "failed to assign reviewer");
-                    ephemeral(
-                        ctx,
-                        cmd,
-                        "Could not assign the reviewer. Check the PR number and that the reviewer has access to the repo.",
-                    )
-                        .await
-                }
-            }
-        }
+    let Some(installation) = get_installation(app_state, &req.repo, ctx, cmd).await? else {
+        return Ok(());
+    };
 
-        ReviewerAction::Unassign => {
-            match api::unassign_reviewer(
-                &app_state.github,
-                &req.owner,
-                &req.repo_name,
+    match action {
+        ReviewerAction::Assign => assign(ctx, cmd, app_state, &installation, req).await,
+        ReviewerAction::Unassign => unassign(ctx, cmd, app_state, &installation, req).await,
+    }
+}
+
+async fn assign(
+    ctx: &Context,
+    cmd: &CommandInteraction,
+    app_state: &AppState,
+    installation: &Octocrab,
+    req: ReviewerRequest,
+) -> Result<(), serenity::Error> {
+    match api::assign_reviewer(
+        installation,
+        &req.owner,
+        &req.repo_name,
+        req.pr_number,
+        &req.github_login,
+    )
+    .await
+    {
+        Ok(()) => {
+            info!(req.pr_number, reviewer = %req.github_login, repo = %req.repo, "reviewer assigned");
+            post_reviewer_audit(
+                ctx,
+                app_state,
+                &req.repo,
                 req.pr_number,
+                &cmd.user.name,
                 &req.github_login,
+                true,
+            )
+            .await;
+            ephemeral(
+                ctx,
+                cmd,
+                &format!(
+                    "Requested review from **{}** on PR #**{}** in **{}**",
+                    req.github_login, req.pr_number, req.repo,
+                ),
             )
             .await
-            {
-                Ok(()) => {
-                    info!(
-                        req.pr_number,
-                        reviewer = %req.github_login,
-                        repo     = %req.repo,
-                        "reviewer unassigned"
-                    );
-                    post_reviewer_audit(
-                        ctx,
-                        app_state,
-                        &req.repo,
-                        req.pr_number,
-                        &cmd.user.name,
-                        &req.github_login,
-                        false,
-                    )
-                    .await;
-                    ephemeral(
-                        ctx,
-                        cmd,
-                        &format!(
-                            "Removed review request from **{}** on PR #{} in **{}**.",
-                            req.github_login, req.pr_number, req.repo,
-                        ),
-                    )
-                    .await
-                }
-                Err(e) => {
-                    tracing::error!(error = %e, "failed to unassign reviewer");
-                    ephemeral(
-                        ctx,
-                        cmd,
-                        "Could not remove the reviewer. Check the PR number and reviewer.",
-                    )
-                    .await
-                }
-            }
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to assign reviewer");
+            ephemeral(ctx, cmd, "Could not assign the reviewer. Check the PR number and that the reviewer has access to the repo.").await
+        }
+    }
+}
+
+async fn unassign(
+    ctx: &Context,
+    cmd: &CommandInteraction,
+    app_state: &AppState,
+    installation: &Octocrab,
+    req: ReviewerRequest,
+) -> Result<(), serenity::Error> {
+    match api::unassign_reviewer(
+        installation,
+        &req.owner,
+        &req.repo_name,
+        req.pr_number,
+        &req.github_login,
+    )
+    .await
+    {
+        Ok(()) => {
+            info!(req.pr_number, reviewer = %req.github_login, repo = %req.repo, "reviewer unassigned");
+            post_reviewer_audit(
+                ctx,
+                app_state,
+                &req.repo,
+                req.pr_number,
+                &cmd.user.name,
+                &req.github_login,
+                false,
+            )
+            .await;
+            ephemeral(
+                ctx,
+                cmd,
+                &format!(
+                    "Removed review request from **{}** on PR #{} in **{}**.",
+                    req.github_login, req.pr_number, req.repo,
+                ),
+            )
+            .await
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to unassign reviewer");
+            ephemeral(
+                ctx,
+                cmd,
+                "Could not remove the reviewer. Check the PR number and reviewer.",
+            )
+            .await
         }
     }
 }
@@ -330,4 +336,33 @@ async fn post_reviewer_audit(
             tracing::error!(error = %e, "failed to look up PR record for audit post");
         }
     }
+}
+
+/// Helper to fetch the `installation_id` and build the installation client.
+async fn get_installation(
+    app_state: &AppState,
+    repo: &str,
+    ctx: &Context,
+    cmd: &CommandInteraction,
+) -> Result<Option<Octocrab>, serenity::Error> {
+    let installation_id = app_state
+        .sub_store
+        .get_installation_id(repo)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to look up installation ID");
+            serenity::Error::Other("failed to look up installation")
+        })?;
+
+    let Some(id) = installation_id else {
+        ephemeral(ctx, cmd, "GitKord is not installed on that repository.").await?;
+        return Ok(None);
+    };
+
+    let client = installation_client_from_id(&app_state.github, id).map_err(|e| {
+        tracing::error!(error = %e, "failed to build installation client");
+        serenity::Error::Other("failed to build installation client")
+    })?;
+
+    Ok(Some(client))
 }
