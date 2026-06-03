@@ -11,9 +11,6 @@ pub trait PrChannelMessageStore: Send + Sync {
     /// Insert or replace the Discord message record for a PR.
     async fn upsert(&self, record: PrChannelMessage) -> Result<()>;
 
-    /// Look up the Discord message for a PR. Returns `None` if not found.
-    async fn get(&self, repo: &str, pr_number: u64) -> Result<Option<PrChannelMessage>>;
-
     /// Returns all mirrored PR messages for a repository PR pair.
     ///
     /// A single GitHub PR may fan out into multiple Discord channels
