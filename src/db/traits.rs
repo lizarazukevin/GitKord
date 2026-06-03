@@ -45,7 +45,7 @@ pub trait SubscriptionStore: Send + Sync {
     async fn upsert(&self, subscription: Subscription) -> Result<()>;
 
     /// Look up subscriptions for a specific repo in a guild.
-    async fn get_by_guild(&self, repo: &str, guild_id: u64) -> Result<Vec<Subscription>>;
+    async fn get_by_guild(&self, repo: &str, guild_id: u64) -> Result<Option<Subscription>>;
 
     /// Find all guilds subscribed to a repo.
     /// Called on every webhook event to find which channels to post to.
@@ -53,6 +53,9 @@ pub trait SubscriptionStore: Send + Sync {
 
     /// Remove a subscription.
     async fn delete(&self, repo: &str, guild_id: u64, channel_id: u64) -> Result<()>;
+
+    /// Get installation ID for a repo.
+    async fn get_installation_id(&self, repo: &str) -> Result<Option<u64>>;
 }
 
 #[async_trait]

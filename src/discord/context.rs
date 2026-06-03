@@ -20,10 +20,4 @@ pub struct AppState {
 
     /// Authenticated GitHub API client .
     pub github: Arc<Octocrab>,
-
-    /// Public domain this bot is reachable at, used when registering webhooks.
-    pub public_domain: String,
-
-    /// HMAC secret passed to GitHub during webhook registration.
-    pub webhook_secret: String,
 }

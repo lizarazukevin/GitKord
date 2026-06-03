@@ -1,20 +1,20 @@
 //! Subscribe and unsubscribe command handlers.
 //!
 //! Manages which Discord channels receive PR update messages for a given
-//! repository. Subscribing also registers a GitHub webhook so events
-//! start flowing immediately.
+//! repository. Subscribing verifies the GitHub App is installed on the
+//! repository so webhook events start flowing automatically.
 
 use crate::db::models::Subscription;
 use crate::discord::commands::shared::{ephemeral, string_option};
 use crate::discord::context::AppState;
-use crate::github::api;
+use crate::github;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
 
 /// Subscribe the current channel to PR updates for a repository.
 ///
-/// Registers a GitHub webhook on the repo if one does not already exist,
-/// then stores the channel subscription so incoming events know where to post.
+/// Verifies the GitHub App is installed on the repo, then stores the
+/// channel subscription so incoming webhook events know where to post.
 pub async fn handle_subscribe(
     ctx: &Context,
     cmd: &CommandInteraction,
@@ -30,38 +30,31 @@ pub async fn handle_subscribe(
     }
 
     let (owner, repo_name) = repo.split_once('/').expect("checked above");
-    let payload_url = format!("https://{}/github/webhook", app_state.public_domain);
 
-    match api::register_webhook(
-        &app_state.github,
-        owner,
-        repo_name,
-        &payload_url,
-        &app_state.webhook_secret,
-    )
-    .await
-    {
-        Ok(Some(id)) => info!(repo, hook_id = id, "webhook registered"),
-        Ok(None) => info!(repo, "webhook already existed"),
-        Err(e) => {
-            tracing::error!(error = %e, repo, "failed to register webhook");
-            return ephemeral(
-                ctx,
-                cmd,
-                "Could not register webhook on GitHub. \
-                 Check that your token has `admin:repo_hook` scope (classic) \
-                 or Webhooks read/write (fine-grained).",
-            )
-            .await;
-        }
-    }
+    // Verify the app is installed on this repo and get the installation ID
+    let installation_id =
+        match github::client::get_installation_id(&app_state.github, owner, repo_name).await {
+            Ok(id) => id,
+            Err(e) => {
+                tracing::error!(error = %e, repo, "failed to get installation ID");
+                return ephemeral(
+                    ctx,
+                    cmd,
+                    "GitKord is not installed on that repository. \
+                 Install it at github.com/apps/gitkord first.",
+                )
+                .await;
+            }
+        };
 
+    // No webhook registration needed, GitHub App handles it automatically
     match app_state
         .sub_store
         .upsert(Subscription {
             repo: repo.clone(),
             guild_id: guild_id.get(),
             channel_id: cmd.channel_id.get(),
+            installation_id,
         })
         .await
     {

@@ -13,11 +13,11 @@ pub struct Config {
     /// HMAC secret used to verify incoming GitHub webhook payloads.
     pub github_webhook_secret: String,
 
-    /// GitHub PAT for API calls (reviewer assignment, webhook reigstration).
-    pub github_token: String,
+    /// GitHub App ID from the app settings page.
+    pub github_app_id: u64,
 
-    /// Publicly reachable domain name for this bot (e.g. Railway domain or ngrok in dev).
-    pub public_domain: String,
+    /// GitHub App private key contents (PEM format).
+    pub github_app_private_key: String,
 
     /// `Postgres` connection string.
     pub database_url: String,
@@ -34,8 +34,10 @@ impl Config {
         Ok(Self {
             discord_token: require("DISCORD_TOKEN")?,
             github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
-            github_token: require("GITHUB_TOKEN")?,
-            public_domain: require("PUBLIC_DOMAIN")?,
+            github_app_id: require("GITHUB_APP_ID")?
+                .parse::<u64>()
+                .context("GITHUB_APP_ID must be a number")?,
+            github_app_private_key: require("GITHUB_APP_PRIVATE_KEY")?,
             database_url: require("DATABASE_URL")?,
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "3000".into())

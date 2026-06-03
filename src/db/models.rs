@@ -11,11 +11,13 @@ pub struct PrChannelMessage {
 }
 
 /// One row per repo per guild, tracks which channel gets PR messages.
+/// Stores the `installation_id` to make repo-scoped API calls.
 #[derive(Debug, Clone)]
 pub struct Subscription {
     pub repo: String,
     pub guild_id: u64,
     pub channel_id: u64,
+    pub installation_id: u64,
 }
 
 /// Maps a Discord user ID to a GitHub login.

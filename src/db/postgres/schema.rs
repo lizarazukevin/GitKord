@@ -33,6 +33,7 @@ pub async fn connect(database_url: &str) -> crate::error::Result<PgPool> {
                 repo        TEXT NOT NULL,
                 guild_id    BIGINT NOT NULL,
                 channel_id  BIGINT NOT NULL,
+                installation_id BIGINT NOT NULL,
                 PRIMARY KEY (repo, guild_id, channel_id)
             )",
     )

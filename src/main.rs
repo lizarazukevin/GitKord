@@ -35,7 +35,10 @@ async fn main() -> Result<()> {
     let config = config::Config::from_env()?;
     info!("GitKord starting");
 
-    let github = Arc::new(github::client::build(&config.github_token)?);
+    let github = Arc::new(github::client::build(
+        config.github_app_id,
+        &config.github_app_private_key,
+    )?);
 
     let pool = connect(&config.database_url).await?;
     let pr_store: Arc<dyn db::traits::PrChannelMessageStore> =
@@ -49,8 +52,6 @@ async fn main() -> Result<()> {
         sub_store: Arc::clone(&sub_store),
         user_store: Arc::clone(&user_store),
         github: Arc::clone(&github),
-        public_domain: config.public_domain.clone(),
-        webhook_secret: config.github_webhook_secret.clone(),
     };
 
     let (mut discord_client, http) = discord::client::build(&config.discord_token, app_state).await;
