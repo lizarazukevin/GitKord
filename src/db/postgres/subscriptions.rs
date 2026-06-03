@@ -45,8 +45,9 @@ impl PostgresSubscriptionStore {
 impl SubscriptionStore for PostgresSubscriptionStore {
     async fn upsert(&self, sub: Subscription) -> crate::error::Result<()> {
         sqlx::query(
-            "ON CONFLICT DO NOTHING subscriptions (repo, guild_id, channel_id)
-             VALUES ($1, $2, $3)",
+            "INSERT INTO subscriptions (repo, guild_id, channel_id)
+             VALUES ($1, $2, $3)
+             ON CONFLICT DO NOTHING",
         )
         .bind(&sub.repo)
         .bind(sub.guild_id.cast_signed())
