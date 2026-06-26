@@ -42,19 +42,54 @@ pub fn format_pr_message(data: &PrMessageData) -> String {
     )
 }
 
-// Diff bar — additions on the left, deletions on the right, 10 blocks total.
+const BAR_WIDTH: u64 = 10;
+const FULL_BAR_AT: u64 = 800;
+// Exponent controlling how fast the bar fills relative to FULL_BAR_AT.
+// Values below 1.0 make small diffs fill faster (steep early growth)
+// while still decelerating hard as the diff approaches FULL_BAR_AT.
+// 0.4 was tuned so ~32 lines -> ~3 blocks and ~200 lines -> ~6 blocks.
+const GROWTH_EXPONENT: f64 = 0.4;
+
 fn format_diff_bar(data: &PrMessageData) -> String {
-    let total = (data.additions + data.deletions).max(1);
-    let add_filled = usize::try_from((data.additions * 10 / total).min(10)).unwrap_or(10);
-    let del_filled = 10 - add_filled;
+    let (add_filled, del_filled) = split_bar(data.additions, data.deletions);
 
     format!(
         "+{}  {}{}  -{}",
         data.additions,
-        "🟩 ".repeat(add_filled),
-        "🟥 ".repeat(del_filled),
+        "🟩 ".repeat(usize::try_from(add_filled).unwrap_or(usize::MIN)),
+        "🟥 ".repeat(usize::try_from(del_filled).unwrap_or(usize::MIN)),
         data.deletions,
     )
+}
+
+// Decide how many of the BAR_WIDTH blocks go to additions vs. deletions.
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+fn split_bar(additions: u64, deletions: u64) -> (u64, u64) {
+    let total = additions.saturating_add(deletions);
+
+    if total == 0 {
+        return (0, 0);
+    }
+
+    let filled = blocks_filled(total);
+
+    let add_blocks = (additions * filled).div_ceil(total).min(filled);
+    let del_blocks = filled - add_blocks;
+
+    let add_blocks = if additions > 0 { add_blocks.max(1) } else { 0 };
+    let del_blocks = if deletions > 0 { del_blocks.max(1) } else { 0 };
+
+    (add_blocks, del_blocks)
+}
+
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+fn blocks_filled(total_lines: u64) -> u64 {
+    let ratio = (total_lines as f64 / FULL_BAR_AT as f64).min(1.0);
+    (BAR_WIDTH as f64 * ratio.powf(GROWTH_EXPONENT)).round() as u64
 }
 
 // File, commit and comment counts.
