@@ -1,7 +1,7 @@
 //! Shared dependencies for GitHub's webhook handlers.
 
 use crate::db::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
-use octocrab::Octocrab;
+use crate::github::client::GitHubClient;
 use serenity::all::Http;
 use std::sync::Arc;
 
@@ -16,7 +16,7 @@ pub struct WebhookState {
     pub http: Arc<Http>,
 
     /// Authenticated GitHub API client for fetching PR details and reviews.
-    pub github: Arc<Octocrab>,
+    pub github: Arc<GitHubClient>,
 
     /// Stores links between discord and GitHub.
     pub user_store: Arc<dyn UserLinkStore>,

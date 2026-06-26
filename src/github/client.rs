@@ -4,25 +4,76 @@ use crate::error::AppError;
 use jsonwebtoken::EncodingKey;
 use octocrab::Octocrab;
 
-/// Build an authenticated `Octocrab` client for a GitHub app.
+/// Wraps an `Octocrab` client and carries the authentication mode.
 ///
-/// The returned client works at app-level, uses an `installation_client`
-/// to get a repo-scoped client for actual API calls.
-///
-/// # Errors
-///
-/// Returns [`AppError::GitHub`] if the client cannot be initialized.
-pub fn build(app_id: u64, private_key_pem: &str) -> crate::error::Result<Octocrab> {
-    let key = EncodingKey::from_rsa_pem(private_key_pem.as_bytes())
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("invalid private key: {e}")))?;
-
-    Octocrab::builder()
-        .app(app_id.into(), key)
-        .build()
-        .map_err(AppError::GitHub)
+/// In production, the inner client is an app-level `Octocrab` and
+/// [`GitHubClient::installation_client`] derives an installation-scoped client.
+/// In local dev mode, the inner client is PAT-based and
+/// [`GitHubClient::installation_client`] returns it directly (installation ID is ignored).
+#[derive(Clone)]
+pub struct GitHubClient {
+    inner: Octocrab,
+    local_dev: bool,
 }
 
-/// Look up installation ID for specific repo.
+impl GitHubClient {
+    /// Build an authenticated `GitHubClient`.
+    ///
+    /// In production, builds an app-level client using `app_id` and `private_key_pem`.
+    /// In local dev mode, builds a PAT-based client used directly for all API calls.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::GitHub`] if the client cannot be initialized.
+    pub fn build(
+        app_id: u64,
+        private_key_pem: &str,
+        local_dev: bool,
+        pat_token: &str,
+    ) -> crate::error::Result<Self> {
+        let inner = if local_dev {
+            Octocrab::builder()
+                .personal_token(pat_token.to_owned())
+                .build()
+                .map_err(AppError::GitHub)?
+        } else {
+            let key = EncodingKey::from_rsa_pem(private_key_pem.as_bytes())
+                .map_err(|e| AppError::Internal(anyhow::anyhow!("invalid private key: {e}")))?;
+
+            Octocrab::builder()
+                .app(app_id.into(), key)
+                .build()
+                .map_err(AppError::GitHub)?
+        };
+
+        Ok(Self { inner, local_dev })
+    }
+
+    /// Returns an installation-scoped client.
+    ///
+    /// In local dev mode, returns the PAT-based client directly (installation ID is ignored
+    /// since there's no GitHub App installation). In production, derives an installation-scoped
+    /// client from the app-level client.
+    pub fn installation_client(&self, installation_id: u64) -> crate::error::Result<Octocrab> {
+        if self.local_dev {
+            return Ok(self.inner.clone());
+        }
+
+        self.inner
+            .installation(installation_id.into())
+            .map_err(AppError::GitHub)
+    }
+
+    /// Returns a reference to the inner `Octocrab` client.
+    ///
+    /// Used for direct API calls that don't need installation scoping
+    /// (e.g. webhook registration, user lookup).
+    pub const fn inner(&self) -> &Octocrab {
+        &self.inner
+    }
+}
+
+/// Look up installation ID for a specific repo.
 ///
 /// Called once at subscribe time and stored so future API calls
 /// skip this lookup call.
@@ -38,16 +89,4 @@ pub async fn get_installation_id(
         .map_err(AppError::GitHub)?;
 
     Ok(installation.id.0)
-}
-
-/// Builds installation-scoped client from stored installation ID.
-///
-/// Cheaper than using `installation_client` as it skips API lookup.
-pub fn installation_client_from_id(
-    client: &Octocrab,
-    installation_id: u64,
-) -> crate::error::Result<Octocrab> {
-    client
-        .installation(installation_id.into())
-        .map_err(AppError::GitHub)
 }

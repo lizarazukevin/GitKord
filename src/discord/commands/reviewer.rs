@@ -10,7 +10,6 @@ use crate::discord::context::AppState;
 use crate::discord::messages;
 use crate::discord::models::{ReviewerAction, ReviewerRequest};
 use crate::github::api;
-use crate::github::client::installation_client_from_id;
 use octocrab::Octocrab;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
@@ -379,7 +378,7 @@ async fn get_installation(
         return Ok(None);
     };
 
-    let client = installation_client_from_id(&app_state.github, id).map_err(|e| {
+    let client = app_state.github.installation_client(id).map_err(|e| {
         tracing::error!(error = %e, "failed to build installation client");
         serenity::Error::Other("failed to build installation client")
     })?;

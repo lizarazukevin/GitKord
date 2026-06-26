@@ -20,8 +20,7 @@ use crate::discord::messages;
 use crate::error::AppError;
 use crate::error::Result;
 use crate::github::api;
-use crate::github::client::installation_client_from_id;
-pub use crate::github::context::WebhookState;
+use crate::github::context::WebhookState;
 use crate::github::payloads::{
     GitHubEvent, GitHubUser, InstallationPayload, IssueCommentPayload, PullRequest,
     PullRequestPayload, PullRequestRef, PullRequestReviewPayload, PushPayload,
@@ -158,7 +157,7 @@ async fn on_issue_comment(state: WebhookState, payload: IssueCommentPayload) -> 
         info!(repo = %payload.repository.full_name, "no subscriptions found, skipping issue_comment");
         return Ok(StatusCode::OK.into_response());
     };
-    let installation = installation_client_from_id(&state.github, installation_id)?;
+    let installation = state.github.installation_client(installation_id)?;
 
     let pr = installation
         .pulls(&payload.repository.owner.login, &payload.repository.name)
@@ -228,7 +227,7 @@ async fn on_pr_opened(state: &WebhookState, payload: &PullRequestPayload) -> Res
         info!(repo = %repo_full, "no subscriptions found, skipping");
         return Ok(());
     };
-    let installation = installation_client_from_id(&state.github, installation_id)?;
+    let installation = state.github.installation_client(installation_id)?;
 
     let message_data = api::assemble_pr_view(
         &installation,
@@ -369,7 +368,7 @@ async fn broadcast_pr_update(
 ) -> Result<Vec<PrChannelMessage>> {
     let installation_id = state.sub_store.get_installation_id(repo_full).await?;
     let Some(installation) = installation_id
-        .map(|id| installation_client_from_id(&state.github, id))
+        .map(|id| state.github.installation_client(id))
         .transpose()?
     else {
         info!(repo = %repo_full, "no subscriptions found, skipping broadcast");

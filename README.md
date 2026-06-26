@@ -127,8 +127,17 @@ Ref: [Authenticating as a GitHub App installation](https://docs.github.com/en/ap
 
 - [Rust](https://www.rust-lang.org/tools/install) 1.91+
 - A [Discord application](https://discord.com/developers/applications) with a bot token
+- A [Postgres](https://www.postgresql.org/) database (or Dockerized — see [Local Development](#local-development))
+
+#### Production (with GitHub App)
+
 - A [GitHub App](https://github.com/settings/apps) with **Pull requests** (read/write) and **Webhooks** permissions, installed on your repositories
 - A publicly reachable URL (Railway in production, ngrok in development) — configured as the webhook URL in the GitHub App settings
+
+#### Local Development (without GitHub App)
+
+- A [GitHub Personal Access Token](https://github.com/settings/tokens) with `repo` scope (full control of private repositories) or `public_repo` (for public repos only)
+- [ngrok](https://ngrok.com) to expose your local port
 
 ### Interactive Links
 
@@ -139,13 +148,28 @@ Ref: [Authenticating as a GitHub App installation](https://docs.github.com/en/ap
 
 ### Environment Variables
 
+#### Production
+
 | Variable                   | Required | Description                                                         |
 |----------------------------|----------|---------------------------------------------------------------------|
 | `DISCORD_TOKEN`            | Yes      | Discord bot token                                                   |
 | `GITHUB_WEBHOOK_SECRET`    | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
 | `GITHUB_APP_ID`            | Yes      | GitHub App ID from the app settings page                            |
 | `GITHUB_APP_PRIVATE_KEY`   | Yes      | GitHub App private key in PEM format (the full file contents)       |
-| `DATABASE_URL`             | No       | Postgres connection url                                             |
+| `DATABASE_URL`             | Yes      | Postgres connection url                                             |
+| `RUST_LOG`                 | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
+| `PORT`                     | No       | HTTP listen port, defaults to `3000`                                |
+
+#### Local Development
+
+| Variable                   | Required | Description                                                         |
+|----------------------------|----------|---------------------------------------------------------------------|
+| `DISCORD_TOKEN`            | Yes      | Discord bot token                                                   |
+| `GITHUB_WEBHOOK_SECRET`    | Yes      | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`) |
+| `GITHUB_TOKEN`             | Yes      | GitHub PAT with `repo` scope (used instead of GitHub App auth)      |
+| `PUBLIC_DOMAIN`            | Yes      | Your ngrok URL, e.g. `abc123.ngrok-free.app` (no `https://`)        |
+| `DATABASE_URL`             | Yes      | Postgres connection url                                             |
+| `LOCAL_DEV`                | No       | Set to `true` to enable local development mode (defaults to `false`)|
 | `RUST_LOG`                 | No       | Log level: `trace`, `debug`, `info`, `warn`                         |
 | `PORT`                     | No       | HTTP listen port, defaults to `3000`                                |
 
@@ -156,13 +180,43 @@ git clone https://github.com/kevinlizarazu/gitkord.git
 cd gitkord
 
 cargo build --release
+```
 
+#### Production
+
+```bash
 DISCORD_TOKEN=...                  \
 GITHUB_WEBHOOK_SECRET=...          \
 GITHUB_APP_ID=...                  \
 GITHUB_APP_PRIVATE_KEY="$(cat /path/to/private-key.pem)"  \
+DATABASE_URL=postgres://...        \
 ./target/release/GitKord
 ```
+
+#### Local Development
+
+```bash
+# Terminal 1: Start Postgres (if not already running)
+docker run -d --name gitkord-pg \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=gitkord \
+  -p 5432:5432 \
+  postgres:16
+
+# Terminal 2: Start ngrok
+ngrok http 3000
+
+# Terminal 3: Run the bot
+LOCAL_DEV=true                                        \
+DISCORD_TOKEN=...                                     \
+GITHUB_WEBHOOK_SECRET=...                             \
+GITHUB_TOKEN=ghp_...                                  \
+PUBLIC_DOMAIN=your-ngrok-url.ngrok-free.app           \
+DATABASE_URL=postgres://postgres:password@localhost:5432/gitkord  \
+cargo run
+```
+
+In local dev mode, `/subscribe` registers a real webhook on the repository pointing at your ngrok URL, so GitHub sends real webhook events to your local bot. No GitHub App needed.
 
 ### Invite the Bot
 
@@ -174,18 +228,6 @@ Generate an OAuth2 URL with these scopes and permissions:
 
 Or use the direct invite link: [Add GitKord to your server](https://discord.com/oauth2/authorize?client_id=1503129643467673762)
 
-### Local Development
-
-Use [ngrok](https://ngrok.com) to expose your local port:
-
-```bash
-ngrok http 3001   # use a port that does not conflict with other local servers
-export PORT=3001
-cargo run
-```
-
-> **Note:** Copy the ngrok URL (e.g. `https://your-ngrok-url.ngrok-free.app`) into your GitHub App's **Webhook URL** setting on the app configuration page.
-> _Currently disabled path_
 ---
 
 ## Slash Commands
@@ -326,11 +368,11 @@ src/
 ## Development
 
 ```bash
-# Run
-cargo run
+# Run (local dev mode)
+LOCAL_DEV=true ... cargo run
 
 # Run with hot reload (requires cargo-watch)
-cargo watch -x run
+LOCAL_DEV=true ... cargo watch -x run
 
 # Lint
 cargo clippy -- -D warnings
