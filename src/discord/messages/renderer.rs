@@ -75,9 +75,11 @@ fn split_bar(additions: u64, deletions: u64) -> (u64, u64) {
 
     let filled = blocks_filled(total);
 
-    let add_blocks = ((additions as f64 / total as f64) * filled as f64).round() as u64;
-    let add_blocks = add_blocks.min(filled);
+    let add_blocks = (additions * filled).div_ceil(total).min(filled);
     let del_blocks = filled - add_blocks;
+
+    let add_blocks = if additions > 0 { add_blocks.max(1) } else { 0 };
+    let del_blocks = if deletions > 0 { del_blocks.max(1) } else { 0 };
 
     (add_blocks, del_blocks)
 }
