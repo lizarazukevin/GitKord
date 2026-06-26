@@ -42,19 +42,46 @@ pub fn format_pr_message(data: &PrMessageData) -> String {
     )
 }
 
+const BAR_WIDTH: u64 = 10;
+const LINES_PER_BLOCK: u64 = 100;
+const PROPORTIONAL_THRESHOLD: u64 = BAR_WIDTH * LINES_PER_BLOCK;
+
 // Diff bar — additions on the left, deletions on the right, 10 blocks total.
 fn format_diff_bar(data: &PrMessageData) -> String {
-    let total = (data.additions + data.deletions).max(1);
-    let add_filled = usize::try_from((data.additions * 10 / total).min(10)).unwrap_or(10);
-    let del_filled = 10 - add_filled;
+    let (add_filled, del_filled) = split_bar(data.additions, data.deletions);
 
     format!(
         "+{}  {}{}  -{}",
         data.additions,
-        "🟩 ".repeat(add_filled),
-        "🟥 ".repeat(del_filled),
+        "🟩 ".repeat(usize::try_from(add_filled).unwrap_or(usize::MIN)),
+        "🟥 ".repeat(usize::try_from(del_filled).unwrap_or(usize::MIN)),
         data.deletions,
     )
+}
+
+// Decide how many of the BAR_WIDTH blocks go to additions vs. deletions.
+fn split_bar(additions: u64, deletions: u64) -> (u64, u64) {
+    let total = additions.saturating_add(deletions);
+
+    if total == 0 {
+        return (0, 0);
+    }
+
+    if total < PROPORTIONAL_THRESHOLD {
+        let add_blocks = additions.div_ceil(LINES_PER_BLOCK).min(BAR_WIDTH);
+        let del_blocks = deletions
+            .div_ceil(LINES_PER_BLOCK)
+            .min(BAR_WIDTH - add_blocks);
+        (add_blocks, del_blocks)
+    } else {
+        let add_blocks = additions
+            .saturating_mul(BAR_WIDTH)
+            .checked_div(total)
+            .unwrap_or(0)
+            .min(BAR_WIDTH);
+        let del_blocks = BAR_WIDTH - add_blocks;
+        (add_blocks, del_blocks)
+    }
 }
 
 // File, commit and comment counts.
