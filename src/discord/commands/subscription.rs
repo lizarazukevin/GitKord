@@ -9,6 +9,7 @@ use crate::db::models::Subscription;
 use crate::discord::commands::shared::{ephemeral, string_option};
 use crate::discord::context::AppState;
 use crate::github;
+use crate::github::api;
 use serenity::all::{CommandInteraction, Context};
 use tracing::info;
 
@@ -32,9 +33,40 @@ pub async fn handle_subscribe(
 
     let (owner, repo_name) = repo.split_once('/').expect("checked above");
 
-    // Verify the app is installed on this repo and get the installation ID
-    let installation_id =
-        match github::client::get_installation_id(&app_state.github, owner, repo_name).await {
+    let installation_id = if app_state.local_dev {
+        // In local dev: register a webhook on the repo pointing at the ngrok URL,
+        // then store a dummy installation ID since the GitHub App isn't installed.
+        let payload_url = format!("https://{}/github/webhook", app_state.public_domain);
+        match api::register_webhook(
+            app_state.github.inner(),
+            owner,
+            repo_name,
+            &payload_url,
+            &app_state.webhook_secret,
+        )
+        .await
+        {
+            Ok(_) => {
+                info!(repo, "webhook registered for local dev");
+            }
+            Err(e) => {
+                tracing::error!(error = %e, repo, "failed to register webhook");
+                return ephemeral(
+                    ctx,
+                    cmd,
+                    &format!(
+                        "Could not register webhook for **{repo}**. \
+                         Make sure your PAT has admin access to the repo.",
+                    ),
+                )
+                .await;
+            }
+        }
+        0 // dummy installation ID
+    } else {
+        // Production: verify the app is installed on this repo
+        match github::client::get_installation_id(app_state.github.inner(), owner, repo_name).await
+        {
             Ok(id) => id,
             Err(e) => {
                 tracing::error!(error = %e, repo, "failed to get installation ID");
@@ -49,9 +81,9 @@ pub async fn handle_subscribe(
                 )
                 .await;
             }
-        };
+        }
+    };
 
-    // No webhook registration needed, GitHub App handles it automatically
     match app_state
         .sub_store
         .upsert(Subscription {

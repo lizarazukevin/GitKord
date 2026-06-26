@@ -14,7 +14,7 @@ pub async fn handle_health(
     cmd: &CommandInteraction,
     app_state: &AppState,
 ) -> Result<(), serenity::Error> {
-    let github_status = match app_state.github.current().app().await {
+    let github_status = match app_state.github.inner().current().app().await {
         Ok(_) => "✅ GitHub App",
         Err(_) => "❌ GitHub App",
     };

@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::db::{PrChannelMessageStore, SubscriptionStore, UserLinkStore};
-use octocrab::Octocrab;
+use crate::github::client::GitHubClient;
 
 pub struct AppState {
     /// PR message store for thread ID lookups and audit posting.
@@ -19,5 +19,14 @@ pub struct AppState {
     pub user_store: Arc<dyn UserLinkStore>,
 
     /// Authenticated GitHub API client .
-    pub github: Arc<Octocrab>,
+    pub github: Arc<GitHubClient>,
+
+    /// When `true`, the bot is running in local development mode.
+    pub local_dev: bool,
+
+    /// Public domain reachable via ngrok (only used when `local_dev` is true).
+    pub public_domain: String,
+
+    /// HMAC secret for verifying GitHub payloads (used to register webhooks in local dev).
+    pub webhook_secret: String,
 }

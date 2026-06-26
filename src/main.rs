@@ -24,7 +24,8 @@ use crate::db::postgres::schema::connect;
 use crate::db::postgres::subscriptions::PostgresSubscriptionStore;
 use crate::db::postgres::user_links::PgPoolUserLinkStore;
 use crate::discord::context::AppState;
-use crate::github::webhook::WebhookState;
+use crate::github::client::GitHubClient;
+use crate::github::context::WebhookState;
 use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -37,9 +38,11 @@ async fn main() -> Result<()> {
     let config = config::Config::from_env()?;
     info!("{APP_NAME} starting");
 
-    let github = Arc::new(github::client::build(
+    let github = Arc::new(GitHubClient::build(
         config.github_app_id,
         &config.github_app_private_key,
+        config.local_dev,
+        &config.github_token,
     )?);
 
     let pool = connect(&config.database_url).await?;
@@ -54,6 +57,9 @@ async fn main() -> Result<()> {
         sub_store: Arc::clone(&sub_store),
         user_store: Arc::clone(&user_store),
         github: Arc::clone(&github),
+        local_dev: config.local_dev,
+        public_domain: config.public_domain.clone(),
+        webhook_secret: config.github_webhook_secret.clone(),
     };
 
     let (mut discord_client, http) = discord::client::build(&config.discord_token, app_state).await;

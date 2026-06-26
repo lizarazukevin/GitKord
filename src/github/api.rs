@@ -1,8 +1,7 @@
 //! GitHub REST API helpers.
 //!
 //! All functions take an `Octocrab` instance scoped to a specific installation.
-//! Build the base app client at startup, then derive installation-scoped
-//! clients via [`crate::github::client::installation_client_from_id`].
+//! Obtain one via [`crate::github::client::GitHubClient::installation_client`].
 
 use crate::db::UserLinkStore;
 use crate::error::AppError;
@@ -10,8 +9,60 @@ use crate::error::Result;
 use crate::github::models::{PrMessageData, ReviewState, ReviewSummary};
 use crate::github::payloads::PullRequest;
 use indexmap::IndexMap;
+use octocrab::models::hooks::{Config as HookConfig, ContentType as HookContentType, Hook};
+use octocrab::models::webhook_events::WebhookEventType;
 use octocrab::Octocrab;
 use tracing::info;
+
+/// Register a webhook on a GitHub repository.
+///
+/// Returns the hook ID if one was created, `None` if it already existed (422).
+/// Used in local dev mode to point webhooks at the local ngrok URL.
+/// In production, the GitHub App handles webhook delivery automatically.
+///
+/// # Errors
+///
+/// Returns [`AppError::GitHub`] if the API call fails for reasons other than hook already existing.
+pub async fn register_webhook(
+    client: &Octocrab,
+    owner: &str,
+    repo: &str,
+    payload_url: &str,
+    secret: &str,
+) -> Result<Option<u64>> {
+    let config = HookConfig {
+        url: payload_url.to_owned(),
+        content_type: Some(HookContentType::Json),
+        secret: Some(secret.to_owned()),
+        insecure_ssl: None,
+    };
+
+    let hook = Hook {
+        name: "web".to_owned(),
+        config,
+        events: vec![
+            WebhookEventType::PullRequest,
+            WebhookEventType::PullRequestReview,
+            WebhookEventType::Push,
+        ],
+        active: true,
+        ..Hook::default()
+    };
+
+    match client.repos(owner, repo).create_hook(hook).await {
+        Ok(created) => {
+            let id = created.id;
+            info!(owner, repo, hook_id = id, "webhook registered");
+            Ok(Some(id))
+        }
+
+        Err(octocrab::Error::GitHub { source, .. }) if source.status_code == 422 => {
+            info!(owner, repo, "webhook already registered, skipping");
+            Ok(None)
+        }
+        Err(e) => Err(AppError::GitHub(e)),
+    }
+}
 
 /// Verify that a GitHub username exists and return their login.
 ///
