@@ -252,7 +252,7 @@ async fn resolve_pr_context(
     let pr_opt = number_option(cmd, "pr");
 
     if let (true, Some(pr_number)) = (!repo_opt.is_empty(), pr_opt) {
-        Ok(Some((repo_opt, pr_number)))
+        Ok(Some((repo_opt.to_lowercase(), pr_number)))
     } else {
         ephemeral(
             ctx,
