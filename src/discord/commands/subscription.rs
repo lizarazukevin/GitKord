@@ -31,6 +31,7 @@ pub async fn handle_subscribe(
         return ephemeral(ctx, cmd, "Provide a repo in `owner/name` format.").await;
     }
 
+    let repo = repo.to_lowercase();
     let (owner, repo_name) = repo.split_once('/').expect("checked above");
 
     let installation_id = if app_state.local_dev {
@@ -139,6 +140,7 @@ pub async fn handle_unsubscribe(
         return ephemeral(ctx, cmd, "Provide a repo in `owner/name` format.").await;
     }
 
+    let repo = repo.to_lowercase();
     match app_state
         .sub_store
         .delete(&repo, guild_id.get(), cmd.channel_id.get())
