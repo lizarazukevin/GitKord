@@ -34,7 +34,6 @@ pub async fn post_review(
     payload: &PullRequestReviewPayload,
 ) -> Result<()> {
     let review = &payload.review;
-    let pr = &payload.pull_request;
 
     let verb = match review.state.to_lowercase().as_str() {
         "approved" => "approved",
@@ -43,10 +42,9 @@ pub async fn post_review(
     };
 
     let content = format!(
-        "{emoji} **{reviewer}** {verb} PR #{number}",
+        "{emoji} **{reviewer}** {verb} this review",
         emoji = review.verdict_emoji(),
-        reviewer = review.user.login,
-        number = pr.number,
+        reviewer = review.user.login
     );
 
     post_to_thread(http, thread_id, &content).await
