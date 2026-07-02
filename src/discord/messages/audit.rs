@@ -36,13 +36,14 @@ pub async fn post_review(
     let review = &payload.review;
 
     let verb = match review.state.to_lowercase().as_str() {
-        "approved" => "approved",
-        "changes_requested" => "requested changes on",
-        _ => "commented on",
+        "approved" => "approved this review",
+        "changes_requested" => "requested changes",
+        "commented" => "published comments",
+        _ => "submitted a review",
     };
 
     let content = format!(
-        "{emoji} **{reviewer}** {verb} this review",
+        "{emoji} **{reviewer}** {verb}",
         emoji = review.verdict_emoji(),
         reviewer = review.user.login
     );
