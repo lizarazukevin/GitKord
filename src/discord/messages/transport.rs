@@ -52,7 +52,7 @@ pub async fn post_pull_request_message(
     post_to_thread(
         http,
         thread.id.get(),
-        &format!("🟢 **{}** opened this PR", message_data.author),
+        &format!("🟢 **{}** opened a review", message_data.author),
     )
     .await?;
 

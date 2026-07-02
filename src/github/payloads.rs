@@ -43,6 +43,7 @@ pub struct PullRequestPayload {
     pub action: String,
     pub pull_request: PullRequest,
     pub repository: Repository,
+    pub sender: GitHubUser,
 }
 
 #[derive(Debug, Deserialize)]
@@ -100,7 +101,6 @@ pub struct PullRequestRef {
     #[serde(rename = "ref")]
     pub branch: String,
 
-    #[expect(dead_code)]
     pub sha: String,
 }
 

@@ -71,3 +71,13 @@ pub async fn post_reviewer_change(
 
     post_to_thread(http, thread_id, &action).await
 }
+
+/// Append a commit push notification to the audit thread.
+///
+/// Called when a `synchronize` event fires on a PR — someone pushed
+/// new commits to the branch.
+pub async fn post_commit_push(http: &Http, thread_id: u64, pusher: &str, sha: &str) -> Result<()> {
+    let short_sha = &sha[..7.min(sha.len())];
+    let content = format!("📬 **{pusher}** pushed commit `{short_sha}`");
+    post_to_thread(http, thread_id, &content).await
+}

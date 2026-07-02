@@ -9,5 +9,5 @@ pub mod audit;
 pub mod renderer;
 pub mod transport;
 
-pub use audit::{post_pr_update, post_review, post_reviewer_change};
+pub use audit::{post_commit_push, post_pr_update, post_review, post_reviewer_change};
 pub use transport::{post_pull_request_message, update_pull_request_message};
