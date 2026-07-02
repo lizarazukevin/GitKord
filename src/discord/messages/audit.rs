@@ -6,7 +6,6 @@
 
 use serenity::all::Http;
 
-use crate::discord::messages::renderer::timestamp;
 use crate::discord::messages::transport::post_to_thread;
 use crate::error::Result;
 use crate::github::payloads::PullRequestReviewPayload;
@@ -18,10 +17,17 @@ use crate::github::payloads::PullRequestReviewPayload;
 pub async fn post_pr_update(
     http: &Http,
     thread_id: u64,
-    pr_number: u64,
     action: &str,
+    merged: Option<bool>,
 ) -> Result<()> {
-    let content = format!("🔄 **{}** — PR #{} `{}`", timestamp(), pr_number, action);
+    let (emoji, verb) = match (action, merged) {
+        ("closed", Some(true)) => ("🟣", "merged"),
+        ("closed", _) => ("🔴", "closed"),
+        ("reopened", _) => ("🟢", "reopened"),
+        _ => ("⚪", action),
+    };
+
+    let content = format!("{emoji} this review is {verb}");
     post_to_thread(http, thread_id, &content).await
 }
 
