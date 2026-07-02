@@ -7,6 +7,15 @@
 
 use octocrab::models::Installation;
 use serde::Deserialize;
+use serde::Deserializer;
+
+/// Deserialize a string field to lowercase.
+///
+/// Used on `full_name` and `name` fields so database lookups are
+/// consistent regardless of how GitHub capitalizes repository names.
+fn deserialize_lowercase<'de, D: Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    String::deserialize(d).map(|s| s.to_lowercase())
+}
 
 /// The `X-GitHub-Event` header, identifies event type delivered.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,7 +69,9 @@ pub struct PullRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct Repository {
+    #[serde(deserialize_with = "deserialize_lowercase")]
     pub full_name: String,
+    #[serde(deserialize_with = "deserialize_lowercase")]
     pub name: String,
     pub owner: RepositoryOwner,
 }
@@ -193,5 +204,6 @@ pub struct InstallationPayload {
 
 #[derive(Debug, Deserialize)]
 pub struct InstallationRepository {
+    #[serde(deserialize_with = "deserialize_lowercase")]
     pub full_name: String,
 }
