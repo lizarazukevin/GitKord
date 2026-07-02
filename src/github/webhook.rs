@@ -68,8 +68,10 @@ pub async fn handle(
 }
 
 /// Routes `pull_request` actions to the right internal handler.
-/// opened -> post new message, `synchronize/review_requested` -> update in place,
-/// closed/reopened -> lifecycle change with audit entry.
+/// `opened` -> post new message
+/// `review_requested` -> update in place
+/// `synchronize` -> update in place and posts to thread
+/// `closed/reopened` -> lifecycle change with audit entry
 async fn on_pull_request(state: WebhookState, payload: PullRequestPayload) -> Result<Response> {
     let pr = &payload.pull_request;
 
@@ -84,9 +86,10 @@ async fn on_pull_request(state: WebhookState, payload: PullRequestPayload) -> Re
 
     match payload.action.as_str() {
         "opened" => on_pr_opened(&state, &payload).await?,
-        "review_requested" | "review_request_removed" | "synchronize" => {
+        "review_requested" | "review_request_removed" => {
             on_pr_message_update(&state, &payload).await?;
         }
+        "synchronize" => on_pr_synchronize(&state, &payload).await?,
         "closed" | "reopened" => on_pr_lifecycle_change(&state, &payload).await?,
         _ => {}
     }
@@ -277,6 +280,29 @@ async fn on_pr_message_update(state: &WebhookState, payload: &PullRequestPayload
         &payload.pull_request,
     )
     .await?;
+    Ok(())
+}
+
+/// Handles a `synchronize` event — new commits pushed to the PR branch.
+/// Updates the main PR message and posts a commit push notification to
+/// each audit thread.
+async fn on_pr_synchronize(state: &WebhookState, payload: &PullRequestPayload) -> Result<()> {
+    let records = broadcast_pr_update(
+        state,
+        &payload.repository.owner.login,
+        &payload.repository.name,
+        &payload.repository.full_name,
+        &payload.pull_request,
+    )
+    .await?;
+
+    let pusher = &payload.sender.login;
+    let sha = &payload.pull_request.head.sha;
+
+    for record in &records {
+        messages::post_commit_push(&state.http, record.thread_id, pusher, sha).await?;
+    }
+
     Ok(())
 }
 
