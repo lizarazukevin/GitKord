@@ -86,7 +86,7 @@ async fn on_pull_request(state: WebhookState, payload: PullRequestPayload) -> Re
 
     match payload.action.as_str() {
         "opened" => on_pr_opened(&state, &payload).await?,
-        "review_requested" | "review_request_removed" => {
+        "edited" | "review_requested" | "review_request_removed" => {
             on_pr_message_update(&state, &payload).await?;
         }
         "synchronize" => on_pr_synchronize(&state, &payload).await?,
