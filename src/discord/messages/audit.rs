@@ -17,6 +17,7 @@ use crate::github::payloads::PullRequestReviewPayload;
 pub async fn post_pr_update(
     http: &Http,
     thread_id: u64,
+    pr_number: u64,
     action: &str,
     merged: Option<bool>,
 ) -> Result<()> {
@@ -27,7 +28,7 @@ pub async fn post_pr_update(
         _ => ("⚪", action),
     };
 
-    let content = format!("{emoji} this review is {verb}");
+    let content = format!("{emoji} **PR #{pr_number}** was **{verb}**");
     post_to_thread(http, thread_id, &content).await
 }
 

@@ -320,7 +320,7 @@ async fn on_pr_lifecycle_change(state: &WebhookState, payload: &PullRequestPaylo
     .await?;
 
     for record in &records {
-        messages::post_pr_update(&state.http, record.thread_id, &payload.action, pr.merged).await?;
+        messages::post_pr_update(&state.http, record.thread_id, pr.number, &payload.action, pr.merged).await?;
     }
 
     Ok(())
