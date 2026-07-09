@@ -285,10 +285,10 @@ Review verdicts in the audit thread use separate emojis: ✅ approved, 🛑 chan
 - `SubscriptionStore::get_by_guild` returns `Vec<Subscription>` for per-channel delete and list
 
 ### v0.4 — Deployment and testing
-- Railway deployment with persistent URL
+- Railway deployment with persistent URL ✅
 - Test suite (unit tests for signature verification, store traits, formatters)
-- Message and embed redesign
-- Commit-push triggers PR message update via `pull_request synchronize`
+- Message and embed redesign ✅
+- Commit-push triggers PR message update via `pull_request synchronize` ✅
 
 ### v0.5 — Polish
 - Remind button with DM delivery and cooldown store
