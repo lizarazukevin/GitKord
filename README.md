@@ -1,6 +1,6 @@
 # GitKord
 
-**Discord Git Bot** — a live pull request companion for Discord, powered by Rust.
+**Discord Git Bot** — a live pull request companion for Discord, powered by Rust. Test.
 
 [![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
