@@ -1,0 +1,47 @@
+---
+# Builds and lints GitKord (Rust, single crate).
+#
+# The workflow checks formatting (rustfmt) and runs Clippy with warnings
+# promoted to hard errors. Then it compiles all targets and runs the
+# test suite. Cargo's dependency and build artifacts are cached so that
+# follow‑up runs complete quickly.
+#
+# Steps run in order: format check → clippy lint → build → test.
+
+name: Rust Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Cache all targets to speed up subsequent runs
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy lint
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --all-targets --all-features
