@@ -1,90 +1,125 @@
 //! Runtime configuration for `GitKord`.
-//!
-//! [`Config::from_env`] is the only place where environment variables are read.
-//! Everywhere else receives values through function arguments or shared db.
 
 use anyhow::{Context, Result};
 
+pub const APP_NAME: &str = "GitKord";
+pub const GITHUB_APP_URL: &str = "<https://github.com/apps/gitkord>";
+
+#[derive(Clone)]
+pub struct WebhookRegistrationConfig {
+    pub local_dev: bool,
+    pub public_domain: String,
+    pub github_webhook_secret: String,
+}
+
 #[derive(Debug, Clone)]
-pub struct Config {
-    /// Discord bot token from the Developer Portal.
+pub struct EnvConfig {
+    /// `Discord` bot token taken from developer portal.
+    /// https://discord.com/developers/home
     pub discord_token: String,
 
-    /// HMAC secret used to verify incoming GitHub webhook payloads.
+    /// HMAC webhook secret used to verify incoming `GitHub` webhook payloads.
     pub github_webhook_secret: String,
 
-    /// GitHub App ID from the app settings page. Not needed in local dev.
+    /// `GitHub` App ID from the app settings page. Prod only.
     pub github_app_id: u64,
 
-    /// GitHub App private key contents (PEM format). Not needed in local dev.
+    /// `GitHub` App private key contents (PEM format). Prod only.
     pub github_app_private_key: String,
 
-    /// `Postgres` connection string.
+    /// Database connection string (e.g. `Postgres`).
     pub database_url: String,
 
-    /// TCP port the Axum HTTP server listens on. Defaults to `3000`
-    /// Change this if port 3000 is taken (e.g. by Vite dev server).
+    /// TCP port the Axum HTTP server listens on. Defaults to `3000`.
     pub port: u16,
 
-    /// When `true`, the bot runs in local development mode:
-    /// - Uses `GITHUB_TOKEN` (PAT) for API calls instead of GitHub App auth
-    /// - Registers webhooks on repos during `/subscribe` via PAT
-    /// - Requires `PUBLIC_DOMAIN` for the ngrok URL
-    /// - Skips HMAC signature verification when the header is absent
+    /// Local development mode when `true`. Dictates whether to use PAT or App ID.
     pub local_dev: bool,
 
-    /// GitHub Personal Access Token — only required when `LOCAL_DEV=true`.
-    /// Used for API calls and webhook registration instead of GitHub App auth.
+    /// `GitHub` Personal Access Token (PAT). Local dev only.
+    /// Used for API calls and webhook registration instead of `GitHub` App auth.
     pub github_token: String,
 
-    /// Public domain reachable via ngrok — only required when `LOCAL_DEV=true`.
-    /// Used to register webhooks pointing at the local server.
+    /// Public domain reachable via ngrok. Local dev only.
     pub public_domain: String,
 }
 
-impl Config {
+impl EnvConfig {
     /// Load config from the environment. Fails fast if any required variable
     /// is missing or a value cannot be parsed.
-    pub fn from_env() -> Result<Self, anyhow::Error> {
-        let local_dev = std::env::var("LOCAL_DEV")
-            .ok()
-            .is_some_and(|v| v == "true" || v == "1");
+    pub fn from_env() -> Result<Self> {
+        let local_dev = local_dev_flag();
+
+        let discord_token = require_env("DISCORD_TOKEN")?;
+        let github_webhook_secret = require_env("GITHUB_WEBHOOK_SECRET")?;
+        let database_url = require_env("DATABASE_URL")?;
+        let port = parse_port()?;
+
+        let (github_app_id, github_app_private_key) = github_app_credentials(local_dev)?;
+        let (github_token, public_domain) = local_dev_credentials(local_dev)?;
 
         Ok(Self {
-            discord_token: require("DISCORD_TOKEN")?,
-            github_webhook_secret: require("GITHUB_WEBHOOK_SECRET")?,
-            github_app_id: if local_dev {
-                0
-            } else {
-                require("GITHUB_APP_ID")?
-                    .parse::<u64>()
-                    .context("GITHUB_APP_ID must be a number")?
-            },
-            github_app_private_key: if local_dev {
-                String::new()
-            } else {
-                require("GITHUB_APP_PRIVATE_KEY")?
-            },
-            database_url: require("DATABASE_URL")?,
-            port: std::env::var("PORT")
-                .unwrap_or_else(|_| "3000".into())
-                .parse::<u16>()
-                .context("PORT must be a valid port number (1-65535)")?,
+            discord_token,
+            github_webhook_secret,
+            github_app_id,
+            github_app_private_key,
+            database_url,
+            port,
             local_dev,
-            github_token: if local_dev {
-                require("GITHUB_TOKEN")?
-            } else {
-                String::new()
-            },
-            public_domain: if local_dev {
-                require("PUBLIC_DOMAIN")?
-            } else {
-                String::new()
-            },
+            github_token,
+            public_domain,
         })
+    }
+
+    /// Narrower config used in `/subscribe` to register and verify a repository's webhook.
+    pub fn webhook_registration_config(&self) -> WebhookRegistrationConfig {
+        WebhookRegistrationConfig {
+            local_dev: self.local_dev,
+            public_domain: self.public_domain.clone(),
+            github_webhook_secret: self.github_webhook_secret.clone(),
+        }
     }
 }
 
-fn require(key: &str) -> Result<String> {
+fn local_dev_flag() -> bool {
+    std::env::var("LOCAL_DEV")
+        .ok()
+        .is_some_and(|v| v == "true" || v == "1")
+}
+
+fn parse_port() -> Result<u16> {
+    std::env::var("PORT")
+        .unwrap_or_else(|_| "3000".into())
+        .parse::<u16>()
+        .context("PORT must be a valid port number")
+}
+
+/// `GitHub` app credentials required in production.
+fn github_app_credentials(local_dev: bool) -> Result<(u64, String)> {
+    if local_dev {
+        return Ok((0, String::new()));
+    }
+
+    let app_id = require_env("GITHUB_APP_ID")?
+        .parse::<u64>()
+        .context("GITHUB_APP_ID must be a number")?;
+    let private_key = require_env("GITHUB_APP_PRIVATE_KEY")?;
+
+    Ok((app_id, private_key))
+}
+
+/// PAT + ngrok domain required in local dev.
+fn local_dev_credentials(local_dev: bool) -> Result<(String, String)> {
+    if !local_dev {
+        return Ok((String::new(), String::new()));
+    }
+
+    let token = require_env("GITHUB_TOKEN")?;
+    let public_domain = require_env("PUBLIC_DOMAIN")?;
+
+    Ok((token, public_domain))
+}
+
+fn require_env(key: &str) -> Result<String> {
     std::env::var(key).with_context(|| format!("Missing environment variable {key}"))
 }

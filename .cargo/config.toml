@@ -1,0 +1,10 @@
+[alias]
+
+# Line coverage, add_module files to exclude here
+cov = """
+llvm-cov
+--html
+--open
+--ignore-filename-regex
+discord/(bot|client)
+"""
