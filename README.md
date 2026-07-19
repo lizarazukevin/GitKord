@@ -1,13 +1,35 @@
-# GitKord
-
-A live pull request companion for Discord, written in Rust.
-
 [![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Discord](https://img.shields.io/badge/discord-slash--commands-5865F2.svg)](https://discord.com)
 [![GitHub App](https://img.shields.io/badge/GitHub-App-181717?logo=github)](https://github.com/apps/gitkord)
 [![Invite Bot](https://img.shields.io/badge/Discord-Invite-5865F2?logo=discord)](https://discord.com/oauth2/authorize?client_id=1503129643467673762)
 [![Railway](https://img.shields.io/badge/Hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.app)
+
+<h1 align="center">
+  <svg width="128" height="128" viewBox="0 0 128 128">
+    <clipPath id="circle">
+      <circle cx="64" cy="64" r="64"/>
+    </clipPath>
+    <image href="https://avatars.githubusercontent.com/in/3948389" width="128" height="128" clip-path="url(#circle)"/>
+  </svg>
+  <br>GitKord
+</h1>
+<p align="center">
+    A live pull request companion for Discord, powered by Rust.
+    <br />
+    One message per pull request, edited in place, with a per-PR audit thread.
+    <br />
+    <a href="#about">About</a>
+    ·
+    <a href="#quickstart">Quickstart</a>
+    ·
+    <a href="#features">Features</a>
+    ·
+    <a href="#contributing-and-development">Contributing</a>
+    ·
+    <a href="#roadmap">Roadmap</a>
+  </p>
+
+---
 
 ## About
 
