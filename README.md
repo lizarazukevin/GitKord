@@ -145,28 +145,28 @@ Set `RUST_LOG=debug` to see full event payloads while you work. If you have `car
 
 ## Roadmap
 
-Shipped:
+#### Shipped:
 
--[x] Webhook ingestion with HMAC-SHA256 signature verification.
--[x] One live message per pull request, edited in place, with a per-PR audit thread.
--[x] `pull_request` and `pull_request_review` events reflected in Discord.
--[x] Subscriptions from any channel to any repository, including the same repo across multiple channels in a server.
--[x] GitHub App installation auth, so no per-repo webhook setup.
--[x] `/link` and `/unlink` with GitHub account verification.
--[x] `/assign` and `/unassign` with Discord mention resolution, thread-aware context, and a self-assignment guard.
--[x] Commit pushes to an open PR refresh its message everywhere it is posted.
--[x] Railway deployment on a persistent URL.
--[x] Error handling packaged in user-friendly ephemeral messages.
+- [x] Webhook ingestion with HMAC-SHA256 signature verification.
+- [x] One live message per pull request, edited in place, with a per-PR audit thread.
+- [x] `pull_request` and `pull_request_review` events reflected in Discord.
+- [x] Subscriptions from any channel to any repository, including the same repo across multiple channels in a server.
+- [x] GitHub App installation auth, so no per-repo webhook setup.
+- [x] `/link` and `/unlink` with GitHub account verification.
+- [x] `/assign` and `/unassign` with Discord mention resolution, thread-aware context, and a self-assignment guard.
+- [x] Commit pushes to an open PR refresh its message everywhere it is posted.
+- [x] Railway deployment on a persistent URL.
+- [x] Error handling packaged in user-friendly ephemeral messages.
 
-In progress:
+#### In progress:
 
--[ ] A broader test suite covering signature verification, persistence, and formatting.
+- [ ] A broader test suite covering signature verification, persistence, and formatting.
 
-Planned:
+#### Planned:
 
--[ ] Checks handling for GitHub actions.
--[ ] AI summary view of new PRs.
--[ ] Dedicated GitKord domain.
+- [ ] Checks handling for GitHub actions.
+- [ ] AI summary view of new PRs.
+- [ ] Dedicated GitKord domain.
 
 ## License
 
