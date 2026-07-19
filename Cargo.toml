@@ -1,5 +1,5 @@
 [package]
-name = "GitKord"
+name = "git_kord"
 version = "0.1.0"
 edition = "2021"
 description = "A live pull request companion for Discord, powered by Rust"
@@ -15,11 +15,11 @@ tokio = { version = "1", features = ["full"] }
 # HTTP server — receives GitHub webhooks
 axum = { version = "0.8", features = ["macros"] }
 
-# Discord gateway + slash commands
+# Discord gateway + slash registry
 serenity = { version = "0.12", features = ["client", "gateway", "model", "cache", "http"] }
 
 # GitHub REST API client
-octocrab = "0.50"
+octocrab = "0.54.0"
 
 # Postgres persistence (compile-time checked queries)
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "migrate"] }

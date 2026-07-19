@@ -1,26 +1,46 @@
-//! Serenity client setup for Discord.
-//!
-//! Builds the client, registers the slash commands on ready,
-//! and exposes the `Http` handle so the webhook handler can
-//! post messages without holding a reference to the full client.
+//! Setup `Discord` bot gateway connection and event handling.
 
-use crate::discord::context::AppState;
-use crate::discord::models::ReadyHandler;
-use serenity::all::{GatewayIntents, Http};
+use crate::discord::commands::registry::CommandRegistry;
+use crate::error::AppError;
+use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Ready};
+use serenity::Client;
 use std::sync::Arc;
+use tracing::info;
 
-/// Build a Serenity client and return it alongside a shared `Http` handle.
+struct BotEventHandler {
+    registry: CommandRegistry,
+}
+
+#[serenity::async_trait]
+impl EventHandler for BotEventHandler {
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        info!("{} is connected!", ready.user.name);
+
+        if let Err(e) = self.registry.register_all(&ctx).await {
+            tracing::error!(error = %e, "failed to register slash registry");
+        }
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        self.registry.dispatch(&ctx, &interaction).await;
+    }
+}
+
+/// Build a `Serenity` client and returns its shared Http client.
 ///
-/// The `Http` handle is cloned out before client moves into its task so
-/// the webhook handler can post messages independently of the gateway connection.
-pub async fn build(token: &str, app_state: AppState) -> (serenity::Client, Arc<Http>) {
+/// The returned `Arc<Http>` is used by `GitHub` webhook handlers to send and
+/// edit `Discord` messages without needing access to the running gateway client.
+pub(crate) async fn build(
+    token: &str,
+    commands: CommandRegistry,
+) -> Result<(Client, Arc<Http>), AppError> {
     let intents = GatewayIntents::empty();
 
-    let client = serenity::Client::builder(token, intents)
-        .event_handler(ReadyHandler { app_state })
+    let client = Client::builder(token, intents)
+        .event_handler(BotEventHandler { registry: commands })
         .await
-        .expect("failed to build Discord client");
+        .map_err(|e| AppError::Discord(Arc::new(e)))?;
 
     let http = Arc::clone(&client.http);
-    (client, http)
+    Ok((client, http))
 }

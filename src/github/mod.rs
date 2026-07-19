@@ -1,8 +1,4 @@
-//! GitHub integrations (webhook routing, signature verification, payload types)
+//! `GitHub` integrations for APIs and webhook configurations.
 
 pub mod api;
-pub mod client;
-pub mod context;
-pub mod models;
-pub mod payloads;
 pub mod webhook;

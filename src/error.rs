@@ -6,6 +6,7 @@
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -19,15 +20,30 @@ pub enum AppError {
 
     /// Serenity error. Boxed because [`serenity::Error`] is large.
     #[error("Discord error: {0}")]
-    Discord(#[from] Box<serenity::Error>),
+    Discord(#[from] Arc<serenity::Error>),
 
-    /// `Postgres` query error.
+    /// `Postgres` query error. `#[from]` lets `?` convert `sqlx::Error` directly.
     #[error("internal error: {0}")]
-    Database(sqlx::Error),
+    Database(#[from] sqlx::Error),
+
+    /// User-facing validation/business error surfaced verbatim (no prefix).
+    ///
+    /// Used for messages meant to be shown directly to a Discord user, e.g.
+    /// "GitHub user not found". Kept distinct from [`AppError::Internal`] so
+    /// these never leak an "internal error:" prefix into user replies.
+    #[error("{0}")]
+    Message(String),
 
     /// Catch-all for internal errors that don't fit variants.
     #[error("internal error: {0}")]
     Internal(#[from] anyhow::Error),
+}
+
+impl AppError {
+    /// Build a user-facing [`AppError::Message`] from anything string-like.
+    pub fn message(msg: impl Into<String>) -> Self {
+        Self::Message(msg.into())
+    }
 }
 
 impl IntoResponse for AppError {
@@ -35,6 +51,7 @@ impl IntoResponse for AppError {
         let status = match &self {
             Self::InvalidSignature => StatusCode::UNAUTHORIZED,
             Self::GitHub(_) => StatusCode::BAD_GATEWAY,
+            Self::Message(_) => StatusCode::BAD_REQUEST,
             Self::Discord(_) | Self::Database(_) | Self::Internal(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
@@ -44,4 +61,10 @@ impl IntoResponse for AppError {
     }
 }
 
-pub type Result<T> = std::result::Result<T, AppError>;
+/// Formats the user-facing error.
+pub fn format_error(header: &str, hint: Option<&str>) -> String {
+    match hint {
+        Some(hint) => format!("⚠️ **{}**\n{}", header, hint),
+        None => format!("⚠️ **{}**", header),
+    }
+}

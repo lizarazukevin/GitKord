@@ -1,8 +1,5 @@
-//! Discord integrations, client setup, slash commands, and message formatting.
+//! `Discord` integration for interpreting interactions and sending messages.
 
-pub mod bot;
-pub mod client;
-pub mod commands;
-pub mod context;
-pub mod messages;
-pub mod models;
+pub(crate) mod client;
+pub(crate) mod commands;
+pub(crate) mod messaging;

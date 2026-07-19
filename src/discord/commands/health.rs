@@ -1,28 +1,43 @@
-//! Health check command.
-//!
-//! Reports the status of both the Discord bot and the GitHub App integration.
-//! Performs a lightweight API call to verify the GitHub App is reachable.
+//! Health check command handler.
 
-use crate::constants::APP_NAME;
-use crate::discord::commands::shared::ephemeral;
-use crate::discord::context::AppState;
-use serenity::all::{CommandInteraction, Context};
+use crate::config::APP_NAME;
+use crate::discord::commands::registry::CommandModule;
+use crate::discord::commands::response::{ephemeral, require_guild};
+use crate::service::discord::health::HealthService;
+use anyhow::Result;
+use async_trait::async_trait;
+use serenity::all::{CommandInteraction, Context, CreateCommand};
+use serenity::Error;
+use std::sync::Arc;
 
-/// Respond with a simple online confirmation message.
-pub async fn handle_health(
-    ctx: &Context,
-    cmd: &CommandInteraction,
-    app_state: &AppState,
-) -> Result<(), serenity::Error> {
-    let github_status = match app_state.github.inner().current().app().await {
-        Ok(_) => "✅ GitHub App",
-        Err(_) => "❌ GitHub App",
-    };
+pub(super) struct HealthModule {
+    service: Arc<HealthService>,
+}
 
-    ephemeral(
-        ctx,
-        cmd,
-        &format!("`{APP_NAME}` is online and healthy\n ✅ Bot  **·**  {github_status}"),
-    )
-    .await
+impl HealthModule {
+    pub(super) fn new(service: Arc<HealthService>) -> Self {
+        Self { service }
+    }
+}
+
+#[async_trait]
+impl CommandModule for HealthModule {
+    fn commands(&self) -> Vec<CreateCommand> {
+        vec![health_command()]
+    }
+
+    fn names(&self) -> &'static [&'static str] {
+        &["health"]
+    }
+
+    async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
+        require_guild(ctx, cmd).await?;
+
+        let msg = self.service.handle().await;
+        ephemeral(ctx, cmd, &msg).await
+    }
+}
+
+fn health_command() -> CreateCommand {
+    CreateCommand::new("health").description(format!("Check if {APP_NAME} is running"))
 }
