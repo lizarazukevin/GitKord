@@ -13,5 +13,5 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/GitKord /usr/local/bin/GitKord
+COPY --from=builder /app/target/release/git_kord /usr/local/bin/git_kord
 CMD ["GitKord"]
