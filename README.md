@@ -6,14 +6,10 @@
 [![Railway](https://img.shields.io/badge/Hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.app)
 
 <h1 align="center">
-  <svg width="128" height="128" viewBox="0 0 128 128">
-    <clipPath id="circle">
-      <circle cx="64" cy="64" r="64"/>
-    </clipPath>
-    <image href="https://avatars.githubusercontent.com/in/3948389" width="128" height="128" clip-path="url(#circle)"/>
-  </svg>
+  <img src="https://avatars.githubusercontent.com/in/3948389" width="128" height="128" style="border-radius: 50%;" alt="GitKord Logo">
   <br>GitKord
 </h1>
+
 <p align="center">
     A live pull request companion for Discord, powered by Rust.
     <br />
