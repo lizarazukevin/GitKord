@@ -6,7 +6,7 @@
 [![Railway](https://img.shields.io/badge/Hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.app)
 
 <h1 align="center">
-  <img src="https://avatars.githubusercontent.com/in/3948389" width="128" height="128" style="border-radius: 50%;" alt="GitKord Logo">
+  <img src="https://avatars.githubusercontent.com/in/3948389" width="128" height="128" style="border-radius: 80%;" alt="GitKord Logo">
   <br>GitKord
 </h1>
 
