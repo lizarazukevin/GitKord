@@ -1,6 +1,6 @@
 [![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/lizarazukevin/GitKord/actions/workflows/cargo.yml/badge.svg)](https://github.com/lizarazukevin/GitKord/actions/workflows/ci.yml)
+[![CI](https://github.com/lizarazukevin/GitKord/actions/workflows/ci.yml/badge.svg)](https://github.com/lizarazukevin/GitKord/actions/workflows/ci.yml)
 [![GitHub App](https://img.shields.io/badge/GitHub-App-181717?logo=github)](https://github.com/apps/gitkord)
 [![Invite Bot](https://img.shields.io/badge/Discord-Invite-5865F2?logo=discord)](https://discord.com/oauth2/authorize?client_id=1503129643467673762)
 [![Railway](https://img.shields.io/badge/Hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.app)
