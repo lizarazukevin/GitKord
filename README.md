@@ -1,5 +1,6 @@
 [![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/lizarazukevin/GitKord/actions/workflows/cargo.yml/badge.svg)](https://github.com/lizarazukevin/GitKord/actions/workflows/ci.yml)
 [![GitHub App](https://img.shields.io/badge/GitHub-App-181717?logo=github)](https://github.com/apps/gitkord)
 [![Invite Bot](https://img.shields.io/badge/Discord-Invite-5865F2?logo=discord)](https://discord.com/oauth2/authorize?client_id=1503129643467673762)
 [![Railway](https://img.shields.io/badge/Hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.app)
@@ -125,13 +126,23 @@ cargo test                    # tests
 
 You do not need the GitHub App to develop against GitKord. In local dev mode it registers a webhook directly on the repository using a personal access token and points it at your tunnel, so real GitHub events reach the bot on your machine.
 
-You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer, a [Postgres](https://www.postgresql.org/) database, a [Discord bot token](https://discord.com/developers/applications), a [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope, and [ngrok](https://ngrok.com) (or any tunnel) to expose your local port.
+You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer, [Docker](https://docs.docker.com/get-docker/) (to run Postgres) or a local [Postgres](https://www.postgresql.org/) installation, a personal [Discord bot application](https://discord.com/developers/applications), a [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope, and [ngrok](https://ngrok.com) (or any tunnel) to expose your local port.
 
+#### Creating a Discord bot application
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**. Give it a name and click **Create**.
+2. Go to the **Bot** tab in the left sidebar. Click **Reset Token** and copy the token that appears — this is your `DISCORD_TOKEN`. Store it somewhere secure.
+3. Under the **OAuth2 → URL Generator** tab, select the following:
+   - **Scopes**: `bot`, `applications.commands`
+   - **Bot Permissions**: `Send Messages`, `Manage Threads`, `Read Message History`, `Send Messages in Threads`, `Embed Links`
+4. Use the generated URL to invite the bot to a test Discord server.
+
+#### Testing Changes
 Set `LOCAL_DEV=true` and provide the following:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DISCORD_TOKEN` | Yes | Discord bot token. |
+| `DISCORD_TOKEN` | Yes | Discord bot token from the Developer Portal (Bot → Reset Token). |
 | `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`). |
 | `GITHUB_TOKEN` | Yes | GitHub PAT with `repo` scope, used instead of GitHub App auth. |
 | `PUBLIC_DOMAIN` | Yes | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`). |
@@ -169,16 +180,16 @@ Set `RUST_LOG=debug` to see full event payloads while you work. If you have `car
 
 #### Shipped:
 
-- [x] Webhook ingestion with HMAC-SHA256 signature verification.
-- [x] One live message per pull request, edited in place, with a per-PR audit thread.
-- [x] `pull_request` and `pull_request_review` events reflected in Discord.
-- [x] Subscriptions from any channel to any repository, including the same repo across multiple channels in a server.
-- [x] GitHub App installation auth, so no per-repo webhook setup.
-- [x] `/link` and `/unlink` with GitHub account verification.
-- [x] `/assign` and `/unassign` with Discord mention resolution, thread-aware context, and a self-assignment guard.
-- [x] Commit pushes to an open PR refresh its message everywhere it is posted.
-- [x] Railway deployment on a persistent URL.
-- [x] Error handling packaged in user-friendly ephemeral messages.
+✅ Webhook ingestion with HMAC-SHA256 signature verification.<br>
+✅ One live message per pull request, edited in place, with a per-PR audit thread.<br>
+✅ `pull_request` and `pull_request_review` events reflected in Discord.<br>
+✅ Subscriptions from any channel to any repository, including the same repo across multiple channels in a server.<br>
+✅ GitHub App installation auth, so no per-repo webhook setup.<br>
+✅ `/link` and `/unlink` with GitHub account verification.<br>
+✅ `/assign` and `/unassign` with Discord mention resolution, thread-aware context, and a self-assignment guard.<br>
+✅ Commit pushes to an open PR refresh its message everywhere it is posted.<br>
+✅ Railway deployment on a persistent URL.<br>
+✅ Error handling packaged in user-friendly ephemeral messages.<br>
 
 #### In progress:
 
