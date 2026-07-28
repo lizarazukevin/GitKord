@@ -13,32 +13,32 @@ use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct IssueCommentPayload {
-    pub action: String,
-    pub issue: IssueInfo,
-    pub repository: RepositoryInfo,
+	pub action: String,
+	pub issue: IssueInfo,
+	pub repository: RepositoryInfo,
 }
 
 pub struct IssueCommentEventHandler {
-    service: Arc<IssueCommentService>,
+	service: Arc<IssueCommentService>,
 }
 
 impl IssueCommentEventHandler {
-    pub fn new(service: Arc<IssueCommentService>) -> Self {
-        Self { service }
-    }
+	pub fn new(service: Arc<IssueCommentService>) -> Self {
+		Self { service }
+	}
 }
 
 #[async_trait]
 impl WebhookEventHandler for IssueCommentEventHandler {
-    fn event_type(&self) -> GitHubEvent {
-        GitHubEvent::IssueComment
-    }
+	fn event_type(&self) -> GitHubEvent {
+		GitHubEvent::IssueComment
+	}
 
-    async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
-        let payload: IssueCommentPayload =
-            serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
-        let req = IssueCommentRequest::from_payload(payload);
-        self.service.handle(req).await?;
-        Ok(StatusCode::OK.into_response())
-    }
+	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
+		let payload: IssueCommentPayload =
+			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+		let req = IssueCommentRequest::from_payload(payload);
+		self.service.handle(req).await?;
+		Ok(StatusCode::OK.into_response())
+	}
 }

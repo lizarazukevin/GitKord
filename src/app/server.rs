@@ -12,28 +12,28 @@ use tracing::info;
 
 /// Serve the webhook + health endpoints until graceful shutdown.
 pub async fn serve_http(port: u16, router: Arc<WebhookRouter>) -> Result<(), AppError> {
-    let app = Router::new().route("/healthz", get(healthz)).route(
-        "/github/webhook",
-        post({
-            let router = router.clone();
-            move |headers, body| router.route(headers, body)
-        }),
-    );
+	let app = Router::new().route("/healthz", get(healthz)).route(
+		"/github/webhook",
+		post({
+			let router = router.clone();
+			move |headers, body| router.route(headers, body)
+		}),
+	);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    info!("HTTP server listening on {addr}");
+	let addr = SocketAddr::from(([0, 0, 0, 0], port));
+	info!("HTTP server listening on {addr}");
 
-    let listener = TcpListener::bind(addr)
-        .await
-        .with_context(|| format!("failed to bind HTTP listener on {addr}"))?;
-    serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .context("HTTP server error")?;
+	let listener = TcpListener::bind(addr)
+		.await
+		.with_context(|| format!("failed to bind HTTP listener on {addr}"))?;
+	serve(listener, app)
+		.with_graceful_shutdown(shutdown_signal())
+		.await
+		.context("HTTP server error")?;
 
-    Ok(())
+	Ok(())
 }
 
 async fn healthz() -> &'static str {
-    "ok"
+	"ok"
 }

@@ -15,8 +15,8 @@ use tracing::info;
 
 /// Identifiers returned after posting a PR message.
 pub struct DiscordMessage {
-    pub message_id: u64,
-    pub thread_id: u64,
+	pub message_id: u64,
+	pub thread_id: u64,
 }
 
 /// Post the main PR message to a channel and create an audit thread on it.
@@ -24,47 +24,47 @@ pub struct DiscordMessage {
 /// Returns the message and thread IDs, both stored so future events
 /// can edit the message and append entries to the thread.
 pub(crate) async fn post_pull_request_message(
-    http: &Http,
-    channel_id: ChannelId,
-    message_data: &PrMessageData,
+	http: &Http,
+	channel_id: ChannelId,
+	message_data: &PrMessageData,
 ) -> Result<DiscordMessage, AppError> {
-    let formatted = format_pr_message(message_data, &now_utc());
+	let formatted = format_pr_message(message_data, &now_utc());
 
-    let message = channel_id
-        .send_message(http, CreateMessage::new().content(formatted))
-        .await
-        .map_err(|e| AppError::Discord(Arc::new(e)))?;
+	let message = channel_id
+		.send_message(http, CreateMessage::new().content(formatted))
+		.await
+		.map_err(|e| AppError::Discord(Arc::new(e)))?;
 
-    let thread_name = format!("PR #{} — audit log", message_data.number);
-    let thread = channel_id
-        .create_thread_from_message(
-            http,
-            message.id,
-            CreateThread::new(thread_name)
-                .auto_archive_duration(serenity::all::AutoArchiveDuration::OneWeek),
-        )
-        .await
-        .map_err(|e| AppError::Discord(Arc::new(e)))?;
+	let thread_name = format!("PR #{} — audit log", message_data.number);
+	let thread = channel_id
+		.create_thread_from_message(
+			http,
+			message.id,
+			CreateThread::new(thread_name)
+				.auto_archive_duration(serenity::all::AutoArchiveDuration::OneWeek),
+		)
+		.await
+		.map_err(|e| AppError::Discord(Arc::new(e)))?;
 
-    info!(
-        channel = %channel_id,
-        message = %message.id,
-        thread  = %thread.id,
-        pr      = message_data.number,
-        "posted PR message and created audit thread"
-    );
+	info!(
+		channel = %channel_id,
+		message = %message.id,
+		thread  = %thread.id,
+		pr      = message_data.number,
+		"posted PR message and created audit thread"
+	);
 
-    post_to_thread(
-        http,
-        thread.id.get(),
-        &format!("🟢 **{}** opened a review", message_data.author),
-    )
-    .await?;
+	post_to_thread(
+		http,
+		thread.id.get(),
+		&format!("🟢 **{}** opened a review", message_data.author),
+	)
+	.await?;
 
-    Ok(DiscordMessage {
-        message_id: message.id.get(),
-        thread_id: thread.id.get(),
-    })
+	Ok(DiscordMessage {
+		message_id: message.id.get(),
+		thread_id: thread.id.get(),
+	})
 }
 
 /// Edit the main PR message in place with refreshed data.
@@ -72,28 +72,28 @@ pub(crate) async fn post_pull_request_message(
 /// Called on any event that changes visible PR state (e.g. review verdicts,
 /// comment counts, lifecycle changes, etc.)
 pub(crate) async fn update_pull_request_message(
-    http: &Http,
-    channel_id: ChannelId,
-    message_id: u64,
-    message_data: &PrMessageData,
+	http: &Http,
+	channel_id: ChannelId,
+	message_id: u64,
+	message_data: &PrMessageData,
 ) -> Result<(), AppError> {
-    let formatted = format_pr_message(message_data, &now_utc());
+	let formatted = format_pr_message(message_data, &now_utc());
 
-    channel_id
-        .edit_message(
-            http,
-            MessageId::new(message_id),
-            EditMessage::new().content(formatted),
-        )
-        .await
-        .map_err(|e| AppError::Discord(Arc::new(e)))?;
+	channel_id
+		.edit_message(
+			http,
+			MessageId::new(message_id),
+			EditMessage::new().content(formatted),
+		)
+		.await
+		.map_err(|e| AppError::Discord(Arc::new(e)))?;
 
-    info!(
-        channel = %channel_id,
-        message = message_id,
-        pr      = message_data.number,
-        "updated PR message"
-    );
+	info!(
+		channel = %channel_id,
+		message = message_id,
+		pr      = message_data.number,
+		"updated PR message"
+	);
 
-    Ok(())
+	Ok(())
 }

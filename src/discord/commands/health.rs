@@ -11,33 +11,33 @@ use serenity::Error;
 use std::sync::Arc;
 
 pub(super) struct HealthModule {
-    service: Arc<HealthService>,
+	service: Arc<HealthService>,
 }
 
 impl HealthModule {
-    pub(super) fn new(service: Arc<HealthService>) -> Self {
-        Self { service }
-    }
+	pub(super) fn new(service: Arc<HealthService>) -> Self {
+		Self { service }
+	}
 }
 
 #[async_trait]
 impl CommandModule for HealthModule {
-    fn commands(&self) -> Vec<CreateCommand> {
-        vec![health_command()]
-    }
+	fn commands(&self) -> Vec<CreateCommand> {
+		vec![health_command()]
+	}
 
-    fn names(&self) -> &'static [&'static str] {
-        &["health"]
-    }
+	fn names(&self) -> &'static [&'static str] {
+		&["health"]
+	}
 
-    async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
-        require_guild(ctx, cmd).await?;
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
+		require_guild(ctx, cmd).await?;
 
-        let msg = self.service.handle().await;
-        ephemeral(ctx, cmd, &msg).await
-    }
+		let msg = self.service.handle().await;
+		ephemeral(ctx, cmd, &msg).await
+	}
 }
 
 fn health_command() -> CreateCommand {
-    CreateCommand::new("health").description(format!("Check if {APP_NAME} is running"))
+	CreateCommand::new("health").description(format!("Check if {APP_NAME} is running"))
 }

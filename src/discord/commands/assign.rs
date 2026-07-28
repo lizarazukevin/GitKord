@@ -10,164 +10,164 @@ use crate::AppError;
 use anyhow::Result;
 use async_trait::async_trait;
 use serenity::all::{
-    CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
+	CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
 };
 use serenity::Error;
 use std::sync::Arc;
 use tracing::error;
 
 pub(super) struct AssignModule {
-    service: Arc<AssignService>,
+	service: Arc<AssignService>,
 }
 
 impl AssignModule {
-    pub(super) fn new(service: Arc<AssignService>) -> Self {
-        Self { service }
-    }
+	pub(super) fn new(service: Arc<AssignService>) -> Self {
+		Self { service }
+	}
 }
 
 async fn parse_assign_input(
-    ctx: &Context,
-    cmd: &CommandInteraction,
+	ctx: &Context,
+	cmd: &CommandInteraction,
 ) -> Result<Option<AssignRequest>, Error> {
-    require_guild(ctx, cmd).await?;
+	require_guild(ctx, cmd).await?;
 
-    let action = match cmd.data.name.as_str() {
-        "assign" => AssignAction::Assign,
-        "unassign" => AssignAction::Unassign,
-        _ => return Ok(None),
-    };
+	let action = match cmd.data.name.as_str() {
+		"assign" => AssignAction::Assign,
+		"unassign" => AssignAction::Unassign,
+		_ => return Ok(None),
+	};
 
-    let repo = match repo_name_option(cmd, "repository") {
-        CommandOption::Valid(r) => Some(r),
-        CommandOption::Invalid => {
-            ephemeral(ctx, cmd, "Repository must be in `owner/name` format.").await?;
-            return Ok(None);
-        }
-        CommandOption::Missing => None,
-    };
+	let repo = match repo_name_option(cmd, "repository") {
+		CommandOption::Valid(r) => Some(r),
+		CommandOption::Invalid => {
+			ephemeral(ctx, cmd, "Repository must be in `owner/name` format.").await?;
+			return Ok(None);
+		}
+		CommandOption::Missing => None,
+	};
 
-    let pr = match number_option(cmd, "pr") {
-        CommandOption::Valid(n) => Some(n),
-        CommandOption::Invalid => {
-            ephemeral(ctx, cmd, "Pull request number is invalid.").await?;
-            return Ok(None);
-        }
-        CommandOption::Missing => None,
-    };
+	let pr = match number_option(cmd, "pr") {
+		CommandOption::Valid(n) => Some(n),
+		CommandOption::Invalid => {
+			ephemeral(ctx, cmd, "Pull request number is invalid.").await?;
+			return Ok(None);
+		}
+		CommandOption::Missing => None,
+	};
 
-    let reviewer = match resolve_reviewer_option(cmd, "reviewer") {
-        CommandOption::Valid(r) => r,
-        _ => {
-            ephemeral(
-                ctx,
-                cmd,
-                "Provide a valid GitHub username or Discord mention.",
-            )
-            .await?;
-            return Ok(None);
-        }
-    };
+	let reviewer = match resolve_reviewer_option(cmd, "reviewer") {
+		CommandOption::Valid(r) => r,
+		_ => {
+			ephemeral(
+				ctx,
+				cmd,
+				"Provide a valid GitHub username or Discord mention.",
+			)
+			.await?;
+			return Ok(None);
+		}
+	};
 
-    Ok(Some(AssignRequest {
-        reviewer,
-        action,
-        actor: cmd.user.name.clone(),
-        repo,
-        pr,
-        channel_id: cmd.channel_id.get(),
-    }))
+	Ok(Some(AssignRequest {
+		reviewer,
+		action,
+		actor: cmd.user.name.clone(),
+		repo,
+		pr,
+		channel_id: cmd.channel_id.get(),
+	}))
 }
 
 #[async_trait]
 impl CommandModule for AssignModule {
-    fn commands(&self) -> Vec<CreateCommand> {
-        vec![assign_command(), unassign_command()]
-    }
+	fn commands(&self) -> Vec<CreateCommand> {
+		vec![assign_command(), unassign_command()]
+	}
 
-    fn names(&self) -> &'static [&'static str] {
-        &["assign", "unassign"]
-    }
+	fn names(&self) -> &'static [&'static str] {
+		&["assign", "unassign"]
+	}
 
-    async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
-        let Some(req) = parse_assign_input(ctx, cmd).await? else {
-            return Ok(());
-        };
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
+		let Some(req) = parse_assign_input(ctx, cmd).await? else {
+			return Ok(());
+		};
 
-        cmd.defer_ephemeral(ctx).await?;
+		cmd.defer_ephemeral(ctx).await?;
 
-        match self.service.handle(req, &ctx.http).await {
-            Ok(msg) => deferred_ephemeral(ctx, cmd, &msg).await,
-            Err(e) => {
-                error!(error = %e, "assign service failed");
-                let user_msg = match &e {
-                    AppError::Message(_) => e.to_string(),
-                    _ => format_error("Something went wrong. Please try again.", None),
-                };
-                deferred_ephemeral(ctx, cmd, &user_msg).await
-            }
-        }
-    }
+		match self.service.handle(req, &ctx.http).await {
+			Ok(msg) => deferred_ephemeral(ctx, cmd, &msg).await,
+			Err(e) => {
+				error!(error = %e, "assign service failed");
+				let user_msg = match &e {
+					AppError::Message(_) => e.to_string(),
+					_ => format_error("Something went wrong. Please try again.", None),
+				};
+				deferred_ephemeral(ctx, cmd, &user_msg).await
+			}
+		}
+	}
 }
 
 fn assign_command() -> CreateCommand {
-    CreateCommand::new("assign")
-        .description(
-            "Request review on a PR. Run inside a PR thread to skip `repository` and `pr`.",
-        )
-        .add_option(
-            CreateCommandOption::new(
-                CommandOptionType::String,
-                "reviewer",
-                "GitHub username or @Discord mention",
-            )
-            .required(true),
-        )
-        .add_option(
-            CreateCommandOption::new(
-                CommandOptionType::String,
-                "repository",
-                "Repository in owner/name format (not needed inside a PR thread)",
-            )
-            .required(false),
-        )
-        .add_option(
-            CreateCommandOption::new(
-                CommandOptionType::Integer,
-                "pr",
-                "PR number (not needed inside a PR thread)",
-            )
-            .required(false),
-        )
+	CreateCommand::new("assign")
+		.description(
+			"Request review on a PR. Run inside a PR thread to skip `repository` and `pr`.",
+		)
+		.add_option(
+			CreateCommandOption::new(
+				CommandOptionType::String,
+				"reviewer",
+				"GitHub username or @Discord mention",
+			)
+			.required(true),
+		)
+		.add_option(
+			CreateCommandOption::new(
+				CommandOptionType::String,
+				"repository",
+				"Repository in owner/name format (not needed inside a PR thread)",
+			)
+			.required(false),
+		)
+		.add_option(
+			CreateCommandOption::new(
+				CommandOptionType::Integer,
+				"pr",
+				"PR number (not needed inside a PR thread)",
+			)
+			.required(false),
+		)
 }
 
 fn unassign_command() -> CreateCommand {
-    CreateCommand::new("unassign")
-        .description(
-            "Remove a review request. Run inside a PR thread to skip `repository` and `pr`.",
-        )
-        .add_option(
-            CreateCommandOption::new(
-                CommandOptionType::String,
-                "reviewer",
-                "Github username or @Discord mention",
-            )
-            .required(true),
-        )
-        .add_option(
-            CreateCommandOption::new(
-                CommandOptionType::String,
-                "repository",
-                "Repository in owner/name format (not needed inside a PR thread)",
-            )
-            .required(false),
-        )
-        .add_option(
-            CreateCommandOption::new(
-                CommandOptionType::Integer,
-                "pr",
-                "PR number (not needed inside a PR thread)",
-            )
-            .required(false),
-        )
+	CreateCommand::new("unassign")
+		.description(
+			"Remove a review request. Run inside a PR thread to skip `repository` and `pr`.",
+		)
+		.add_option(
+			CreateCommandOption::new(
+				CommandOptionType::String,
+				"reviewer",
+				"Github username or @Discord mention",
+			)
+			.required(true),
+		)
+		.add_option(
+			CreateCommandOption::new(
+				CommandOptionType::String,
+				"repository",
+				"Repository in owner/name format (not needed inside a PR thread)",
+			)
+			.required(false),
+		)
+		.add_option(
+			CreateCommandOption::new(
+				CommandOptionType::Integer,
+				"pr",
+				"PR number (not needed inside a PR thread)",
+			)
+			.required(false),
+		)
 }

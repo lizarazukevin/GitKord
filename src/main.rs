@@ -15,6 +15,6 @@ use git_kord::{init_tracing, run, AppError};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-    init_tracing();
-    run().await
+	init_tracing();
+	run().await
 }

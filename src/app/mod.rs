@@ -11,5 +11,5 @@ use crate::error::AppError;
 
 /// Build the application and run it until a shutdown signal or fatal error.
 pub async fn run() -> Result<(), AppError> {
-    bootstrap::Application::build().await?.run().await
+	bootstrap::Application::build().await?.run().await
 }

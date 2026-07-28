@@ -5,24 +5,24 @@ use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
 pub struct Subscription {
-    /// Full repository name in `owner/project` form.
-    pub repository: String,
-    pub guild_id: u64,
-    pub channel_id: u64,
-    pub installation_id: u64,
+	/// Full repository name in `owner/project` form.
+	pub repository: String,
+	pub guild_id: u64,
+	pub channel_id: u64,
+	pub installation_id: u64,
 }
 
 /// Persistence for `Discord` channel subscriptions to a repository's PR updates.
 #[async_trait]
 pub trait SubscriptionStore: Send + Sync {
-    /// Insert or update a repository subscription to a channel.
-    async fn upsert(&self, subscription: Subscription) -> Result<(), AppError>;
-    /// Look up the stored `GitHub` app installation ID of a subscribed repository.
-    async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<u64, AppError>;
-    /// List every channel subscribed to a repository.
-    async fn fetch_all_by_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError>;
-    /// Remove a single channel subscription for a repository.
-    async fn delete(&self, repo: &str, guild_id: u64, channel_id: u64) -> Result<(), AppError>;
-    /// Remove every subscription for repository (used on app uninstall).
-    async fn delete_all_by_repo(&self, repo: &str) -> Result<(), AppError>;
+	/// Insert or update a repository subscription to a channel.
+	async fn upsert(&self, subscription: Subscription) -> Result<(), AppError>;
+	/// Look up the stored `GitHub` app installation ID of a subscribed repository.
+	async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<u64, AppError>;
+	/// List every channel subscribed to a repository.
+	async fn fetch_all_by_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError>;
+	/// Remove a single channel subscription for a repository.
+	async fn delete(&self, repo: &str, guild_id: u64, channel_id: u64) -> Result<(), AppError>;
+	/// Remove every subscription for repository (used on app uninstall).
+	async fn delete_all_by_repo(&self, repo: &str) -> Result<(), AppError>;
 }

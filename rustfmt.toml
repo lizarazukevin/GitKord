@@ -3,5 +3,5 @@
 
 edition = "2021"
 
-# Line width
 max_width = 100                     # default is 80, async is more verbose so increasing this
+hard_tabs = true

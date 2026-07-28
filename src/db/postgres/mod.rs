@@ -17,9 +17,9 @@ mod subscriptions;
 mod user_links;
 
 pub struct Stores {
-    pub(crate) prs: Arc<dyn PrStore>,
-    pub(crate) subscriptions: Arc<dyn SubscriptionStore>,
-    pub(crate) users: Arc<dyn UserStore>,
+	pub(crate) prs: Arc<dyn PrStore>,
+	pub(crate) subscriptions: Arc<dyn SubscriptionStore>,
+	pub(crate) users: Arc<dyn UserStore>,
 }
 
 /// Create the three `Postgres`‑backed stores, ready for injection.
@@ -28,13 +28,13 @@ pub struct Stores {
 /// the stores wrapped in `Arc` so they can be shared across the
 /// application. Call once at startup.
 pub(crate) async fn create_stores(database_url: &str) -> Result<Stores, AppError> {
-    let pool = PgPool::connect(database_url).await?;
+	let pool = PgPool::connect(database_url).await?;
 
-    run_migrations(&pool).await?;
+	run_migrations(&pool).await?;
 
-    Ok(Stores {
-        prs: Arc::new(PgPrMessageStore::new(pool.clone())),
-        subscriptions: Arc::new(PgSubscriptionStore::new(pool.clone())),
-        users: Arc::new(PgUserStore::new(pool)),
-    })
+	Ok(Stores {
+		prs: Arc::new(PgPrMessageStore::new(pool.clone())),
+		subscriptions: Arc::new(PgSubscriptionStore::new(pool.clone())),
+		users: Arc::new(PgUserStore::new(pool)),
+	})
 }
