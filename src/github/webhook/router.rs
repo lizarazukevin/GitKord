@@ -44,16 +44,19 @@ impl WebhookRouter {
 		issue_comment_service: Arc<IssueCommentService>,
 		installation_service: Arc<InstallationService>,
 	) -> Self {
-		let handlers: HashMap<GitHubEvent, Arc<dyn WebhookEventHandler>> = vec![
-			Arc::new(PullRequestEventHandler::new(pull_request_service))
-				as Arc<dyn WebhookEventHandler>,
-			Arc::new(ReviewEventHandler::new(review_service)),
-			Arc::new(IssueCommentEventHandler::new(issue_comment_service)),
-			Arc::new(InstallationEventHandler::new(installation_service)),
-		]
-		.into_iter()
-		.map(|h| (h.event_type(), h))
-		.collect();
+		let pr: Arc<dyn WebhookEventHandler> =
+			Arc::new(PullRequestEventHandler::new(pull_request_service));
+		let review: Arc<dyn WebhookEventHandler> =
+			Arc::new(ReviewEventHandler::new(review_service));
+		let issue: Arc<dyn WebhookEventHandler> =
+			Arc::new(IssueCommentEventHandler::new(issue_comment_service));
+		let installation: Arc<dyn WebhookEventHandler> =
+			Arc::new(InstallationEventHandler::new(installation_service));
+
+		let handlers = [pr, review, issue, installation]
+			.into_iter()
+			.map(|h| (h.event_type(), h))
+			.collect();
 
 		Self {
 			verifier: WebhookVerifier::new(secret),

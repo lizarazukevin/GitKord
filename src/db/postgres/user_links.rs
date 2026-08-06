@@ -27,7 +27,7 @@ pub(super) struct PgUserStore {
 }
 
 impl PgUserStore {
-	pub(super) fn new(pool: PgPool) -> Self {
+	pub(super) const fn new(pool: PgPool) -> Self {
 		Self { pool }
 	}
 }

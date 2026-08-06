@@ -11,7 +11,7 @@ pub struct HealthService {
 }
 
 impl HealthService {
-	pub fn new(github: Arc<GitHubClient>) -> Self {
+	pub const fn new(github: Arc<GitHubClient>) -> Self {
 		Self { github }
 	}
 

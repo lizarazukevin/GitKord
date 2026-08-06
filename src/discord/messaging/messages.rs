@@ -23,7 +23,7 @@ pub struct DiscordMessage {
 ///
 /// Returns the message and thread IDs, both stored so future events
 /// can edit the message and append entries to the thread.
-pub(crate) async fn post_pull_request_message(
+pub async fn post_pull_request_message(
 	http: &Http,
 	channel_id: ChannelId,
 	message_data: &PrMessageData,
@@ -71,7 +71,7 @@ pub(crate) async fn post_pull_request_message(
 ///
 /// Called on any event that changes visible PR state (e.g. review verdicts,
 /// comment counts, lifecycle changes, etc.)
-pub(crate) async fn update_pull_request_message(
+pub async fn update_pull_request_message(
 	http: &Http,
 	channel_id: ChannelId,
 	message_id: u64,

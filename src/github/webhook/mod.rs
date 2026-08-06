@@ -1,5 +1,5 @@
 //! `GitHub` webhook event routing and validation.
 
-pub(crate) mod events;
-pub(crate) mod router;
+pub mod events;
+pub mod router;
 mod signature;

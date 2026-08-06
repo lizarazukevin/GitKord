@@ -19,7 +19,7 @@ pub(super) struct UserLinkModule {
 }
 
 impl UserLinkModule {
-	pub(super) fn new(service: Arc<UserLinkService>) -> Self {
+	pub(super) const fn new(service: Arc<UserLinkService>) -> Self {
 		Self { service }
 	}
 
@@ -37,13 +37,14 @@ impl UserLinkModule {
 		};
 
 		let github_login = match action {
-			LinkAction::Link => match string_option(cmd, "username") {
-				CommandOption::Valid(login) => login,
-				_ => {
+			LinkAction::Link => {
+				if let CommandOption::Valid(login) = string_option(cmd, "username") {
+					login
+				} else {
 					ephemeral(ctx, cmd, "Provide a valid GitHub username.").await?;
 					return Ok(None);
 				}
-			},
+			}
 			LinkAction::Unlink => String::new(),
 		};
 

@@ -1,6 +1,6 @@
 //! PR message formatting and delivery.
 
-pub(crate) mod audit;
-pub(crate) mod messages;
+pub mod audit;
+pub mod messages;
 mod renderer;
 mod util;

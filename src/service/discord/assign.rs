@@ -28,7 +28,7 @@ pub struct AssignRequest {
 	pub channel_id: u64,
 }
 
-pub(crate) struct AssignService {
+pub struct AssignService {
 	pr_store: Arc<dyn PrStore>,
 	sub_store: Arc<dyn SubscriptionStore>,
 	user_store: Arc<dyn UserStore>,
@@ -129,7 +129,7 @@ impl AssignService {
 					))
 				})?;
 			}
-		};
+		}
 
 		info!(
 			pr,

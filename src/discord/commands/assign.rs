@@ -1,6 +1,6 @@
 //! Assign and unassign command handlers.
 
-pub(crate) use crate::discord::commands::args::CommandOption;
+pub use crate::discord::commands::args::CommandOption;
 use crate::discord::commands::args::{number_option, repo_name_option, resolve_reviewer_option};
 use crate::discord::commands::registry::CommandModule;
 use crate::discord::commands::response::{deferred_ephemeral, ephemeral, require_guild};
@@ -21,7 +21,7 @@ pub(super) struct AssignModule {
 }
 
 impl AssignModule {
-	pub(super) fn new(service: Arc<AssignService>) -> Self {
+	pub(super) const fn new(service: Arc<AssignService>) -> Self {
 		Self { service }
 	}
 }
@@ -56,17 +56,14 @@ async fn parse_assign_input(
 		CommandOption::Missing => None,
 	};
 
-	let reviewer = match resolve_reviewer_option(cmd, "reviewer") {
-		CommandOption::Valid(r) => r,
-		_ => {
-			ephemeral(
-				ctx,
-				cmd,
-				"Provide a valid GitHub username or Discord mention.",
-			)
-			.await?;
-			return Ok(None);
-		}
+	let CommandOption::Valid(reviewer) = resolve_reviewer_option(cmd, "reviewer") else {
+		ephemeral(
+			ctx,
+			cmd,
+			"Provide a valid GitHub username or Discord mention.",
+		)
+		.await?;
+		return Ok(None);
 	};
 
 	Ok(Some(AssignRequest {

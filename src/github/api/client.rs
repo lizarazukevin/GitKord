@@ -23,7 +23,7 @@ impl GitHubClient {
 	/// Build an authenticated `GitHubClient`.
 	///
 	/// In production, builds an app-level client using `app_id` and `private_key_pem`.
-	/// In local dev auth_mode, builds a PAT-based client used directly for all API calls.
+	/// In local dev `auth_mode`, builds a PAT-based client used directly for all API calls.
 	pub fn new(
 		app_id: u64,
 		private_key_pem: &str,

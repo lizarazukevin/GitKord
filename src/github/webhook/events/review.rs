@@ -26,7 +26,7 @@ pub struct ReviewEventHandler {
 }
 
 impl ReviewEventHandler {
-	pub fn new(service: Arc<ReviewService>) -> Self {
+	pub const fn new(service: Arc<ReviewService>) -> Self {
 		Self { service }
 	}
 }

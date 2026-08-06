@@ -28,7 +28,7 @@ pub enum PullRequestAction {
 }
 
 impl PullRequestAction {
-	pub fn as_str(self) -> &'static str {
+	pub const fn as_str(self) -> &'static str {
 		match self {
 			Self::Opened => "opened",
 			Self::Closed => "closed",
@@ -112,7 +112,7 @@ impl PullRequestService {
 	}
 
 	/// A new PR was opened, post the initial message to every subscribed channel.
-	/// Side effect of [post_pull_request_message] is creating an audit thread.
+	/// Side effect of [`post_pull_request_message`] is creating an audit thread.
 	async fn handle_opened(&self, req: PullRequestRequest) -> Result<(), AppError> {
 		let repository = format!("{}/{}", req.owner, req.project);
 

@@ -42,7 +42,7 @@ impl ReviewRequest {
 			project: payload.repository.name,
 			pr_number: payload.pull_request.number,
 			reviewer_login: payload.review.user.login.clone(),
-			review_state: payload.review.state.to_string(),
+			review_state: payload.review.state.clone(),
 			review_emoji: payload.review.verdict_emoji().to_string(),
 		}
 	}

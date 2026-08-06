@@ -13,9 +13,9 @@ use serenity::all::{Command, CommandInteraction, Context, CreateCommand, Interac
 use std::sync::Arc;
 use tracing::{error, warn};
 
-/// Module composed of independent commands grouped by shared behavior (e.g. AssignModule).
+/// Module composed of independent commands grouped by shared behavior (e.g. `AssignModule`).
 #[async_trait]
-pub(crate) trait CommandModule: Send + Sync {
+pub trait CommandModule: Send + Sync {
 	/// Slash command definition(s) part of module (e.g. `/assign`, `/unassign`).
 	fn commands(&self) -> Vec<CreateCommand>;
 
@@ -29,7 +29,7 @@ pub(crate) trait CommandModule: Send + Sync {
 
 /// Holds every registered `CommandModule` to expose command definitions
 /// at startup and routing subsequent interactions to the module that owns it.
-pub(crate) struct CommandRegistry {
+pub struct CommandRegistry {
 	modules: Vec<Arc<dyn CommandModule>>,
 }
 
@@ -81,7 +81,7 @@ impl CommandRegistry {
 }
 
 /// Constructs the registry with every known module and their commands.
-pub(crate) fn build_registry(
+pub fn build_registry(
 	assign_service: Arc<AssignService>,
 	subscribe_service: Arc<SubscribeService>,
 	link_service: Arc<UserLinkService>,

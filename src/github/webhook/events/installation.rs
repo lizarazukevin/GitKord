@@ -23,7 +23,7 @@ pub struct InstallationEventHandler {
 }
 
 impl InstallationEventHandler {
-	pub fn new(service: Arc<InstallationService>) -> Self {
+	pub const fn new(service: Arc<InstallationService>) -> Self {
 		Self { service }
 	}
 }
