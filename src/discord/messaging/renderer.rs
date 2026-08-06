@@ -111,7 +111,7 @@ const fn to_u64(value: f64) -> u64 {
 
 /// Compact line showing files, commits, and comments.
 fn format_pr_stats(files: u64, commits: u64, comments: u64) -> String {
-	format!("📁 *{files} files*  **·**  ✨ *{commits} commits*  **·**  💬 *{comments} comments*",)
+	format!("📁 *{files} files*  **·**  ✨ *{commits} commits*  **·**  💬 *{comments} comments*")
 }
 
 /// Render the CI check pipeline, or an empty string if there are none.
