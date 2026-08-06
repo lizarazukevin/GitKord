@@ -15,7 +15,7 @@ pub struct WebhookRegistrationConfig {
 #[derive(Debug, Clone)]
 pub struct EnvConfig {
 	/// `Discord` bot token taken from developer portal.
-	/// https://discord.com/developers/home
+	/// <https://discord.com/developers/home>
 	pub discord_token: String,
 
 	/// HMAC webhook secret used to verify incoming `GitHub` webhook payloads.

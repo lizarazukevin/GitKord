@@ -59,7 +59,7 @@ impl PrMessageData {
 		pr: &PullRequestInfo,
 		reviewers: Vec<ReviewSummary>,
 	) -> Self {
-		PrMessageData {
+		Self {
 			status_emoji: pr.status_emoji(),
 			number: pr.number,
 			title: pr.title.clone(),
@@ -67,12 +67,12 @@ impl PrMessageData {
 			repository: format!("{owner}/{project}"),
 			head: pr.head.branch.clone(),
 			base: pr.base.branch.clone(),
-			url: pr.html_url.to_string(),
+			url: pr.html_url.clone(),
 			additions: pr.additions,
 			deletions: pr.deletions,
 			files: pr.changed_files,
 			commits: pr.commits,
-			comments: pr.comments + pr.review_comments,
+			comments: pr.comments.saturating_add(pr.review_comments),
 			reviews: reviewers,
 			checks: vec![],
 		}
@@ -152,9 +152,7 @@ async fn enrich_reviewers(
 	reviewers
 		.into_iter()
 		.map(|(github_login, state)| {
-			let discord_tag = discord_map
-				.get(&github_login)
-				.map(|id| format!("<@{}>", id));
+			let discord_tag = discord_map.get(&github_login).map(|id| format!("<@{id}>"));
 			ReviewSummary {
 				github_login,
 				discord_tag,

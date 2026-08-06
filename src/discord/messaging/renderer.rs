@@ -59,9 +59,6 @@ fn format_diff_bar(additions: u64, deletions: u64) -> String {
 }
 
 /// Decide how many of the lit blocks represent additions vs deletions.
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
 fn split_diff_blocks(additions: u64, deletions: u64) -> (u64, u64) {
 	let total_lines = additions.saturating_add(deletions);
 
@@ -71,10 +68,11 @@ fn split_diff_blocks(additions: u64, deletions: u64) -> (u64, u64) {
 
 	let lit_blocks = blocks_to_light(total_lines);
 
-	let add_blocks = (additions * lit_blocks)
-		.div_ceil(total_lines)
-		.min(lit_blocks);
-	let del_blocks = lit_blocks - add_blocks;
+	let add_ratio = to_f64(additions) / to_f64(total_lines);
+	let add_blocks = to_u64(to_f64(lit_blocks) * add_ratio);
+
+	let add_blocks = add_blocks.min(lit_blocks);
+	let del_blocks = lit_blocks.saturating_sub(add_blocks);
 
 	let add_blocks = if additions > 0 { add_blocks.max(1) } else { 0 };
 	let del_blocks = if deletions > 0 { del_blocks.max(1) } else { 0 };
@@ -86,20 +84,34 @@ fn split_diff_blocks(additions: u64, deletions: u64) -> (u64, u64) {
 ///
 /// Uses a sub‑linear growth curve so the bar is useful for both tiny and
 /// very large PRs.
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
 fn blocks_to_light(total_lines: u64) -> u64 {
-	let ratio = (total_lines as f64 / DIFF_BAR_FULL_AT as f64).min(1.0);
-	(DIFF_BAR_WIDTH as f64 * ratio.powf(GROWTH_EXPONENT)).round() as u64
+	let ratio = (to_f64(total_lines) / to_f64(DIFF_BAR_FULL_AT)).min(1.0);
+
+	to_u64(to_f64(DIFF_BAR_WIDTH) * ratio.powf(GROWTH_EXPONENT))
+}
+
+#[expect(
+	clippy::cast_precision_loss,
+	clippy::as_conversions,
+	reason = "Visualization calculations require converting bounded counts to floating point"
+)]
+const fn to_f64(value: u64) -> f64 {
+	value as f64
+}
+
+#[expect(
+	clippy::cast_possible_truncation,
+	clippy::cast_sign_loss,
+	clippy::as_conversions,
+	reason = "Visualization values are rounded and bounded by display dimensions"
+)]
+const fn to_u64(value: f64) -> u64 {
+	value.round() as u64
 }
 
 /// Compact line showing files, commits, and comments.
 fn format_pr_stats(files: u64, commits: u64, comments: u64) -> String {
-	format!(
-		"📁 *{} files*  **·**  ✨ *{} commits*  **·**  💬 *{} comments*",
-		files, commits, comments,
-	)
+	format!("📁 *{files} files*  **·**  ✨ *{commits} commits*  **·**  💬 *{comments} comments*")
 }
 
 /// Render the CI check pipeline, or an empty string if there are none.

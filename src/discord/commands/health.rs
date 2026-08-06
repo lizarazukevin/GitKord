@@ -15,7 +15,7 @@ pub(super) struct HealthModule {
 }
 
 impl HealthModule {
-	pub(super) fn new(service: Arc<HealthService>) -> Self {
+	pub(super) const fn new(service: Arc<HealthService>) -> Self {
 		Self { service }
 	}
 }

@@ -23,7 +23,7 @@ pub struct IssueCommentEventHandler {
 }
 
 impl IssueCommentEventHandler {
-	pub fn new(service: Arc<IssueCommentService>) -> Self {
+	pub const fn new(service: Arc<IssueCommentService>) -> Self {
 		Self { service }
 	}
 }

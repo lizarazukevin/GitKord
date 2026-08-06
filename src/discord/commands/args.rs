@@ -2,7 +2,7 @@
 
 use serenity::all::CommandInteraction;
 
-pub(crate) enum CommandOption<T> {
+pub enum CommandOption<T> {
 	Valid(T),
 	Invalid,
 	Missing,
@@ -31,7 +31,9 @@ pub(super) fn number_option(cmd: &CommandInteraction, name: &str) -> CommandOpti
 		return CommandOption::Invalid;
 	};
 
-	CommandOption::Valid(value as u64)
+	value
+		.try_into()
+		.map_or(CommandOption::Invalid, CommandOption::Valid)
 }
 
 /// Parse a valid repository name from user input.
@@ -59,7 +61,7 @@ pub(super) fn repo_name_option(cmd: &CommandInteraction, name: &str) -> CommandO
 	CommandOption::Valid(value)
 }
 
-pub(crate) enum ReviewerInput {
+pub enum ReviewerInput {
 	GitHubLogin(String),
 	DiscordMention(u64),
 }

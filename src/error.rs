@@ -63,8 +63,8 @@ impl IntoResponse for AppError {
 
 /// Formats the user-facing error.
 pub fn format_error(header: &str, hint: Option<&str>) -> String {
-	match hint {
-		Some(hint) => format!("⚠️ **{}**\n{}", header, hint),
-		None => format!("⚠️ **{}**", header),
-	}
+	hint.map_or_else(
+		|| format!("⚠️ **{header}**"),
+		|hint| format!("⚠️ **{header}**\n{hint}"),
+	)
 }

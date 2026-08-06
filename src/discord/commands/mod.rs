@@ -1,9 +1,9 @@
 //! Slash command definitions and dispatching.
 
-pub(crate) mod args;
+pub mod args;
 mod assign;
 mod health;
 mod link;
-pub(crate) mod registry;
+pub mod registry;
 mod response;
 mod subscribe;

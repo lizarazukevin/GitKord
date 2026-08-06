@@ -32,7 +32,7 @@ pub(super) struct PgPrMessageStore {
 }
 
 impl PgPrMessageStore {
-	pub(super) fn new(pool: PgPool) -> Self {
+	pub(super) const fn new(pool: PgPool) -> Self {
 		Self { pool }
 	}
 }

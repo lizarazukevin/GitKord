@@ -2,4 +2,4 @@
 
 mod postgres;
 
-pub(crate) use postgres::create_stores;
+pub use postgres::create_stores;

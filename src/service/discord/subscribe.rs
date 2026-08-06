@@ -140,7 +140,7 @@ impl SubscribeService {
 		.map_err(|e| {
 			error!(error = %e, repo, "failed to register webhook");
 			AppError::message(format_error(
-				format!("Could not register webhook for **{repo}**").as_ref(),
+				format!("Could not register webhook for {repo}").as_ref(),
 				Some("Make sure your PAT has admin access to the repository."),
 			))
 		})?;

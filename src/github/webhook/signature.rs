@@ -20,7 +20,7 @@ pub struct WebhookVerifier {
 }
 
 impl WebhookVerifier {
-	pub fn new(secret: String) -> Self {
+	pub const fn new(secret: String) -> Self {
 		Self { secret }
 	}
 
@@ -50,10 +50,15 @@ impl WebhookVerifier {
 	/// verifier's secret. Keying an HMAC never fails regardless of key
 	/// length (HMAC pads or hashes the key as needed per RFC 2104), so
 	/// this doesn't need to return a `Result`.
-	fn compute_mac(&self, body: &Bytes) -> Box<HmacSha256> {
-		let mut mac: HmacSha256 = KeyInit::new_from_slice(self.secret.as_bytes())
-			.expect("HMAC accepts keys of any length");
+	#[expect(
+		clippy::expect_used,
+		reason = "HMAC-SHA256 accepts keys of any length; this error is impossible"
+	)]
+	fn compute_mac(&self, body: &Bytes) -> HmacSha256 {
+		let mut mac = HmacSha256::new_from_slice(self.secret.as_bytes())
+			.expect("HMAC-SHA256 accepts keys of any length");
+
 		mac.update(body);
-		Box::new(mac)
+		mac
 	}
 }

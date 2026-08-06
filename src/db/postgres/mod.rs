@@ -27,7 +27,7 @@ pub struct Stores {
 /// Opens a connection pool, runs schema migrations, and returns
 /// the stores wrapped in `Arc` so they can be shared across the
 /// application. Call once at startup.
-pub(crate) async fn create_stores(database_url: &str) -> Result<Stores, AppError> {
+pub async fn create_stores(database_url: &str) -> Result<Stores, AppError> {
 	let pool = PgPool::connect(database_url).await?;
 
 	run_migrations(&pool).await?;

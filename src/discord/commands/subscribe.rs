@@ -20,7 +20,7 @@ pub(super) struct SubscribeModule {
 }
 
 impl SubscribeModule {
-	pub(super) fn new(service: Arc<SubscribeService>) -> Self {
+	pub(super) const fn new(service: Arc<SubscribeService>) -> Self {
 		Self { service }
 	}
 
@@ -39,17 +39,14 @@ impl SubscribeModule {
 			_ => return Ok(None),
 		};
 
-		let repo = match repo_name_option(cmd, "repository") {
-			CommandOption::Valid(repo) => repo,
-			_ => {
-				ephemeral(
-					ctx,
-					cmd,
-					"Provide a valid repository in `owner/name` format.",
-				)
-				.await?;
-				return Ok(None);
-			}
+		let CommandOption::Valid(repo) = repo_name_option(cmd, "repository") else {
+			ephemeral(
+				ctx,
+				cmd,
+				"Provide a valid repository in `owner/name` format.",
+			)
+			.await?;
+			return Ok(None);
 		};
 
 		Ok(Some(SubscribeRequest {

@@ -1,7 +1,7 @@
 //! `GitHub` clients and API calls.
 
-pub(crate) mod client;
-pub(crate) mod installations;
-pub(crate) mod pull_requests;
-pub(crate) mod users;
-pub(crate) mod webhooks;
+pub mod client;
+pub mod installations;
+pub mod pull_requests;
+pub mod users;
+pub mod webhooks;

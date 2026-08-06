@@ -13,6 +13,7 @@ use crate::service::github::issue_comment::IssueCommentService;
 use crate::service::github::pull_request::PullRequestService;
 use crate::service::github::review::ReviewService;
 use crate::{discord, github};
+use anyhow::anyhow;
 use std::sync::Arc;
 use tokio::{select, spawn};
 use tracing::{error, info};
@@ -118,11 +119,15 @@ impl Application {
 		select! {
 			res = &mut http => {
 				error!("HTTP server exited: {res:?}");
-				return Ok(());
+				return Err(AppError::Internal(anyhow!(
+					"HTTP server exited unexpectedly: {res:?}"
+				)));
 			}
 			res = &mut discord => {
 				error!("Discord client exited: {res:?}");
-				return Ok(());
+				return Err(AppError::Internal(anyhow!(
+					"Discord client exited unexpectedly: {res:?}"
+				)));
 			}
 			() = shutdown_signal() => {
 				info!("shutdown signal received, stopping Discord client");

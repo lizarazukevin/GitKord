@@ -26,7 +26,7 @@ pub struct PullRequestEventHandler {
 }
 
 impl PullRequestEventHandler {
-	pub fn new(service: Arc<PullRequestService>) -> Self {
+	pub const fn new(service: Arc<PullRequestService>) -> Self {
 		Self { service }
 	}
 }

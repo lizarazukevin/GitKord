@@ -30,7 +30,7 @@ impl EventHandler for BotEventHandler {
 ///
 /// The returned `Arc<Http>` is used by `GitHub` webhook handlers to send and
 /// edit `Discord` messages without needing access to the running gateway client.
-pub(crate) async fn build(
+pub async fn build(
 	token: &str,
 	commands: CommandRegistry,
 ) -> Result<(Client, Arc<Http>), AppError> {
