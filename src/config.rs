@@ -1,9 +1,36 @@
 //! Runtime configuration for `GitKord`.
 
 use anyhow::{Context, Result};
+use std::fmt;
 
 pub const APP_NAME: &str = "GitKord";
 pub const GITHUB_APP_URL: &str = "<https://github.com/apps/gitkord>";
+
+/// Deployment environment, used as a metric label.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Environment {
+	Prod,
+	Local,
+}
+
+impl From<bool> for Environment {
+	fn from(local_dev: bool) -> Self {
+		if local_dev {
+			Self::Local
+		} else {
+			Self::Prod
+		}
+	}
+}
+
+impl fmt::Display for Environment {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Prod => write!(f, "prod"),
+			Self::Local => write!(f, "local"),
+		}
+	}
+}
 
 #[derive(Clone)]
 pub struct WebhookRegistrationConfig {
