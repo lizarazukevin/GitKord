@@ -1,5 +1,6 @@
 //! Central registry for `Discord` slash command modules.
 
+use crate::app::observability::{observe_command, MetricsRecorder};
 use crate::discord::commands::assign::AssignModule;
 use crate::discord::commands::health::HealthModule;
 use crate::discord::commands::link::UserLinkModule;
@@ -61,8 +62,14 @@ impl CommandRegistry {
 		Ok(())
 	}
 
-	/// Routes an incoming interaction to the owning module's command `execute` method.
-	pub(crate) async fn dispatch(&self, ctx: &Context, interaction: &Interaction) {
+	/// Routes an incoming interaction to the owning module's command `execute` method,
+	/// recording execution metrics.
+	pub(crate) async fn dispatch(
+		&self,
+		ctx: &Context,
+		interaction: &Interaction,
+		recorder: &dyn MetricsRecorder,
+	) {
 		let Interaction::Command(cmd) = interaction else {
 			return;
 		};
@@ -70,7 +77,9 @@ impl CommandRegistry {
 
 		for module in &self.modules {
 			if module.names().contains(&name) {
-				if let Err(e) = module.execute(ctx, cmd).await {
+				let result = observe_command(name, module.execute(ctx, cmd), recorder).await;
+
+				if let Err(e) = result {
 					error!(command = %name, error = %e, "command module failed");
 				}
 				return;

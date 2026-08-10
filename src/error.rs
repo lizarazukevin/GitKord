@@ -4,6 +4,7 @@
 //! [`IntoResponse`] impl Axum converts it directly into an HTTP response,
 //! this way handlers can use ? freely without manual error mapping.
 
+use crate::app::observability::prometheus::MetricsError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use std::sync::Arc;
@@ -25,6 +26,10 @@ pub enum AppError {
 	/// `Postgres` query error. `#[from]` lets `?` convert `sqlx::Error` directly.
 	#[error("internal error: {0}")]
 	Database(#[from] sqlx::Error),
+
+	/// Metrics setup failure.
+	#[error("observability error: {0}")]
+	Metrics(#[from] MetricsError),
 
 	/// User-facing validation/business error surfaced verbatim (no prefix).
 	///
@@ -52,6 +57,7 @@ impl IntoResponse for AppError {
 			Self::InvalidSignature => StatusCode::UNAUTHORIZED,
 			Self::GitHub(_) => StatusCode::BAD_GATEWAY,
 			Self::Message(_) => StatusCode::BAD_REQUEST,
+			Self::Metrics(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			Self::Discord(_) | Self::Database(_) | Self::Internal(_) => {
 				StatusCode::INTERNAL_SERVER_ERROR
 			}

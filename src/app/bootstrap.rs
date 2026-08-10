@@ -1,6 +1,11 @@
+//! Application construction and lifecycle startup.
+
+use super::observability::prometheus;
+use crate::app::observability::renderer::MetricsRenderer;
+use crate::app::observability::MetricsRecorder;
 use crate::app::server::serve_http;
 use crate::app::shutdown::shutdown_signal;
-use crate::config::EnvConfig;
+use crate::config::{EnvConfig, Environment};
 use crate::db::create_stores;
 use crate::error::AppError;
 use crate::github::webhook::router::WebhookRouter;
@@ -22,6 +27,9 @@ pub(super) struct Application {
 	discord_client: serenity::Client,
 	webhook_router: Arc<WebhookRouter>,
 	port: u16,
+	#[expect(dead_code)]
+	metrics_recorder: Arc<dyn MetricsRecorder>,
+	metrics_renderer: Arc<dyn MetricsRenderer>,
 }
 
 impl Application {
@@ -37,6 +45,11 @@ impl Application {
 		)?);
 
 		let stores = create_stores(&env_config.database_url).await?;
+
+		let environment = Environment::from(env_config.local_dev);
+		let (recorder, exporter) = prometheus::init(&environment.to_string())?;
+		let metrics_recorder: Arc<dyn MetricsRecorder> = Arc::new(recorder);
+		let metrics_renderer: Arc<dyn MetricsRenderer> = Arc::new(exporter);
 
 		let assign_service = Arc::new(AssignService::new(
 			Arc::clone(&stores.prs),
@@ -65,8 +78,12 @@ impl Application {
 			health_service,
 		);
 
-		let (discord_client, http) =
-			discord::client::build(&env_config.discord_token, module_registry).await?;
+		let (discord_client, http) = discord::client::build(
+			&env_config.discord_token,
+			module_registry,
+			Arc::clone(&metrics_recorder),
+		)
+		.await?;
 
 		let pull_request_service = Arc::new(PullRequestService::new(
 			Arc::clone(&stores.prs),
@@ -107,13 +124,19 @@ impl Application {
 			discord_client,
 			webhook_router,
 			port: env_config.port,
+			metrics_recorder,
+			metrics_renderer,
 		})
 	}
 
 	pub async fn run(mut self) -> Result<(), AppError> {
 		let shard_manager = self.discord_client.shard_manager.clone();
 
-		let mut http = spawn(serve_http(self.port, self.webhook_router));
+		let mut http = spawn(serve_http(
+			self.port,
+			self.webhook_router,
+			self.metrics_renderer,
+		));
 		let mut discord = spawn(async move { self.discord_client.start().await });
 
 		select! {
