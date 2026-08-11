@@ -14,6 +14,8 @@ use crate::github::webhook::router::WebhookRouter;
 use axum::extract::State;
 use axum::routing::{get, post};
 use axum::{serve, Router};
+use axum::response::IntoResponse;
+use http::header;
 use tokio::net::TcpListener;
 use tracing::info;
 
@@ -74,8 +76,21 @@ async fn healthz() -> &'static str {
 	"ok"
 }
 
+const PROMETHEUS_CONTENT_TYPE: &str = "text/plain; version=0.0.4; charset=utf-8";
+
 /// Renders the current metrics snapshot for Prometheus scraping.
-/// Only reachable on the internal listener.
-async fn metrics(State(renderer): State<Arc<dyn MetricsRenderer>>) -> String {
-	renderer.as_ref().render()
+///
+/// Explicitly sets the `Content-Type` to the versioned Prometheus text
+/// exposition format (`text/plain; version=0.0.4`) rather than relying on
+/// Axum's default `text/plain` for a `String` response. Prometheus itself
+/// scrapes leniently and will parse the body either way, but the version
+/// parameter is how scrapers and intermediaries (proxies, collectors,
+/// `promtool`) distinguish this format from plain text or negotiate against
+/// newer formats like OpenMetrics.
+/// Ref: <https://prometheus.io/docs/instrumenting/exposition_formats/>
+async fn metrics(State(renderer): State<Arc<dyn MetricsRenderer>>) -> impl IntoResponse {
+	(
+		[(header::CONTENT_TYPE, PROMETHEUS_CONTENT_TYPE)],
+		renderer.as_ref().render(),
+	)
 }
