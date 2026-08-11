@@ -12,9 +12,9 @@ use crate::app::shutdown::shutdown_signal;
 use crate::error::AppError;
 use crate::github::webhook::router::WebhookRouter;
 use axum::extract::State;
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{serve, Router};
-use axum::response::IntoResponse;
 use http::header;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -86,7 +86,7 @@ const PROMETHEUS_CONTENT_TYPE: &str = "text/plain; version=0.0.4; charset=utf-8"
 /// scrapes leniently and will parse the body either way, but the version
 /// parameter is how scrapers and intermediaries (proxies, collectors,
 /// `promtool`) distinguish this format from plain text or negotiate against
-/// newer formats like OpenMetrics.
+/// newer formats like `OpenMetrics`.
 /// Ref: <https://prometheus.io/docs/instrumenting/exposition_formats/>
 async fn metrics(State(renderer): State<Arc<dyn MetricsRenderer>>) -> impl IntoResponse {
 	(
