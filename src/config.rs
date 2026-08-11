@@ -60,6 +60,9 @@ pub struct EnvConfig {
 	/// TCP port the Axum HTTP server listens on. Defaults to `3000`.
 	pub port: u16,
 
+	/// Similar to `port` in the internal network sense (e.g. metrics).
+	pub internal_port: u16,
+
 	/// Local development mode when `true`. Dictates whether to use PAT or App ID.
 	pub local_dev: bool,
 
@@ -81,6 +84,7 @@ impl EnvConfig {
 		let github_webhook_secret = require_env("GITHUB_WEBHOOK_SECRET")?;
 		let database_url = require_env("DATABASE_URL")?;
 		let port = parse_port()?;
+		let internal_port = 9090;
 
 		let (github_app_id, github_app_private_key) = github_app_credentials(local_dev)?;
 		let (github_token, public_domain) = local_dev_credentials(local_dev)?;
@@ -92,6 +96,7 @@ impl EnvConfig {
 			github_app_private_key,
 			database_url,
 			port,
+			internal_port,
 			local_dev,
 			github_token,
 			public_domain,
