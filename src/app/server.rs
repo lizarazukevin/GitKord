@@ -39,7 +39,7 @@ pub async fn serve_http(
 
 	let internal_app = Router::new()
 		.route("/metrics", get(metrics))
-		.route("healthz", get(healthz))
+		.route("/healthz", get(healthz))
 		.with_state(renderer);
 
 	let public_listener = bind_listener(SocketAddr::from(([0, 0, 0, 0], port)), "public").await?;
