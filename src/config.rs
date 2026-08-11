@@ -60,6 +60,9 @@ pub struct EnvConfig {
 	/// TCP port the Axum HTTP server listens on. Defaults to `3000`.
 	pub port: u16,
 
+	/// Similar to `port` in the internal network sense (e.g. metrics).
+	pub internal_port: u16,
+
 	/// Local development mode when `true`. Dictates whether to use PAT or App ID.
 	pub local_dev: bool,
 
@@ -80,7 +83,8 @@ impl EnvConfig {
 		let discord_token = require_env("DISCORD_TOKEN")?;
 		let github_webhook_secret = require_env("GITHUB_WEBHOOK_SECRET")?;
 		let database_url = require_env("DATABASE_URL")?;
-		let port = parse_port()?;
+		let port = parse_port("PORT", 3000)?;
+		let internal_port = parse_port("INTERNAL_PORT", 9090)?;
 
 		let (github_app_id, github_app_private_key) = github_app_credentials(local_dev)?;
 		let (github_token, public_domain) = local_dev_credentials(local_dev)?;
@@ -92,6 +96,7 @@ impl EnvConfig {
 			github_app_private_key,
 			database_url,
 			port,
+			internal_port,
 			local_dev,
 			github_token,
 			public_domain,
@@ -114,11 +119,11 @@ fn local_dev_flag() -> bool {
 		.is_some_and(|v| v == "true" || v == "1")
 }
 
-fn parse_port() -> Result<u16> {
-	std::env::var("PORT")
-		.unwrap_or_else(|_| "3000".into())
+fn parse_port(key: &str, default: u16) -> Result<u16> {
+	std::env::var(key)
+		.unwrap_or_else(|_| default.to_string())
 		.parse::<u16>()
-		.context("PORT must be a valid port number")
+		.with_context(|| format!("{key} must be a valid port number"))
 }
 
 /// `GitHub` app credentials required in production.

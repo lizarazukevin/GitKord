@@ -146,6 +146,7 @@ Set `LOCAL_DEV=true` and provide the following:
 | `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                  |
 | `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                  |
 | `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                         |
+| `INTERNAL_PORT` | No | Internal metrics/health listen port. Defaults to `9090`.                                                                      |
 
 A typical loop, in three terminals:
 

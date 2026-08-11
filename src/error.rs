@@ -63,7 +63,21 @@ impl IntoResponse for AppError {
 			}
 		};
 
-		(status, self.to_string()).into_response()
+		// Only user-facing errors echo their message, else generic message.
+		// Full details go to logs via `Display`/`source`.
+		let body = match &self {
+			Self::Message(_) | Self::InvalidSignature => self.to_string(),
+			Self::GitHub(_)
+			| Self::Discord(_)
+			| Self::Database(_)
+			| Self::Internal(_)
+			| Self::Metrics(_) => {
+				tracing::error!(error = %self, "internal error");
+				"internal server error".to_string()
+			}
+		};
+
+		(status, body).into_response()
 	}
 }
 

@@ -27,6 +27,7 @@ pub(super) struct Application {
 	discord_client: serenity::Client,
 	webhook_router: Arc<WebhookRouter>,
 	port: u16,
+	internal_port: u16,
 	#[expect(dead_code)]
 	metrics_recorder: Arc<dyn MetricsRecorder>,
 	metrics_renderer: Arc<dyn MetricsRenderer>,
@@ -124,6 +125,7 @@ impl Application {
 			discord_client,
 			webhook_router,
 			port: env_config.port,
+			internal_port: env_config.internal_port,
 			metrics_recorder,
 			metrics_renderer,
 		})
@@ -134,6 +136,7 @@ impl Application {
 
 		let mut http = spawn(serve_http(
 			self.port,
+			self.internal_port,
 			self.webhook_router,
 			self.metrics_renderer,
 		));
