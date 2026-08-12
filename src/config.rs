@@ -73,9 +73,9 @@ pub struct EnvConfig {
 	/// Public domain reachable via ngrok. Local dev only.
 	pub public_domain: String,
 
-	/// Loki endpoint URL for shipping logs.
+	/// Log shipping endpoint URL (e.g. Loki).
 	/// Optional, logs are only written to stdout by default.
-	pub loki_endpoint: Option<String>,
+	pub log_endpoint: Option<String>,
 }
 
 impl EnvConfig {
@@ -97,7 +97,7 @@ impl EnvConfig {
 		let (github_app_id, github_app_private_key) = github_app_credentials(local_dev)?;
 		let (github_token, public_domain) = local_dev_credentials(local_dev)?;
 
-		let loki_endpoint = std::env::var("LOKI_ENDPOINT").ok();
+		let log_endpoint = std::env::var("LOG_ENDPOINT").ok();
 
 		Ok(Self {
 			discord_token,
@@ -110,7 +110,7 @@ impl EnvConfig {
 			local_dev,
 			github_token,
 			public_domain,
-			loki_endpoint,
+			log_endpoint,
 		})
 	}
 
