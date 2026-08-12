@@ -30,6 +30,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # HTTP types shared between axum and reqwest
 http = "1.4"
+openssl = { version = "0.10", features = ["vendored"] }
 
 # HMAC-SHA256 signature verification for GitHub webhooks
 hmac = "0.13"
