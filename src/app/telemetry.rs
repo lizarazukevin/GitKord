@@ -41,7 +41,7 @@ pub fn init_tracing(
 	let log_sink = if let Some(endpoint) = log_endpoint {
 		let (loki_layer, handle) = loki::init(endpoint, service_name, environment)?;
 		subscriber.with(loki_layer).init();
-		info!(endpoint, "Loki export enabled");
+		info!(endpoint, "Log export enabled");
 		Some(handle)
 	} else {
 		subscriber.init();
