@@ -72,11 +72,19 @@ pub struct EnvConfig {
 
 	/// Public domain reachable via ngrok. Local dev only.
 	pub public_domain: String,
+
+	/// Loki endpoint URL for shipping logs.
+	/// Optional, logs are only written to stdout by default.
+	pub loki_endpoint: Option<String>,
 }
 
 impl EnvConfig {
-	/// Load config from the environment. Fails fast if any required variable
-	/// is missing or a value cannot be parsed.
+	/// Loads config from the environment, failing fast on missing or invalid values.
+	///
+	/// # Errors
+	///
+	/// Returns an error if any required environment variable is missing or a
+	/// value cannot be parsed.
 	pub fn from_env() -> Result<Self> {
 		let local_dev = local_dev_flag();
 
@@ -89,6 +97,8 @@ impl EnvConfig {
 		let (github_app_id, github_app_private_key) = github_app_credentials(local_dev)?;
 		let (github_token, public_domain) = local_dev_credentials(local_dev)?;
 
+		let loki_endpoint = std::env::var("LOKI_ENDPOINT").ok();
+
 		Ok(Self {
 			discord_token,
 			github_webhook_secret,
@@ -100,10 +110,12 @@ impl EnvConfig {
 			local_dev,
 			github_token,
 			public_domain,
+			loki_endpoint,
 		})
 	}
 
 	/// Narrower config used in `/subscribe` to register and verify a repository's webhook.
+	#[must_use]
 	pub fn webhook_registration_config(&self) -> WebhookRegistrationConfig {
 		WebhookRegistrationConfig {
 			local_dev: self.local_dev,

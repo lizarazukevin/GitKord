@@ -51,7 +51,9 @@ chrono = "0.4"
 indexmap = "2.14"
 jsonwebtoken = "10.4"
 metrics-exporter-prometheus = "0.18"
-metrics = "0.24.6"
+tracing-loki = "0.2"
+url = "2.5"
+metrics = "0.24"
 
 # Inspired by: https://www.namtao.com/rust/
 [lints.clippy]

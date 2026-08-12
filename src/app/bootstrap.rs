@@ -34,8 +34,7 @@ pub(super) struct Application {
 }
 
 impl Application {
-	pub async fn build() -> Result<Self, AppError> {
-		let env_config = EnvConfig::from_env()?;
+	pub async fn build(env_config: EnvConfig) -> Result<Self, AppError> {
 		let webhook_registration_config = env_config.webhook_registration_config();
 
 		let gh_client = Arc::new(github::api::client::GitHubClient::new(

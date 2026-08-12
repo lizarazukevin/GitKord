@@ -1,6 +1,7 @@
-//! Metrics instrumentation, recording, and export/rendering.
+//! Observability: metrics instrumentation and recording, log shipping, and export/rendering.
 
 pub mod command;
+pub mod loki;
 pub mod prometheus;
 pub mod recorder;
 pub mod renderer;
