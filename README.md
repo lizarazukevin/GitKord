@@ -136,18 +136,18 @@ You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer, [Do
 #### Testing Changes
 Set `LOCAL_DEV=true` and provide the following:
 
-| Variable | Required | Description                                                                                                                   |
-|----------|----------|-------------------------------------------------------------------------------------------------------------------------------|
-| `DISCORD_TOKEN` | Yes | Discord bot token from the Developer Portal (Bot → Reset Token).                                                              |
-| `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`).                                                          |
+| Variable | Required | Description                                                                                                                  |
+|----------|----------|------------------------------------------------------------------------------------------------------------------------------|
+| `DISCORD_TOKEN` | Yes | Discord bot token from the Developer Portal (Bot → Reset Token).                                                             |
+| `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`).                                                         |
 | `GITHUB_TOKEN` | Yes | GitHub PAT with repository access and read/write permissions for pull requests and webhooks, used instead of GitHub App auth. |
-| `PUBLIC_DOMAIN` | Yes | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                               |
-| `DATABASE_URL` | Yes | Postgres connection string.                                                                                                   |
-| `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                  |
-| `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                  |
-| `LOKI_ENDPOINT` | No | Loki push URL. When set, logs are shipped to Loki; otherwise logs go to stdout only.                                          |
-| `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                         |
-| `INTERNAL_PORT` | No | Internal metrics/health listen port. Defaults to `9090`.                                                                      |
+| `PUBLIC_DOMAIN` | Yes | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                              |
+| `DATABASE_URL` | Yes | Postgres connection string.                                                                                                  |
+| `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                 |
+| `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                 |
+| `LOG_ENDPOINT` | No | Log shipping URL (e.g. Loki push URL). When set, logs are shipped to the backend; otherwise logs go to stdout only. |
+| `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                        |
+| `INTERNAL_PORT` | No | Internal metrics/health listen port. Defaults to `9090`.                                                                     |
 
 A typical loop, in three terminals:
 
