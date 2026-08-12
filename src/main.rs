@@ -11,10 +11,14 @@
 //! If either task exits unexpectedly, the process exits with a non-zero code
 //! so Railway (or any supervisor) knows to restart it.
 
-use git_kord::{init_tracing, run, AppError};
+use git_kord::{init_tracing, run, AppError, EnvConfig, Environment, APP_NAME};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-	init_tracing();
-	run().await
+	let env_config = EnvConfig::from_env()?;
+	let environment = Environment::from(env_config.local_dev).to_string();
+
+	init_tracing(env_config.loki_endpoint.as_deref(), APP_NAME, &environment)?;
+
+	run(env_config).await
 }

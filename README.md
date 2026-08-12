@@ -145,6 +145,7 @@ Set `LOCAL_DEV=true` and provide the following:
 | `DATABASE_URL` | Yes | Postgres connection string.                                                                                                   |
 | `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                  |
 | `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                  |
+| `LOKI_ENDPOINT` | No | Loki push URL. When set, logs are shipped to Loki; otherwise logs go to stdout only.                                          |
 | `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                         |
 | `INTERNAL_PORT` | No | Internal metrics/health listen port. Defaults to `9090`.                                                                      |
 

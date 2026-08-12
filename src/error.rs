@@ -4,6 +4,7 @@
 //! [`IntoResponse`] impl Axum converts it directly into an HTTP response,
 //! this way handlers can use ? freely without manual error mapping.
 
+use crate::app::observability::loki::LokiError;
 use crate::app::observability::prometheus::MetricsError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -31,6 +32,10 @@ pub enum AppError {
 	#[error("observability error: {0}")]
 	Metrics(#[from] MetricsError),
 
+	/// Loki setup failure.
+	#[error("observability error: {0}")]
+	Loki(#[from] LokiError),
+
 	/// User-facing validation/business error surfaced verbatim (no prefix).
 	///
 	/// Used for messages meant to be shown directly to a Discord user, e.g.
@@ -57,7 +62,7 @@ impl IntoResponse for AppError {
 			Self::InvalidSignature => StatusCode::UNAUTHORIZED,
 			Self::GitHub(_) => StatusCode::BAD_GATEWAY,
 			Self::Message(_) => StatusCode::BAD_REQUEST,
-			Self::Metrics(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			Self::Metrics(_) | Self::Loki(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			Self::Discord(_) | Self::Database(_) | Self::Internal(_) => {
 				StatusCode::INTERNAL_SERVER_ERROR
 			}
@@ -71,7 +76,8 @@ impl IntoResponse for AppError {
 			| Self::Discord(_)
 			| Self::Database(_)
 			| Self::Internal(_)
-			| Self::Metrics(_) => {
+			| Self::Metrics(_)
+			| Self::Loki(_) => {
 				tracing::error!(error = %self, "internal error");
 				"internal server error".to_string()
 			}
