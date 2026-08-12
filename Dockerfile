@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 FROM rust:1.97-bookworm AS builder
 RUN rustup target add x86_64-unknown-linux-musl
-RUN apt-get update && apt-get install -y musl-tools && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y  \
+    musl-tools  \
+    perl \
+    make \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
