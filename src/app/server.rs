@@ -43,11 +43,8 @@ pub async fn serve_http(
 		.with_state(renderer);
 
 	let public_listener = bind_listener(SocketAddr::from(([0, 0, 0, 0], port)), "public").await?;
-	let internal_listener = bind_listener(
-		SocketAddr::from(([0, 0, 0, 0], internal_port)),
-		"internal",
-	)
-	.await?;
+	let internal_listener =
+		bind_listener(SocketAddr::from(([0, 0, 0, 0], internal_port)), "internal").await?;
 
 	let public_server =
 		serve(public_listener, public_app).with_graceful_shutdown(shutdown_signal());
