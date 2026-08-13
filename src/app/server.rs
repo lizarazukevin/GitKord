@@ -44,7 +44,7 @@ pub async fn serve_http(
 
 	let public_listener = bind_listener(SocketAddr::from(([0, 0, 0, 0], port)), "public").await?;
 	let internal_listener = bind_listener(
-		SocketAddr::from(([127, 0, 0, 1], internal_port)),
+		SocketAddr::from(([0, 0, 0, 0], internal_port)),
 		"internal",
 	)
 	.await?;
