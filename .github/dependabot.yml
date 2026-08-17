@@ -47,3 +47,23 @@ updates:
       docker-base-images:
         patterns:
           - "*"
+
+  - package-ecosystem: docker
+    directory: "/infra/loki"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: "/infra/prometheus"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
