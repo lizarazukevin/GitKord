@@ -49,6 +49,12 @@ pub enum AppError {
 	Internal(#[from] anyhow::Error),
 }
 
+impl From<serenity::Error> for AppError {
+	fn from(e: serenity::Error) -> Self {
+		Self::Discord(Arc::new(e))
+	}
+}
+
 impl AppError {
 	/// Build a user-facing [`AppError::Message`] from anything string-like.
 	pub fn message(msg: impl Into<String>) -> Self {

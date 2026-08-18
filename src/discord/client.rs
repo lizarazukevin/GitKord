@@ -48,8 +48,7 @@ pub async fn build(
 			registry: commands,
 			recorder,
 		})
-		.await
-		.map_err(|e| AppError::Discord(Arc::new(e)))?;
+		.await?;
 
 	let http = Arc::clone(&client.http);
 	Ok((client, http))

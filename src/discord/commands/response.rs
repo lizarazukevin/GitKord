@@ -5,7 +5,6 @@ use serenity::all::{
 	CommandInteraction, Context, CreateInteractionResponse, CreateInteractionResponseMessage,
 	GuildId,
 };
-use std::sync::Arc;
 
 /// Send an ephemeral response visible only to the users who ran a slash command.
 pub(super) async fn ephemeral(
@@ -21,11 +20,11 @@ pub(super) async fn ephemeral(
 				.ephemeral(true),
 		),
 	)
-	.await
-	.map_err(|e| AppError::Discord(Arc::new(e)))
+	.await?;
+	Ok(())
 }
 
-/// Send an ephemeral follow‑up after the interaction has been deferred.
+/// Send an ephemeral follow-up after the interaction has been deferred.
 pub(super) async fn deferred_ephemeral(
 	ctx: &Context,
 	cmd: &CommandInteraction,
@@ -38,8 +37,8 @@ pub(super) async fn deferred_ephemeral(
 			.ephemeral(true),
 	)
 	.await
-	.map(|_| ())
-	.map_err(|e| AppError::Discord(Arc::new(e)))
+	.map(|_| ())?;
+	Ok(())
 }
 
 /// Command must be invoked in a guild/server.
@@ -62,11 +61,7 @@ pub(super) async fn reject_if_thread(
 	cmd: &CommandInteraction,
 	reason: &str,
 ) -> Result<bool, AppError> {
-	let channel = cmd
-		.channel_id
-		.to_channel(ctx)
-		.await
-		.map_err(|e| AppError::Discord(Arc::new(e)))?;
+	let channel = cmd.channel_id.to_channel(ctx).await?;
 	if let Some(guild_channel) = channel.guild() {
 		if guild_channel.thread_metadata.is_some() {
 			ephemeral(ctx, cmd, reason).await?;

@@ -10,7 +10,6 @@ use crate::discord::messaging::util::now_utc;
 use crate::error::AppError;
 use crate::service::github::pr_messages::PrMessageData;
 use serenity::all::{ChannelId, CreateMessage, CreateThread, EditMessage, Http, MessageId};
-use std::sync::Arc;
 use tracing::info;
 
 /// Identifiers returned after posting a PR message.
@@ -32,8 +31,7 @@ pub async fn post_pull_request_message(
 
 	let message = channel_id
 		.send_message(http, CreateMessage::new().content(formatted))
-		.await
-		.map_err(|e| AppError::Discord(Arc::new(e)))?;
+		.await?;
 
 	let thread_name = format!("PR #{} — audit log", message_data.number);
 	let thread = channel_id
@@ -43,8 +41,7 @@ pub async fn post_pull_request_message(
 			CreateThread::new(thread_name)
 				.auto_archive_duration(serenity::all::AutoArchiveDuration::OneWeek),
 		)
-		.await
-		.map_err(|e| AppError::Discord(Arc::new(e)))?;
+		.await?;
 
 	info!(
 		channel = %channel_id,
@@ -85,8 +82,7 @@ pub async fn update_pull_request_message(
 			MessageId::new(message_id),
 			EditMessage::new().content(formatted),
 		)
-		.await
-		.map_err(|e| AppError::Discord(Arc::new(e)))?;
+		.await?;
 
 	info!(
 		channel = %channel_id,

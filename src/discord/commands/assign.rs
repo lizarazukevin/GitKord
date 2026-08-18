@@ -7,7 +7,6 @@ use crate::discord::commands::response::{deferred_ephemeral, ephemeral, require_
 use crate::error::format_error;
 use crate::service::discord::assign::{AssignAction, AssignRequest, AssignService};
 use crate::AppError;
-use anyhow::Result;
 use async_trait::async_trait;
 use serenity::all::{
 	CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
@@ -90,10 +89,7 @@ impl CommandModule for AssignModule {
 		let Some(req) = self.parse_assign_input(ctx, cmd).await? else {
 			return Ok(());
 		};
-
-		cmd.defer_ephemeral(ctx)
-			.await
-			.map_err(|e| AppError::Discord(Arc::new(e)))?;
+		cmd.defer_ephemeral(ctx).await?;
 
 		match self.service.handle(req, &ctx.http).await {
 			Ok(msg) => deferred_ephemeral(ctx, cmd, &msg).await,

@@ -6,7 +6,6 @@
 
 use crate::error::AppError;
 use serenity::all::{ChannelId, CreateMessage, Http};
-use std::sync::Arc;
 
 /// Append a PR lifecycle change to the audit thread.
 pub async fn post_lifecycle_pr_update(
@@ -78,7 +77,6 @@ pub async fn post_commit_push(
 pub async fn post_to_thread(http: &Http, thread_id: u64, content: &str) -> Result<(), AppError> {
 	ChannelId::new(thread_id)
 		.send_message(http, CreateMessage::new().content(content))
-		.await
-		.map_err(|e| AppError::Discord(Arc::new(e)))?;
+		.await?;
 	Ok(())
 }
