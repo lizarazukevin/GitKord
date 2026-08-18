@@ -1,17 +1,18 @@
 //! Response utilities for our application.
 
+use crate::AppError;
 use serenity::all::{
 	CommandInteraction, Context, CreateInteractionResponse, CreateInteractionResponseMessage,
 	GuildId,
 };
-use serenity::Error;
+use std::sync::Arc;
 
 /// Send an ephemeral response visible only to the users who ran a slash command.
 pub(super) async fn ephemeral(
 	ctx: &Context,
 	cmd: &CommandInteraction,
 	content: &str,
-) -> Result<(), Error> {
+) -> Result<(), AppError> {
 	cmd.create_response(
 		ctx,
 		CreateInteractionResponse::Message(
@@ -21,6 +22,7 @@ pub(super) async fn ephemeral(
 		),
 	)
 	.await
+	.map_err(|e| AppError::Discord(Arc::new(e)))
 }
 
 /// Send an ephemeral follow‑up after the interaction has been deferred.
@@ -28,7 +30,7 @@ pub(super) async fn deferred_ephemeral(
 	ctx: &Context,
 	cmd: &CommandInteraction,
 	content: &str,
-) -> Result<(), Error> {
+) -> Result<(), AppError> {
 	cmd.create_followup(
 		ctx,
 		serenity::builder::CreateInteractionResponseFollowup::new()
@@ -37,13 +39,14 @@ pub(super) async fn deferred_ephemeral(
 	)
 	.await
 	.map(|_| ())
+	.map_err(|e| AppError::Discord(Arc::new(e)))
 }
 
 /// Command must be invoked in a guild/server.
 pub(super) async fn require_guild(
 	ctx: &Context,
 	cmd: &CommandInteraction,
-) -> Result<Option<GuildId>, Error> {
+) -> Result<Option<GuildId>, AppError> {
 	if let Some(guild_id) = cmd.guild_id {
 		Ok(Some(guild_id))
 	} else {
@@ -58,8 +61,12 @@ pub(super) async fn reject_if_thread(
 	ctx: &Context,
 	cmd: &CommandInteraction,
 	reason: &str,
-) -> Result<bool, Error> {
-	let channel = cmd.channel_id.to_channel(ctx).await?;
+) -> Result<bool, AppError> {
+	let channel = cmd
+		.channel_id
+		.to_channel(ctx)
+		.await
+		.map_err(|e| AppError::Discord(Arc::new(e)))?;
 	if let Some(guild_channel) = channel.guild() {
 		if guild_channel.thread_metadata.is_some() {
 			ephemeral(ctx, cmd, reason).await?;

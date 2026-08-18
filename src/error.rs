@@ -54,6 +54,20 @@ impl AppError {
 	pub fn message(msg: impl Into<String>) -> Self {
 		Self::Message(msg.into())
 	}
+
+	/// For metrics, categorizes the error with a type.
+	pub const fn error_type(&self) -> &'static str {
+		match self {
+			Self::InvalidSignature => "invalid_signature",
+			Self::GitHub(_) => "github",
+			Self::Discord(_) => "discord",
+			Self::Database(_) => "database",
+			Self::Metrics(_) => "metrics",
+			Self::Loki(_) => "loki",
+			Self::Message(_) => "validation",
+			Self::Internal(_) => "internal",
+		}
+	}
 }
 
 impl IntoResponse for AppError {
