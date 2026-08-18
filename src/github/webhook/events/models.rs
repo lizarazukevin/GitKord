@@ -31,6 +31,21 @@ impl From<&str> for GitHubEvent {
 	}
 }
 
+impl GitHubEvent {
+	/// Stable string label for metrics and logging.
+	pub fn as_str(&self) -> &str {
+		match self {
+			Self::PullRequest => "pull_request",
+			Self::PullRequestReview => "pull_request_review",
+			Self::Push => "push",
+			Self::IssueComment => "issue_comment",
+			Self::Installation => "installation",
+			Self::Ping => "ping",
+			Self::Unknown(other) => other,
+		}
+	}
+}
+
 /// Minimal `GitHub` user reference.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GitHubUserInfo {

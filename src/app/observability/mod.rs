@@ -6,7 +6,9 @@ pub mod prometheus;
 pub mod recorder;
 pub mod renderer;
 pub mod sink;
+pub mod webhook;
 
 pub use command::observe_command;
 pub use recorder::MetricsRecorder;
 pub use sink::LogSink;
+pub use webhook::observe_webhook_event;

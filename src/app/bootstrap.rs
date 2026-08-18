@@ -118,6 +118,7 @@ impl Application {
 			review_service,
 			issue_comment_service,
 			installation_service,
+			Arc::clone(&metrics_recorder),
 		));
 
 		Ok(Self {

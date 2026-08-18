@@ -1,6 +1,7 @@
 //! Dispatches incoming `GitHub` webhook requests to the handler
 //! registered for that event type.
 
+use crate::app::observability::{observe_webhook_event, MetricsRecorder};
 use crate::error::AppError;
 use crate::github::webhook::events::installation::InstallationEventHandler;
 use crate::github::webhook::events::issue_comment::IssueCommentEventHandler;
@@ -18,7 +19,7 @@ use axum::response::{IntoResponse, Response};
 use http::{HeaderMap, StatusCode};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::info;
 
 /// A handler for one `GitHub` webhook event type. Deserializes the payload,
 /// invokes its service, and returns an HTTP response (or an [`AppError`]).
@@ -34,6 +35,7 @@ pub trait WebhookEventHandler: Send + Sync {
 pub struct WebhookRouter {
 	verifier: WebhookVerifier,
 	handlers: HashMap<GitHubEvent, Arc<dyn WebhookEventHandler>>,
+	recorder: Arc<dyn MetricsRecorder>,
 }
 
 impl WebhookRouter {
@@ -43,6 +45,7 @@ impl WebhookRouter {
 		review_service: Arc<ReviewService>,
 		issue_comment_service: Arc<IssueCommentService>,
 		installation_service: Arc<InstallationService>,
+		recorder: Arc<dyn MetricsRecorder>,
 	) -> Self {
 		let pr: Arc<dyn WebhookEventHandler> =
 			Arc::new(PullRequestEventHandler::new(pull_request_service));
@@ -61,6 +64,7 @@ impl WebhookRouter {
 		Self {
 			verifier: WebhookVerifier::new(secret),
 			handlers,
+			recorder,
 		}
 	}
 
@@ -99,9 +103,12 @@ impl WebhookRouter {
 			return StatusCode::OK.into_response();
 		};
 
-		handler.execute(body).await.unwrap_or_else(|e| {
-			error!(error = %e, ?event_type, "webhook handler failed");
-			StatusCode::INTERNAL_SERVER_ERROR.into_response()
-		})
+		observe_webhook_event(
+			event_type.as_str(),
+			handler.execute(body),
+			self.recorder.as_ref(),
+		)
+		.await
+		.unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 	}
 }

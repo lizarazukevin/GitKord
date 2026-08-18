@@ -13,7 +13,7 @@ use crate::AppError;
 use async_trait::async_trait;
 use serenity::all::{Command, CommandInteraction, Context, CreateCommand, Interaction};
 use std::sync::Arc;
-use tracing::{error, warn};
+use tracing::warn;
 
 /// Module composed of independent commands grouped by shared behavior (e.g. `AssignModule`).
 #[async_trait]
@@ -77,11 +77,7 @@ impl CommandRegistry {
 
 		for module in &self.modules {
 			if module.names().contains(&name) {
-				let result = observe_command(name, module.execute(ctx, cmd), recorder).await;
-
-				if let Err(e) = result {
-					error!(command = %name, error = %e, "command module failed");
-				}
+				let _ = observe_command(name, module.execute(ctx, cmd), recorder).await;
 				return;
 			}
 		}
