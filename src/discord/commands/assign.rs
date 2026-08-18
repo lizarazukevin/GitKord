@@ -12,7 +12,6 @@ use async_trait::async_trait;
 use serenity::all::{
 	CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
 };
-use serenity::Error;
 use std::sync::Arc;
 use tracing::error;
 
@@ -24,56 +23,57 @@ impl AssignModule {
 	pub(super) const fn new(service: Arc<AssignService>) -> Self {
 		Self { service }
 	}
-}
 
-async fn parse_assign_input(
-	ctx: &Context,
-	cmd: &CommandInteraction,
-) -> Result<Option<AssignRequest>, Error> {
-	require_guild(ctx, cmd).await?;
+	async fn parse_assign_input(
+		&self,
+		ctx: &Context,
+		cmd: &CommandInteraction,
+	) -> Result<Option<AssignRequest>, AppError> {
+		require_guild(ctx, cmd).await?;
 
-	let action = match cmd.data.name.as_str() {
-		"assign" => AssignAction::Assign,
-		"unassign" => AssignAction::Unassign,
-		_ => return Ok(None),
-	};
+		let action = match cmd.data.name.as_str() {
+			"assign" => AssignAction::Assign,
+			"unassign" => AssignAction::Unassign,
+			_ => return Ok(None),
+		};
 
-	let repo = match repo_name_option(cmd, "repository") {
-		CommandOption::Valid(r) => Some(r),
-		CommandOption::Invalid => {
-			ephemeral(ctx, cmd, "Repository must be in `owner/name` format.").await?;
+		let repo = match repo_name_option(cmd, "repository") {
+			CommandOption::Valid(r) => Some(r),
+			CommandOption::Invalid => {
+				ephemeral(ctx, cmd, "Repository must be in `owner/name` format.").await?;
+				return Ok(None);
+			}
+			CommandOption::Missing => None,
+		};
+
+		let pr = match number_option(cmd, "pr") {
+			CommandOption::Valid(n) => Some(n),
+			CommandOption::Invalid => {
+				ephemeral(ctx, cmd, "Pull request number is invalid.").await?;
+				return Ok(None);
+			}
+			CommandOption::Missing => None,
+		};
+
+		let CommandOption::Valid(reviewer) = resolve_reviewer_option(cmd, "reviewer") else {
+			ephemeral(
+				ctx,
+				cmd,
+				"Provide a valid GitHub username or Discord mention.",
+			)
+			.await?;
 			return Ok(None);
-		}
-		CommandOption::Missing => None,
-	};
+		};
 
-	let pr = match number_option(cmd, "pr") {
-		CommandOption::Valid(n) => Some(n),
-		CommandOption::Invalid => {
-			ephemeral(ctx, cmd, "Pull request number is invalid.").await?;
-			return Ok(None);
-		}
-		CommandOption::Missing => None,
-	};
-
-	let CommandOption::Valid(reviewer) = resolve_reviewer_option(cmd, "reviewer") else {
-		ephemeral(
-			ctx,
-			cmd,
-			"Provide a valid GitHub username or Discord mention.",
-		)
-		.await?;
-		return Ok(None);
-	};
-
-	Ok(Some(AssignRequest {
-		reviewer,
-		action,
-		actor: cmd.user.name.clone(),
-		repo,
-		pr,
-		channel_id: cmd.channel_id.get(),
-	}))
+		Ok(Some(AssignRequest {
+			reviewer,
+			action,
+			actor: cmd.user.name.clone(),
+			repo,
+			pr,
+			channel_id: cmd.channel_id.get(),
+		}))
+	}
 }
 
 #[async_trait]
@@ -86,12 +86,14 @@ impl CommandModule for AssignModule {
 		&["assign", "unassign"]
 	}
 
-	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
-		let Some(req) = parse_assign_input(ctx, cmd).await? else {
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), AppError> {
+		let Some(req) = self.parse_assign_input(ctx, cmd).await? else {
 			return Ok(());
 		};
 
-		cmd.defer_ephemeral(ctx).await?;
+		cmd.defer_ephemeral(ctx)
+			.await
+			.map_err(|e| AppError::Discord(Arc::new(e)))?;
 
 		match self.service.handle(req, &ctx.http).await {
 			Ok(msg) => deferred_ephemeral(ctx, cmd, &msg).await,

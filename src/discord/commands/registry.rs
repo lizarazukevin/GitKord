@@ -9,6 +9,7 @@ use crate::service::discord::assign::AssignService;
 use crate::service::discord::health::HealthService;
 use crate::service::discord::link::UserLinkService;
 use crate::service::discord::subscribe::SubscribeService;
+use crate::AppError;
 use async_trait::async_trait;
 use serenity::all::{Command, CommandInteraction, Context, CreateCommand, Interaction};
 use std::sync::Arc;
@@ -24,8 +25,7 @@ pub trait CommandModule: Send + Sync {
 	fn names(&self) -> &'static [&'static str];
 
 	/// Routes module commands to appropriate handler.
-	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction)
-		-> Result<(), serenity::Error>;
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), AppError>;
 }
 
 /// Holds every registered `CommandModule` to expose command definitions

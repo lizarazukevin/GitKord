@@ -10,7 +10,6 @@ use async_trait::async_trait;
 use serenity::all::{
 	CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
 };
-use serenity::Error;
 use std::sync::Arc;
 use tracing::error;
 
@@ -27,7 +26,7 @@ impl UserLinkModule {
 		&self,
 		ctx: &Context,
 		cmd: &CommandInteraction,
-	) -> Result<Option<UserLinkRequest>, Error> {
+	) -> Result<Option<UserLinkRequest>, AppError> {
 		require_guild(ctx, cmd).await?;
 
 		let action = match cmd.data.name.as_str() {
@@ -66,7 +65,7 @@ impl CommandModule for UserLinkModule {
 		&["link", "unlink"]
 	}
 
-	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), AppError> {
 		let Some(req) = self.parse_link_input(ctx, cmd).await? else {
 			return Ok(());
 		};

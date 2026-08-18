@@ -11,7 +11,6 @@ use async_trait::async_trait;
 use serenity::all::{
 	CommandInteraction, CommandOptionType, Context, CreateCommand, CreateCommandOption,
 };
-use serenity::Error;
 use std::sync::Arc;
 use tracing::error;
 
@@ -28,7 +27,7 @@ impl SubscribeModule {
 		&self,
 		ctx: &Context,
 		cmd: &CommandInteraction,
-	) -> Result<Option<SubscribeRequest>, Error> {
+	) -> Result<Option<SubscribeRequest>, AppError> {
 		let Some(guild_id) = require_guild(ctx, cmd).await? else {
 			return Ok(None);
 		};
@@ -68,7 +67,7 @@ impl CommandModule for SubscribeModule {
 		&["subscribe", "unsubscribe"]
 	}
 
-	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), AppError> {
 		if reject_if_thread(
 			ctx,
 			cmd,

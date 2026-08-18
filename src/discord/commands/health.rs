@@ -4,10 +4,10 @@ use crate::config::APP_NAME;
 use crate::discord::commands::registry::CommandModule;
 use crate::discord::commands::response::{ephemeral, require_guild};
 use crate::service::discord::health::HealthService;
+use crate::AppError;
 use anyhow::Result;
 use async_trait::async_trait;
 use serenity::all::{CommandInteraction, Context, CreateCommand};
-use serenity::Error;
 use std::sync::Arc;
 
 pub(super) struct HealthModule {
@@ -30,7 +30,7 @@ impl CommandModule for HealthModule {
 		&["health"]
 	}
 
-	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), Error> {
+	async fn execute(&self, ctx: &Context, cmd: &CommandInteraction) -> Result<(), AppError> {
 		require_guild(ctx, cmd).await?;
 
 		let msg = self.service.handle().await;
