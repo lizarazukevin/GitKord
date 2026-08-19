@@ -1,7 +1,7 @@
 //! Dispatches incoming `GitHub` webhook requests to the handler
 //! registered for that event type.
 
-use crate::app::observability::{observe_webhook_event, MetricsRecorder};
+use crate::app::observability::{observe, EventKind, LogContext, MetricsRecorder};
 use crate::error::AppError;
 use crate::github::webhook::events::installation::InstallationEventHandler;
 use crate::github::webhook::events::issue_comment::IssueCommentEventHandler;
@@ -103,8 +103,10 @@ impl WebhookRouter {
 			return StatusCode::OK.into_response();
 		};
 
-		observe_webhook_event(
+		observe(
+			EventKind::Webhook,
 			event_type.as_str(),
+			&LogContext::default(),
 			handler.execute(body),
 			self.recorder.as_ref(),
 		)

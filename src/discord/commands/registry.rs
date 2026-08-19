@@ -1,6 +1,6 @@
 //! Central registry for `Discord` slash command modules.
 
-use crate::app::observability::{observe_command, MetricsRecorder};
+use crate::app::observability::{observe, EventKind, LogContext, MetricsRecorder};
 use crate::discord::commands::assign::AssignModule;
 use crate::discord::commands::health::HealthModule;
 use crate::discord::commands::link::UserLinkModule;
@@ -13,7 +13,6 @@ use crate::AppError;
 use async_trait::async_trait;
 use serenity::all::{Command, CommandInteraction, Context, CreateCommand, Interaction};
 use std::sync::Arc;
-use tracing::warn;
 
 /// Module composed of independent commands grouped by shared behavior (e.g. `AssignModule`).
 #[async_trait]
@@ -69,19 +68,26 @@ impl CommandRegistry {
 		ctx: &Context,
 		interaction: &Interaction,
 		recorder: &dyn MetricsRecorder,
-	) {
+	) -> Result<(), AppError> {
 		let Interaction::Command(cmd) = interaction else {
-			return;
+			return Ok(());
 		};
 		let name = cmd.data.name.as_str();
 
 		for module in &self.modules {
 			if module.names().contains(&name) {
-				let _ = observe_command(name, module.execute(ctx, cmd), recorder).await;
-				return;
+				observe(
+					EventKind::Command,
+					name,
+					&LogContext::default(),
+					module.execute(ctx, cmd),
+					recorder,
+				)
+				.await?;
+				return Ok(());
 			}
 		}
-		warn!(command = %name, "unhandled slash command");
+		Err(AppError::Message(format!("unknown command: {name}")))
 	}
 }
 
