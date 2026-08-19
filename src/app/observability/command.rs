@@ -7,13 +7,13 @@ use std::time::Instant;
 use tracing::error;
 
 /// Wraps a command future, recording its duration and any error it returns.
-pub async fn observe_command<F>(
+pub async fn observe_command<F, R>(
 	command_name: &str,
 	future: F,
 	recorder: &dyn MetricsRecorder,
-) -> Result<(), AppError>
+) -> Result<R, AppError>
 where
-	F: Future<Output = Result<(), AppError>>,
+	F: Future<Output = Result<R, AppError>>,
 {
 	let start = Instant::now();
 	let result = future.await;

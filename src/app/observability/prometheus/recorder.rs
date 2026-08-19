@@ -32,4 +32,21 @@ impl MetricsRecorder for PrometheusRecorder {
 		)
 		.increment(1);
 	}
+
+	fn record_webhook_duration(&self, event_name: &str, duration: Duration) {
+		histogram!("webhook_duration_sec",
+			"event_name" => event_name.to_owned(),
+			"env" => self.environment.clone(),
+		)
+		.record(duration.as_secs_f64());
+	}
+
+	fn record_webhook_error(&self, event_name: &str, error_type: &str) {
+		counter!("webhook_errors_total",
+			"event_name" => event_name.to_owned(),
+			"error_type" => error_type.to_owned(),
+			"environment" => self.environment.clone(),
+		)
+		.increment(1);
+	}
 }
