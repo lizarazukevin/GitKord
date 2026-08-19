@@ -1,5 +1,4 @@
 //! Unified operation observation: span-based timing, context, and error diagnostics.
-#![allow(dead_code)]
 
 use crate::app::observability::context::{EventKind, LogContext};
 use crate::app::observability::recorder::MetricsRecorder;
@@ -41,39 +40,13 @@ where
 			span.record("event.success", false);
 			span.record("event.duration_ms", duration_ms);
 			emit_error(&span, e);
+			recorder.record_error(kind, name, e.error_type());
 		}
 	}
 
-	record_metrics(kind, name, recorder, duration, result.as_ref().err());
+	recorder.record_duration(kind, name, duration);
 
 	result
-}
-
-/// Record duration and error metrics through the kind-appropriate recorder
-/// methods. `HttpRequest` has no dedicated methods yet; it is covered when
-/// the trait is unified around `record_duration`/`record_error`.
-fn record_metrics(
-	kind: EventKind,
-	name: &str,
-	recorder: &dyn MetricsRecorder,
-	duration: std::time::Duration,
-	error: Option<&AppError>,
-) {
-	match kind {
-		EventKind::Command => {
-			recorder.record_command_duration(name, duration);
-			if let Some(e) = error {
-				recorder.record_command_error(name, e.error_type());
-			}
-		}
-		EventKind::Webhook => {
-			recorder.record_webhook_duration(name, duration);
-			if let Some(e) = error {
-				recorder.record_webhook_error(name, e.error_type());
-			}
-		}
-		EventKind::HttpRequest => {}
-	}
 }
 
 /// Build the span carrying the operation's classification and context fields.

@@ -1,6 +1,6 @@
 //! `Prometheus`-backed implementation of [`MetricsRecorder`].
 
-use crate::app::observability::MetricsRecorder;
+use crate::app::observability::{EventKind, MetricsRecorder};
 use metrics::{counter, histogram};
 use std::time::Duration;
 
@@ -16,36 +16,21 @@ impl PrometheusRecorder {
 }
 
 impl MetricsRecorder for PrometheusRecorder {
-	fn record_command_duration(&self, command_name: &str, duration: Duration) {
-		histogram!("cmd_duration_sec",
-			"cmd_name" => command_name.to_owned(),
-			"env" => self.environment.clone(),
+	fn record_duration(&self, kind: EventKind, name: &str, duration: Duration) {
+		histogram!("operation_duration_sec",
+		   "kind" => kind.as_str(),
+		   "name" => name.to_owned(),
+		   "env" => self.environment.clone(),
 		)
 		.record(duration.as_secs_f64());
 	}
 
-	fn record_command_error(&self, command_name: &str, error_type: &str) {
-		counter!("cmd_errors_total",
-			"cmd_name" => command_name.to_owned(),
-			"error_type" => error_type.to_owned(),
-			"environment" => self.environment.clone(),
-		)
-		.increment(1);
-	}
-
-	fn record_webhook_duration(&self, event_name: &str, duration: Duration) {
-		histogram!("webhook_duration_sec",
-			"event_name" => event_name.to_owned(),
-			"env" => self.environment.clone(),
-		)
-		.record(duration.as_secs_f64());
-	}
-
-	fn record_webhook_error(&self, event_name: &str, error_type: &str) {
-		counter!("webhook_errors_total",
-			"event_name" => event_name.to_owned(),
-			"error_type" => error_type.to_owned(),
-			"environment" => self.environment.clone(),
+	fn record_error(&self, kind: EventKind, name: &str, error_type: &str) {
+		counter!("operation_errors_total",
+		   "kind" => kind.as_str(),
+		   "name" => name.to_owned(),
+		   "error_type" => error_type.to_owned(),
+		   "env" => self.environment.clone(),
 		)
 		.increment(1);
 	}
