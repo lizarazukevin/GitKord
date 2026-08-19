@@ -8,7 +8,7 @@ mod telemetry;
 
 use crate::error::AppError;
 use crate::EnvConfig;
-pub use telemetry::init_tracing;
+pub use telemetry::{init_tracing, service_scope};
 
 /// Build the application and run it until a shutdown signal.
 ///

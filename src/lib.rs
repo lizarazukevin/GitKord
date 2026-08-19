@@ -11,6 +11,6 @@ mod models;
 mod service;
 
 pub use app::observability::LogSink;
-pub use app::{init_tracing, run};
+pub use app::{init_tracing, run, service_scope};
 pub use config::{EnvConfig, Environment, APP_NAME};
 pub use error::AppError;

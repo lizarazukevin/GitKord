@@ -11,7 +11,8 @@
 //! If either task exits unexpectedly, the process exits with a non-zero code
 //! so Railway (or any supervisor) knows to restart it.
 
-use git_kord::{init_tracing, run, AppError, EnvConfig, Environment, LogSink, APP_NAME};
+use git_kord::{init_tracing, run, service_scope, AppError, EnvConfig, Environment, LogSink, APP_NAME};
+use tracing::Instrument;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -20,7 +21,7 @@ async fn main() -> Result<(), AppError> {
 
 	let log_sink = init_tracing(env_config.log_endpoint.as_deref(), APP_NAME, &environment)?;
 
-	let result = run(env_config).await;
+	let result = run(env_config).instrument(service_scope(APP_NAME, &environment)).await;
 
 	if let Some(sink) = log_sink {
 		sink.shutdown().await;
