@@ -25,7 +25,8 @@ impl EventHandler for BotEventHandler {
 	}
 
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-		self.registry
+		let _ = self
+			.registry
 			.dispatch(&ctx, &interaction, &*self.recorder)
 			.await;
 	}
