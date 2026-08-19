@@ -44,9 +44,7 @@ pub fn service_scope(service_name: &str, environment: &str) -> tracing::Span {
 ///
 /// - Local development: human-readable log lines for quick scanning in the
 ///   terminal / Railway dev logs.
-/// - Production: structured JSON with the current span's fields (`service.*`,
-///   `environment`, and later `event.*`/context from the `observe` wrapper),
-///   so each line is self-describing for log aggregators.
+/// - Production: structured JSON with the current span's fields.
 ///
 /// Note: Loki always receives full structure from the `tracing-loki` layer
 /// regardless of this stdout format.
