@@ -176,7 +176,7 @@ Set `RUST_LOG=debug` to see full event payloads while you work. If you have `car
 
 ## Roadmap
 
-#### Shipped:
+#### Shipped
 
 ✅ Webhook ingestion with HMAC-SHA256 signature verification.<br>
 ✅ One live message per pull request, edited in place, with a per-PR audit thread.<br>
