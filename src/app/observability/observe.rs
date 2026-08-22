@@ -40,11 +40,10 @@ where
 			span.record("event_success", false);
 			span.record("event_duration_ms", duration_ms);
 			emit_error(&span, e);
-			recorder.record_error(kind, name, e.error_type());
 		}
 	}
 
-	recorder.record_duration(kind, name, duration);
+	record_metrics(kind, name, recorder, duration, result.as_ref().err());
 
 	result
 }
