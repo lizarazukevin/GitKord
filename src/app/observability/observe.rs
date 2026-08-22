@@ -13,8 +13,8 @@ use tracing::{error, info_span, Instrument, Span};
 /// error type, message, and full source chain.
 ///
 /// The span is entered for the entire duration of `future`, so every child log
-/// emitted inside inherits the context fields. `event.duration_ms` and
-/// `event.success` are recorded on the span when the future completes.
+/// emitted inside inherits the context fields. `event_duration_ms` and
+/// `event_success` are recorded on the span when the future completes.
 pub async fn observe<F, R>(
 	kind: EventKind,
 	name: &str,
@@ -33,30 +33,44 @@ where
 
 	match &result {
 		Ok(_) => {
-			span.record("event.success", true);
-			span.record("event.duration_ms", duration_ms);
+			span.record("event_success", true);
+			span.record("event_duration_ms", duration_ms);
 		}
 		Err(e) => {
-			span.record("event.success", false);
-			span.record("event.duration_ms", duration_ms);
+			span.record("event_success", false);
+			span.record("event_duration_ms", duration_ms);
 			emit_error(&span, e);
-			recorder.record_error(kind, name, e.error_type());
 		}
 	}
 
-	recorder.record_duration(kind, name, duration);
+	record_metrics(kind, name, recorder, duration, result.as_ref().err());
 
 	result
+}
+
+/// Record duration and error metrics through the unified recorder methods,
+/// tagged by the operation's event kind.
+fn record_metrics(
+	kind: EventKind,
+	name: &str,
+	recorder: &dyn MetricsRecorder,
+	duration: std::time::Duration,
+	error: Option<&AppError>,
+) {
+	recorder.record_duration(kind, name, duration);
+	if let Some(e) = error {
+		recorder.record_error(kind, name, e.error_type());
+	}
 }
 
 /// Build the span carrying the operation's classification and context fields.
 fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
 	let span = info_span!(
 		"observe",
-		"event.kind" = kind.as_str(),
-		"event.name" = name,
-		"event.success" = tracing::field::Empty,
-		"event.duration_ms" = tracing::field::Empty,
+		event_kind = kind.as_str(),
+		event_name = name,
+		event_success = tracing::field::Empty,
+		event_duration_ms = tracing::field::Empty,
 		repository = tracing::field::Empty,
 		pr_number = tracing::field::Empty,
 		github_user = tracing::field::Empty,
@@ -107,9 +121,9 @@ fn emit_error(span: &Span, err: &AppError) {
 
 	span.in_scope(|| {
 		error!(
-			"error.type" = err.error_type(),
-			"error.message" = %err,
-			"error.causes" = ?causes,
+			error_type = err.error_type(),
+			error_message = %err,
+			error_causes = ?causes,
 			"operation failed"
 		);
 	});

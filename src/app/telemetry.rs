@@ -22,7 +22,7 @@ const SERVICE_SCOPE: &str = "service_scope";
 
 /// Build the process-wide service scope span.
 ///
-/// Carries `service.name`, `service.version`, and `environment` as
+/// Carries `service_name`, `service_version`, and `environment` as
 /// span fields. Every log event emitted inside `run(..).instrument(scope)`
 /// inherits these fields because the formatters include the current span's fields.
 ///
@@ -34,8 +34,8 @@ pub fn service_scope(service_name: &str, environment: &str) -> tracing::Span {
 	span!(
 		Level::INFO,
 		SERVICE_SCOPE,
-		"service.name" = service_name,
-		"service.version" = env!("CARGO_PKG_VERSION"),
+		"service_name" = service_name,
+		"service_version" = env!("CARGO_PKG_VERSION"),
 		environment,
 	)
 }
