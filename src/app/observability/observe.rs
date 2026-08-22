@@ -3,9 +3,11 @@
 use crate::app::observability::context::{EventKind, LogContext};
 use crate::app::observability::recorder::MetricsRecorder;
 use crate::AppError;
+use axum::response::{IntoResponse, Response};
 use std::error::Error;
 use std::future::Future;
-use std::time::Instant;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tracing::{error, info_span, Instrument, Span};
 
 /// Wraps a future in a span carrying the operation's classification, context,
@@ -26,26 +28,65 @@ where
 	F: Future<Output = Result<R, AppError>>,
 {
 	let span = build_span(kind, name, context);
-	let start = Instant::now();
-	let result = future.instrument(span.clone()).await;
-	let duration = start.elapsed();
-	let duration_ms = u64::try_from(duration.as_millis()).unwrap_or(u64::MAX);
+	let (result, duration_ms) = timed(&span, future).await;
 
-	match &result {
-		Ok(_) => {
-			span.record("event_success", true);
-			span.record("event_duration_ms", duration_ms);
-		}
-		Err(e) => {
-			span.record("event_success", false);
-			span.record("event_duration_ms", duration_ms);
-			emit_error(&span, e);
-		}
+	span.record("event_success", result.is_ok());
+	span.record("event_duration_ms", duration_ms);
+	if let Err(e) = &result {
+		emit_error(&span, e);
 	}
 
+	let duration = Duration::from_millis(duration_ms);
 	record_metrics(kind, name, recorder, duration, result.as_ref().err());
 
 	result
+}
+
+/// Wraps a future in an [`observe`] span and duration metric under the
+/// `HttpRequest` event kind.
+///
+/// Unlike [`observe`], the wrapped future's output isn't a `Result<_, AppError>`
+/// — HTTP handlers return their response type directly, and `R: IntoResponse`
+/// lets this function convert to a [`Response`] to inspect the status code.
+/// Success is derived from `status.is_success()` rather than from a `Result`,
+/// since a handler can "complete" while still returning a 4xx/5xx. Domain-level
+/// failures inside subsystems continue to flow through their own [`observe`]
+/// calls, nested inside this span; this function only captures the
+/// request-level view.
+///
+/// Takes the recorder by [`Arc`] so the returned future owns its reference and
+/// is `'static`, satisfying Axum's handler signature.
+pub async fn observe_http<F, R>(
+	name: &str,
+	future: F,
+	recorder: Arc<dyn MetricsRecorder>,
+) -> Response
+where
+	F: Future<Output = R>,
+	R: IntoResponse,
+{
+	let span = build_span(EventKind::HttpRequest, name, &LogContext::default());
+	let (result, duration_ms) = timed(&span, future).await;
+	let response = result.into_response();
+
+	let success = response.status().is_success();
+	span.record("event_success", success);
+	span.record("event_duration_ms", duration_ms);
+
+	let duration = Duration::from_millis(duration_ms);
+	recorder.record_duration(EventKind::HttpRequest, name, duration);
+	if !success {
+		recorder.record_error(EventKind::HttpRequest, name, response.status().as_str());
+	}
+
+	response
+}
+
+async fn timed<F: Future>(span: &Span, future: F) -> (F::Output, u64) {
+	let start = Instant::now();
+	let result = future.instrument(span.clone()).await;
+	let ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
+	(result, ms)
 }
 
 /// Record duration and error metrics through the unified recorder methods,
