@@ -67,7 +67,7 @@ pub fn init(
 	let (layer, controller, task) = tracing_loki::builder()
 		.label("service_name", service_name)
 		.map_err(LokiError::BuildError)?
-		.label("environment", environment)
+		.label("env", environment)
 		.map_err(LokiError::BuildError)?
 		.build_controller_url(url)
 		.map_err(LokiError::BuildError)?;
