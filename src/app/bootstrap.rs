@@ -28,7 +28,6 @@ pub(super) struct Application {
 	webhook_router: Arc<WebhookRouter>,
 	port: u16,
 	internal_port: u16,
-	#[expect(dead_code)]
 	metrics_recorder: Arc<dyn MetricsRecorder>,
 	metrics_renderer: Arc<dyn MetricsRenderer>,
 }
@@ -139,6 +138,7 @@ impl Application {
 			self.internal_port,
 			self.webhook_router,
 			self.metrics_renderer,
+			self.metrics_recorder,
 		));
 		let mut discord = spawn(async move { self.discord_client.start().await });
 

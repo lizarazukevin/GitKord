@@ -10,6 +10,6 @@ pub mod sink;
 
 #[allow(unused_imports)]
 pub use context::{EventKind, LogBuilder, LogContext};
-pub use observe::observe;
+pub use observe::{observe, observe_http};
 pub use recorder::MetricsRecorder;
 pub use sink::LogSink;
