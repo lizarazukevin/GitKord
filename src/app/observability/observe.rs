@@ -104,24 +104,8 @@ fn record_metrics(
 	}
 }
 
-/// Build the span carrying the operation's classification and context fields.
-fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
-	let span = info_span!(
-		"observe",
-		event_kind = kind.as_str(),
-		event_name = name,
-		event_success = tracing::field::Empty,
-		event_duration_ms = tracing::field::Empty,
-		repository = tracing::field::Empty,
-		pr_number = tracing::field::Empty,
-		github_user = tracing::field::Empty,
-		discord_user_id = tracing::field::Empty,
-		channel_id = tracing::field::Empty,
-		guild_id = tracing::field::Empty,
-		thread_id = tracing::field::Empty,
-		installation_id = tracing::field::Empty,
-	);
-
+/// Records `context` fields onto a `span`.
+fn record_context(span: &Span, context: &LogContext) {
 	if let Some(repo) = &context.repository {
 		span.record("repository", repo.as_str());
 	}
@@ -146,6 +130,33 @@ fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
 	if let Some(id) = context.installation_id {
 		span.record("installation_id", id);
 	}
+}
+
+/// Record the non-empty fields of `context` onto the currently-active span.
+pub fn record_context_on_current_span(context: &LogContext) {
+	let span = Span::current();
+	record_context(&span, context);
+}
+
+/// Build the span carrying the operation's classification and context fields.
+fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
+	let span = info_span!(
+		"observe",
+		event_kind = kind.as_str(),
+		event_name = name,
+		event_success = tracing::field::Empty,
+		event_duration_ms = tracing::field::Empty,
+		repository = tracing::field::Empty,
+		pr_number = tracing::field::Empty,
+		github_user = tracing::field::Empty,
+		discord_user_id = tracing::field::Empty,
+		channel_id = tracing::field::Empty,
+		guild_id = tracing::field::Empty,
+		thread_id = tracing::field::Empty,
+		installation_id = tracing::field::Empty,
+	);
+
+	record_context(&span, context);
 
 	span
 }

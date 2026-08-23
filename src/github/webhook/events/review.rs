@@ -1,5 +1,6 @@
 //! `pull_request_review` webhook event handler.
 
+use crate::app::observability::{record_context_on_current_span, LogContext};
 use crate::error::AppError;
 use crate::github::webhook::events::models::{
 	GitHubEvent, PullRequestInfo, RepositoryInfo, ReviewInfo,
@@ -40,6 +41,14 @@ impl WebhookEventHandler for ReviewEventHandler {
 	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
 		let payload: PullRequestReviewPayload =
 			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+
+		record_context_on_current_span(&LogContext {
+			repository: Some(payload.repository.full_name()),
+			pr_number: Some(payload.pull_request.number),
+			github_user: Some(payload.review.user.login.clone()),
+			..LogContext::default()
+		});
+
 		let req = ReviewRequest::from_payload(payload);
 		self.service.handle(req).await?;
 		Ok(StatusCode::OK.into_response())
