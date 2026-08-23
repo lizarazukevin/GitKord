@@ -1,5 +1,6 @@
 //! `pull_request` webhook event handler.
 
+use crate::app::observability::{record_context_on_current_span, LogContext};
 use crate::error::AppError;
 use crate::github::webhook::events::models::{
 	GitHubEvent, GitHubUserInfo, PullRequestInfo, RepositoryInfo,
@@ -40,6 +41,14 @@ impl WebhookEventHandler for PullRequestEventHandler {
 	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
 		let payload: PullRequestPayload =
 			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+
+		record_context_on_current_span(&LogContext {
+			repository: Some(payload.repository.full_name()),
+			pr_number: Some(payload.pull_request.number),
+			github_user: Some(payload.sender.login.clone()),
+			..LogContext::default()
+		});
+
 		let req = PullRequestRequest::from_payload(payload);
 		self.service.handle(req).await?;
 		Ok(StatusCode::OK.into_response())

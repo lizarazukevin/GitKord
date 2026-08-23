@@ -68,6 +68,14 @@ pub struct RepositoryInfo {
 	pub owner: GitHubUserInfo,
 }
 
+impl RepositoryInfo {
+	/// Repository in `owner/name` form.
+	#[must_use]
+	pub fn full_name(&self) -> String {
+		format!("{}/{}", self.owner.login, self.name)
+	}
+}
+
 /// Minimal repository branch reference.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PullRequestRefInfo {

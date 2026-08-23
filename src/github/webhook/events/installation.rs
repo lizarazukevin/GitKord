@@ -1,5 +1,6 @@
 //! `GitHub` app installation webhook handler.
 
+use crate::app::observability::{record_context_on_current_span, LogContext};
 use crate::error::AppError;
 use crate::github::webhook::events::models::{GitHubEvent, InstallationInfo};
 use crate::github::webhook::router::WebhookEventHandler;
@@ -37,6 +38,13 @@ impl WebhookEventHandler for InstallationEventHandler {
 	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
 		let payload: InstallationPayload =
 			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+
+		record_context_on_current_span(&LogContext {
+			installation_id: Some(payload.installation.id.0),
+			github_user: Some(payload.installation.account.login.clone()),
+			..LogContext::default()
+		});
+
 		let req = InstallationRequest::from_payload(payload);
 		self.service.handle(req).await?;
 		Ok(StatusCode::OK.into_response())
