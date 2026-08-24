@@ -55,6 +55,7 @@ metrics-exporter-prometheus = "0.18"
 tracing-loki = "0.2"
 url = "2.5"
 metrics = "0.24"
+uuid = { version = "1.25", features = ["v4"] }
 
 # Inspired by: https://www.namtao.com/rust/
 [lints.clippy]
