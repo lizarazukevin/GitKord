@@ -8,7 +8,7 @@ use std::error::Error;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tracing::{error, info_span, Instrument, Span};
+use tracing::{error, info, info_span, Instrument, Span};
 
 /// Wraps a future in a span carrying the operation's classification, context,
 /// and timing. On failure, emits a single structured `error!` event with the
@@ -30,10 +30,17 @@ where
 	let span = build_span(kind, name, context);
 	let (result, duration_ms) = timed(&span, future).await;
 
-	span.record("event_success", result.is_ok());
-	span.record("event_duration_ms", duration_ms);
-	if let Err(e) = &result {
-		emit_error(&span, e);
+	match &result {
+		Ok(_) => {
+			span.record("event_success", true);
+			span.record("event_duration_ms", duration_ms);
+			emit_success(&span);
+		}
+		Err(e) => {
+			span.record("event_success", false);
+			span.record("event_duration_ms", duration_ms);
+			emit_error(&span, e);
+		}
 	}
 
 	let duration = Duration::from_millis(duration_ms);
@@ -163,6 +170,13 @@ fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
 	record_context(&span, context);
 
 	span
+}
+
+/// Emit a single structured `info!` event parented to the operation's span.
+fn emit_success(span: &Span) {
+	span.in_scope(|| {
+		info!("operation succeeded");
+	});
 }
 
 /// Emit a single structured `error!` event with the error type, message, and
