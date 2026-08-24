@@ -94,9 +94,9 @@ impl IssueCommentService {
 		.await?;
 
 		if pr_messages.is_empty() {
-			info!(repo = %repository, pr = req.pr_number, "no stored messages to update");
+			info!("no stored messages to update");
 		} else {
-			info!(repo = %repository, pr = req.pr_number, "PR message refreshed after new comment");
+			info!("PR message refreshed after new comment");
 		}
 
 		Ok(())

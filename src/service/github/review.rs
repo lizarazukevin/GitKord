@@ -113,13 +113,7 @@ impl ReviewService {
 			}
 		}
 
-		info!(
-			repo = %repository,
-			pr = req.pr_number,
-			reviewer = %req.reviewer_login,
-			action = ?req.action,
-			"review event processed"
-		);
+		info!(action = ?req.action, "review event processed");
 
 		Ok(())
 	}

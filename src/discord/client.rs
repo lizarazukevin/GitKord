@@ -6,7 +6,7 @@ use crate::error::AppError;
 use serenity::all::{Context, EventHandler, GatewayIntents, Http, Interaction, Ready};
 use serenity::Client;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{error, info};
 
 /// Handles Discord gateway events; registers commands and dispatches interactions.
 struct BotEventHandler {
@@ -20,7 +20,7 @@ impl EventHandler for BotEventHandler {
 		info!("{} is connected!", ready.user.name);
 
 		if let Err(e) = self.registry.register_all(&ctx).await {
-			tracing::error!(error = %e, "failed to register slash registry");
+			error!(error = %e, "failed to register slash registry");
 		}
 	}
 

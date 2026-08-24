@@ -62,12 +62,7 @@ impl SubscribeService {
 					})
 					.await?;
 
-				info!(
-					channel = %req.channel_id,
-					guild_id = %req.guild_id,
-					repo = %req.repo,
-					"channel subscribed"
-				);
+				info!(repo = %req.repo, "channel subscribed");
 
 				Ok(format!(
 					"This channel will now receive PR updates for **{}**.",
@@ -79,12 +74,7 @@ impl SubscribeService {
 					.delete(&req.repo, req.guild_id, req.channel_id)
 					.await?;
 
-				info!(
-					channel = %req.channel_id,
-					guild_id = %req.guild_id,
-					repo = %req.repo,
-					"channel unsubscribed"
-				);
+				info!(repo = %req.repo, "channel unsubscribed");
 
 				Ok(format!(
 					"This channel will no longer receive PR updates for **{}**.",

@@ -47,7 +47,6 @@ pub async fn post_pull_request_message(
 		channel = %channel_id,
 		message = %message.id,
 		thread  = %thread.id,
-		pr      = message_data.number,
 		"posted PR message and created audit thread"
 	);
 
@@ -87,7 +86,6 @@ pub async fn update_pull_request_message(
 	info!(
 		channel = %channel_id,
 		message = message_id,
-		pr      = message_data.number,
 		"updated PR message"
 	);
 

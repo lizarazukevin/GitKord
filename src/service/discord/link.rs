@@ -47,11 +47,7 @@ impl UserLinkService {
 							})
 							.await?;
 
-						info!(
-							discord_id = req.discord_id,
-							github_login = %verified,
-							"user link saved"
-						);
+						info!("user link saved");
 
 						Ok(format!(
 							"Linked your Discord account to **{verified}** on GitHub."
@@ -66,7 +62,7 @@ impl UserLinkService {
 			LinkAction::Unlink => {
 				self.user_store.delete(req.discord_id).await?;
 
-				info!(discord_id = req.discord_id, "user link removed");
+				info!("user link removed");
 
 				Ok("Your Discord to GitHub link has been removed.".into())
 			}
