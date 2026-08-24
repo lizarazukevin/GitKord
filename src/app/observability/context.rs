@@ -1,5 +1,4 @@
 //! Structured log context: classification, context, and builder.
-#![allow(dead_code)]
 
 use serenity::all::CommandDataOption;
 
@@ -49,113 +48,6 @@ pub struct LogContext {
 	pub installation_id: Option<u64>,
 	/// Raw slash command arguments (e.g. `repository=owner/name, pr=42`).
 	pub command_args: Option<String>,
-}
-
-/// Fluent builder for a `(EventKind, name, LogContext)` triple.
-#[derive(Debug, Clone)]
-pub struct LogBuilder {
-	kind: EventKind,
-	name: String,
-	context: LogContext,
-}
-
-impl LogContext {
-	/// Start a builder for a webhook event.
-	#[must_use]
-	pub fn webhook(event: &str) -> LogBuilder {
-		LogBuilder::new(EventKind::Webhook, event)
-	}
-
-	/// Start a builder for a Discord command.
-	#[must_use]
-	pub fn command(name: &str) -> LogBuilder {
-		LogBuilder::new(EventKind::Command, name)
-	}
-
-	/// Start a builder for an HTTP request.
-	#[must_use]
-	pub fn http_request(method: &str, path: &str) -> LogBuilder {
-		LogBuilder::new(EventKind::HttpRequest, &format!("{method} {path}"))
-	}
-}
-
-impl LogBuilder {
-	fn new(kind: EventKind, name: &str) -> Self {
-		Self {
-			kind,
-			name: name.to_owned(),
-			context: LogContext::default(),
-		}
-	}
-
-	/// Set the repository as `owner/name`.
-	#[must_use]
-	pub fn repo(mut self, owner: &str, name: &str) -> Self {
-		self.context.repository = Some(format!("{owner}/{name}"));
-		self
-	}
-
-	/// Set the pull request number.
-	#[must_use]
-	pub const fn pr(mut self, number: u64) -> Self {
-		self.context.pr_number = Some(number);
-		self
-	}
-
-	/// Set the GitHub user login (sender, reviewer, or actor).
-	#[must_use]
-	pub fn sender(mut self, login: &str) -> Self {
-		self.context.github_user = Some(login.to_owned());
-		self
-	}
-
-	/// Set the Discord user snowflake ID.
-	#[must_use]
-	pub const fn user_id(mut self, id: u64) -> Self {
-		self.context.discord_user_id = Some(id);
-		self
-	}
-
-	/// Set the Discord channel ID.
-	#[must_use]
-	pub const fn channel(mut self, id: u64) -> Self {
-		self.context.channel_id = Some(id);
-		self
-	}
-
-	/// Set the Discord guild (server) ID.
-	#[must_use]
-	pub const fn guild(mut self, id: u64) -> Self {
-		self.context.guild_id = Some(id);
-		self
-	}
-
-	/// Set the Discord thread ID (PR audit thread).
-	#[must_use]
-	pub const fn thread(mut self, id: u64) -> Self {
-		self.context.thread_id = Some(id);
-		self
-	}
-
-	/// Set the GitHub App installation ID.
-	#[must_use]
-	pub const fn installation(mut self, id: u64) -> Self {
-		self.context.installation_id = Some(id);
-		self
-	}
-
-	/// Set the raw slash command arguments.
-	#[must_use]
-	pub fn command_args(mut self, args: &str) -> Self {
-		self.context.command_args = Some(args.to_owned());
-		self
-	}
-
-	/// Finalize the builder into the `(kind, name, context)` triple.
-	#[must_use]
-	pub fn build(self) -> (EventKind, String, LogContext) {
-		(self.kind, self.name, self.context)
-	}
 }
 
 /// Format slash command options as a compact `name=value` string for logging.

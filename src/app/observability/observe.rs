@@ -102,7 +102,7 @@ fn record_metrics(
 	kind: EventKind,
 	name: &str,
 	recorder: &dyn MetricsRecorder,
-	duration: std::time::Duration,
+	duration: Duration,
 	error: Option<&AppError>,
 ) {
 	recorder.record_duration(kind, name, duration);
