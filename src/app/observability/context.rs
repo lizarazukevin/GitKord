@@ -1,6 +1,8 @@
 //! Structured log context: classification, context, and builder.
 #![allow(dead_code)]
 
+use serenity::all::CommandDataOption;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventKind {
 	/// A Discord slash command (e.g. `/assign`, `/subscribe`).
@@ -45,6 +47,8 @@ pub struct LogContext {
 	pub thread_id: Option<u64>,
 	/// GitHub App installation ID.
 	pub installation_id: Option<u64>,
+	/// Raw slash command arguments (e.g. `repository=owner/name, pr=42`).
+	pub command_args: Option<String>,
 }
 
 /// Fluent builder for a `(EventKind, name, LogContext)` triple.
@@ -140,9 +144,30 @@ impl LogBuilder {
 		self
 	}
 
+	/// Set the raw slash command arguments.
+	#[must_use]
+	pub fn command_args(mut self, args: &str) -> Self {
+		self.context.command_args = Some(args.to_owned());
+		self
+	}
+
 	/// Finalize the builder into the `(kind, name, context)` triple.
 	#[must_use]
 	pub fn build(self) -> (EventKind, String, LogContext) {
 		(self.kind, self.name, self.context)
 	}
+}
+
+/// Format slash command options as a compact `name=value` string for logging.
+///
+/// Uses each option's `Debug` representation, so complex values (mentions,
+/// sub-commands, etc.) remain distinguishable without manual formatting.
+/// Sub-command/group options are flattened inline. Returns an empty string
+/// when the command has no options.
+pub fn format_command_args(options: &[CommandDataOption]) -> String {
+	options
+		.iter()
+		.map(|opt| format!("{}={:?}", opt.name, opt.value))
+		.collect::<Vec<_>>()
+		.join(", ")
 }

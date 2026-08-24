@@ -130,6 +130,9 @@ fn record_context(span: &Span, context: &LogContext) {
 	if let Some(id) = context.installation_id {
 		span.record("installation_id", id);
 	}
+	if let Some(args) = &context.command_args {
+		span.record("command_args", args.as_str());
+	}
 }
 
 /// Record the non-empty fields of `context` onto the currently-active span.
@@ -154,6 +157,7 @@ fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
 		guild_id = tracing::field::Empty,
 		thread_id = tracing::field::Empty,
 		installation_id = tracing::field::Empty,
+		command_args = tracing::field::Empty,
 	);
 
 	record_context(&span, context);

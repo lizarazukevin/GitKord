@@ -1,6 +1,9 @@
 //! Central registry for `Discord` slash command modules.
 
-use crate::app::observability::{observe, EventKind, LogContext, MetricsRecorder};
+use crate::app::observability::context::format_command_args;
+use crate::app::observability::{
+	observe, record_context_on_current_span, EventKind, LogContext, MetricsRecorder,
+};
 use crate::discord::commands::assign::AssignModule;
 use crate::discord::commands::health::HealthModule;
 use crate::discord::commands::link::UserLinkModule;
@@ -11,7 +14,7 @@ use crate::service::discord::link::UserLinkService;
 use crate::service::discord::subscribe::SubscribeService;
 use crate::AppError;
 use async_trait::async_trait;
-use serenity::all::{Command, CommandInteraction, Context, CreateCommand, Interaction};
+use serenity::all::{Command, CommandInteraction, Context, CreateCommand, GuildId, Interaction};
 use std::sync::Arc;
 
 /// Module composed of independent commands grouped by shared behavior (e.g. `AssignModule`).
@@ -80,7 +83,16 @@ impl CommandRegistry {
 					EventKind::Command,
 					name,
 					&LogContext::default(),
-					module.execute(ctx, cmd),
+					async {
+						record_context_on_current_span(&LogContext {
+							discord_user_id: Some(cmd.user.id.get()),
+							channel_id: Some(cmd.channel_id.get()),
+							guild_id: cmd.guild_id.map(GuildId::get),
+							command_args: Some(format_command_args(&cmd.data.options)),
+							..LogContext::default()
+						});
+						module.execute(ctx, cmd).await
+					},
 					recorder,
 				)
 				.await?;
