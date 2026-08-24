@@ -9,6 +9,15 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{error, info, info_span, Instrument, Span};
+use uuid::Uuid;
+
+tokio::task_local! {
+	/// The request ID of the span currently executing for the duration
+	/// of the future they wrap. This means nested `observe` calls can read
+	/// its enclosing span's ID as its own `parent_request_id` without
+	/// explicit threading.
+	static CURRENT_REQUEST_ID: Uuid;
+}
 
 /// Wraps a future in a span carrying the operation's classification, context,
 /// and timing. On failure, emits a single structured `error!` event with the
@@ -27,8 +36,10 @@ pub async fn observe<F, R>(
 where
 	F: Future<Output = Result<R, AppError>>,
 {
-	let span = build_span(kind, name, context);
-	let (result, duration_ms) = timed(&span, future).await;
+	let (span, request_id) = build_span(kind, name, context);
+	let (result, duration_ms) = CURRENT_REQUEST_ID
+		.scope(request_id, timed(&span, future))
+		.await;
 
 	match &result {
 		Ok(_) => {
@@ -72,8 +83,10 @@ where
 	F: Future<Output = R>,
 	R: IntoResponse,
 {
-	let span = build_span(EventKind::HttpRequest, name, &LogContext::default());
-	let (result, duration_ms) = timed(&span, future).await;
+	let (span, request_id) = build_span(EventKind::HttpRequest, name, &LogContext::default());
+	let (result, duration_ms) = CURRENT_REQUEST_ID
+		.scope(request_id, timed(&span, future))
+		.await;
 	let response = result.into_response();
 
 	let success = response.status().is_success();
@@ -149,7 +162,11 @@ pub fn record_context_on_current_span(context: &LogContext) {
 }
 
 /// Build the span carrying the operation's classification and context fields.
-fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
+/// Creates a fresh request ID for this invocation, alongside their `parent_request_id`.
+fn build_span(kind: EventKind, name: &str, context: &LogContext) -> (Span, Uuid) {
+	let request_id = Uuid::new_v4();
+	let parent_request_id = CURRENT_REQUEST_ID.try_with(|id| *id).ok();
+
 	let span = info_span!(
 		"observe",
 		event_kind = kind.as_str(),
@@ -167,9 +184,12 @@ fn build_span(kind: EventKind, name: &str, context: &LogContext) -> Span {
 		command_args = tracing::field::Empty,
 	);
 
-	record_context(&span, context);
+	if let Some(parent_id) = parent_request_id {
+		span.record("parent_request_id", parent_id.to_string().as_str());
+	}
 
-	span
+	record_context(&span, context);
+	(span, request_id)
 }
 
 /// Emit a single structured `info!` event parented to the operation's span.
