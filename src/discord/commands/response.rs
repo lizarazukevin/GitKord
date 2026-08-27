@@ -7,6 +7,7 @@ use serenity::all::{
 };
 
 /// Send an ephemeral response visible only to the users who ran a slash command.
+/// Limited to operation taking 3 seconds, otherwise use [`deferred_ephemeral`].
 pub(super) async fn ephemeral(
 	ctx: &Context,
 	cmd: &CommandInteraction,
@@ -25,6 +26,8 @@ pub(super) async fn ephemeral(
 }
 
 /// Send an ephemeral follow-up after the interaction has been deferred.
+/// Interaction token is valid for 15 minutes.
+/// Ref: <https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-callback>
 pub(super) async fn deferred_ephemeral(
 	ctx: &Context,
 	cmd: &CommandInteraction,
