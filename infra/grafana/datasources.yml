@@ -5,7 +5,7 @@ datasources:
     uid: prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus.railway.internal:9090
+    url: ${METRIC_ENDPOINT}
     isDefault: true
     editable: false
 
@@ -13,5 +13,5 @@ datasources:
     uid: loki
     type: loki
     access: proxy
-    url: http://loki.railway.internal:3100
+    url: ${LOG_ENDPOINT}
     editable: false
