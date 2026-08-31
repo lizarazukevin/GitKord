@@ -69,7 +69,13 @@ impl AssignService {
 			)));
 		}
 
-		let installation_id = self.sub_store.fetch_installation_id_by_repo(&repo).await?;
+		let Some(installation_id) = self.sub_store.fetch_installation_id_by_repo(&repo).await?
+		else {
+			return Err(AppError::message(format_error(
+				"Repository is not subscribed",
+				Some("Run `/subscribe` in a channel first."),
+			)));
+		};
 		let gh_install_client = self.github.scoped_to_installation(installation_id)?;
 
 		let (owner, project) = split_repo(&repo)?;

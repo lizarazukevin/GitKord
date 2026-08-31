@@ -18,7 +18,7 @@ pub trait SubscriptionStore: Send + Sync {
 	/// Insert or update a repository subscription to a channel.
 	async fn upsert(&self, subscription: Subscription) -> Result<(), AppError>;
 	/// Look up the stored `GitHub` app installation ID of a subscribed repository.
-	async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<u64, AppError>;
+	async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<Option<u64>, AppError>;
 	/// List every channel subscribed to a repository.
 	async fn fetch_all_by_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError>;
 	/// Remove a single channel subscription for a repository.
