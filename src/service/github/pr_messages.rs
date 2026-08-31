@@ -86,8 +86,12 @@ pub async fn load_pr_message_data(
 	owner: &str,
 	project: &str,
 	pr_number: u64,
-) -> Result<PrMessageData, AppError> {
-	let gh_install_client = installation_client_for_repo(sub_store, github, owner, project).await?;
+) -> Result<Option<PrMessageData>, AppError> {
+	let Some(gh_install_client) =
+		installation_client_for_repo(sub_store, github, owner, project).await?
+	else {
+		return Ok(None);
+	};
 
 	let pr = PullRequestInfo::from(
 		api::pull_requests::fetch(&gh_install_client, owner, project, pr_number).await?,
@@ -98,7 +102,7 @@ pub async fn load_pr_message_data(
 	let reviewer_states = merge_review_states(&submitted_reviews, &pr.requested_reviewers);
 	let reviewers = enrich_reviewers(user_store, reviewer_states).await;
 
-	Ok(PrMessageData::new(owner, project, &pr, reviewers))
+	Ok(Some(PrMessageData::new(owner, project, &pr, reviewers)))
 }
 
 async fn installation_client_for_repo(
@@ -106,10 +110,12 @@ async fn installation_client_for_repo(
 	github: &GitHubClient,
 	owner: &str,
 	project: &str,
-) -> Result<Octocrab, AppError> {
+) -> Result<Option<Octocrab>, AppError> {
 	let repository = format!("{owner}/{project}");
-	let id = sub_store.fetch_installation_id_by_repo(&repository).await?;
-	github.scoped_to_installation(id)
+	let Some(id) = sub_store.fetch_installation_id_by_repo(&repository).await? else {
+		return Ok(None);
+	};
+	Ok(Some(github.scoped_to_installation(id)?))
 }
 
 /// Merge submitted reviews with requested reviewers.

@@ -116,7 +116,7 @@ impl PullRequestService {
 	async fn handle_opened(&self, req: PullRequestRequest) -> Result<(), AppError> {
 		let repository = format!("{}/{}", req.owner, req.project);
 
-		let message_data = load_pr_message_data(
+		let Some(message_data) = load_pr_message_data(
 			&self.github,
 			self.sub_store.as_ref(),
 			self.user_store.as_ref(),
@@ -124,7 +124,10 @@ impl PullRequestService {
 			&req.project,
 			req.pr.number,
 		)
-		.await?;
+		.await?
+		else {
+			return Ok(());
+		};
 
 		let subscriptions = self.sub_store.fetch_all_by_repo(&repository).await?;
 		for sub in &subscriptions {
@@ -213,7 +216,7 @@ impl PullRequestService {
 	) -> Result<Vec<PrMessage>, AppError> {
 		let repository = format!("{owner}/{repo}");
 
-		let message_data = load_pr_message_data(
+		let Some(message_data) = load_pr_message_data(
 			&self.github,
 			self.sub_store.as_ref(),
 			self.user_store.as_ref(),
@@ -221,7 +224,10 @@ impl PullRequestService {
 			repo,
 			pr_number,
 		)
-		.await?;
+		.await?
+		else {
+			return Ok(vec![]);
+		};
 
 		update_all_pr_messages(
 			self.pr_store.as_ref(),

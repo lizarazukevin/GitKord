@@ -70,15 +70,18 @@ impl SubscriptionStore for PgSubscriptionStore {
 		Ok(())
 	}
 
-	async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<u64, AppError> {
-		let (id,): (i64,) = sqlx::query_as(
-			"SELECT installation_id FROM subscriptions WHERE repository = $1 LIMIT 1",
+	async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<Option<u64>, AppError> {
+		let id: Option<i64> = sqlx::query_scalar(
+			"SELECT installation_id
+         FROM subscriptions
+         WHERE repository = $1
+         LIMIT 1",
 		)
 		.bind(repo)
-		.fetch_one(&self.pool)
+		.fetch_optional(&self.pool)
 		.await?;
 
-		Ok(id.cast_unsigned())
+		Ok(id.map(i64::cast_unsigned))
 	}
 
 	async fn fetch_all_by_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError> {

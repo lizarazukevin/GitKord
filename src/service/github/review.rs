@@ -79,7 +79,7 @@ impl ReviewService {
 			return Ok(());
 		}
 
-		let message_data = pr_messages::load_pr_message_data(
+		let Some(message_data) = pr_messages::load_pr_message_data(
 			&self.github,
 			self.sub_store.as_ref(),
 			self.user_store.as_ref(),
@@ -87,7 +87,10 @@ impl ReviewService {
 			&req.project,
 			req.pr_number,
 		)
-		.await?;
+		.await?
+		else {
+			return Ok(());
+		};
 
 		let repository = format!("{}/{}", req.owner, req.project);
 		let pr_messages = pr_messages::update_all_pr_messages(
