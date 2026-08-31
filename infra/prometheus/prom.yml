@@ -8,4 +8,4 @@ scrape_configs:
 
   - job_name: 'GitKord'
     static_configs:
-      - targets: ['gitkord.railway.internal:9090']
+      - targets: ['${GITKORD_ENDPOINT}']
