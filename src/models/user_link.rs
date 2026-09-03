@@ -5,14 +5,17 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct UserLink {
 	pub discord_id: u64,
 	pub github_login: String,
+	#[allow(dead_code)]
 	pub created_at: DateTime<Utc>,
+	#[allow(dead_code)]
 	pub updated_at: DateTime<Utc>,
+	#[allow(dead_code)]
 	pub created_by: Option<String>,
+	#[allow(dead_code)]
 	pub updated_by: Option<String>,
 }
 

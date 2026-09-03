@@ -22,6 +22,7 @@ pub struct SubscribeRequest {
 	pub action: SubscribeAction,
 	pub guild_id: u64,
 	pub channel_id: u64,
+	pub discord_id: u64,
 }
 
 pub struct SubscribeService {
@@ -62,8 +63,8 @@ impl SubscribeService {
 						installation_id,
 						created_at: Utc::now(),
 						updated_at: Utc::now(),
-						created_by: None,
-						updated_by: None,
+						created_by: Some(req.discord_id.to_string()),
+						updated_by: Some(req.discord_id.to_string()),
 					})
 					.await?;
 

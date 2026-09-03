@@ -4,7 +4,6 @@ use crate::error::AppError;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PrMessage {
 	/// Full repository name in `owner/project` form.
@@ -13,9 +12,13 @@ pub struct PrMessage {
 	pub channel_id: u64,
 	pub message_id: u64,
 	pub thread_id: u64,
+	#[allow(dead_code)]
 	pub created_at: DateTime<Utc>,
+	#[allow(dead_code)]
 	pub updated_at: DateTime<Utc>,
+	#[allow(dead_code)]
 	pub created_by: Option<String>,
+	#[allow(dead_code)]
 	pub updated_by: Option<String>,
 }
 

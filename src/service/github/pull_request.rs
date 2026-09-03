@@ -148,8 +148,8 @@ impl PullRequestService {
 					thread_id: posted.thread_id,
 					created_at: Utc::now(),
 					updated_at: Utc::now(),
-					created_by: None,
-					updated_by: None,
+					created_by: Some(req.sender.clone()),
+					updated_by: Some(req.sender.clone()),
 				})
 				.await?;
 		}
