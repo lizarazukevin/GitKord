@@ -28,6 +28,10 @@ pub enum AppError {
 	#[error("internal error: {0}")]
 	Database(#[from] sqlx::Error),
 
+	/// Schema migration failure. Categorized as `database` for metrics.
+	#[error("database migration error: {0}")]
+	Migration(#[from] sqlx::migrate::MigrateError),
+
 	/// Metrics setup failure.
 	#[error("observability error: {0}")]
 	Metrics(#[from] MetricsError),
@@ -67,7 +71,7 @@ impl AppError {
 			Self::InvalidSignature => "invalid_signature",
 			Self::GitHub(_) => "github",
 			Self::Discord(_) => "discord",
-			Self::Database(_) => "database",
+			Self::Database(_) | Self::Migration(_) => "database",
 			Self::Metrics(_) => "metrics",
 			Self::Loki(_) => "loki",
 			Self::Message(_) => "validation",
@@ -83,7 +87,7 @@ impl IntoResponse for AppError {
 			Self::GitHub(_) => StatusCode::BAD_GATEWAY,
 			Self::Message(_) => StatusCode::BAD_REQUEST,
 			Self::Metrics(_) | Self::Loki(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			Self::Discord(_) | Self::Database(_) | Self::Internal(_) => {
+			Self::Discord(_) | Self::Database(_) | Self::Migration(_) | Self::Internal(_) => {
 				StatusCode::INTERNAL_SERVER_ERROR
 			}
 		};
@@ -95,6 +99,7 @@ impl IntoResponse for AppError {
 			Self::GitHub(_)
 			| Self::Discord(_)
 			| Self::Database(_)
+			| Self::Migration(_)
 			| Self::Internal(_)
 			| Self::Metrics(_)
 			| Self::Loki(_) => {
