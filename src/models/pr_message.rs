@@ -2,7 +2,9 @@
 
 use crate::error::AppError;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PrMessage {
 	/// Full repository name in `owner/project` form.
@@ -11,6 +13,10 @@ pub struct PrMessage {
 	pub channel_id: u64,
 	pub message_id: u64,
 	pub thread_id: u64,
+	pub created_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
+	pub created_by: Option<String>,
+	pub updated_by: Option<String>,
 }
 
 /// Persistence for a PR and its message sent on `Discord`.

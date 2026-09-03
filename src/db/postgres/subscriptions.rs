@@ -3,6 +3,7 @@
 use crate::error::AppError;
 use crate::models::subscription::{Subscription, SubscriptionStore};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 /// `Postgres` row representation of a subscription.
@@ -12,6 +13,10 @@ struct SubscriptionRow {
 	guild_id: i64,
 	channel_id: i64,
 	installation_id: i64,
+	created_at: DateTime<Utc>,
+	updated_at: DateTime<Utc>,
+	created_by: Option<String>,
+	updated_by: Option<String>,
 }
 
 impl From<SubscriptionRow> for Subscription {
@@ -21,6 +26,10 @@ impl From<SubscriptionRow> for Subscription {
 			guild_id: row.guild_id.cast_unsigned(),
 			channel_id: row.channel_id.cast_unsigned(),
 			installation_id: row.installation_id.cast_unsigned(),
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			created_by: row.created_by,
+			updated_by: row.updated_by,
 		}
 	}
 }
@@ -70,7 +79,7 @@ impl SubscriptionStore for PgSubscriptionStore {
 
 	async fn fetch_all_by_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError> {
 		let rows = sqlx::query_as::<_, SubscriptionRow>(
-            "SELECT repository, guild_id, channel_id, installation_id FROM subscriptions WHERE repository = $1",
+            "SELECT repository, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by FROM subscriptions WHERE repository = $1",
         )
         .bind(repo)
         .fetch_all(&self.pool)

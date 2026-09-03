@@ -10,6 +10,7 @@ use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
 use crate::models::user_link::{UserLink, UserStore};
+use chrono::Utc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LinkAction {
@@ -44,6 +45,10 @@ impl UserLinkService {
 							.upsert(UserLink {
 								discord_id: req.discord_id,
 								github_login: verified.clone(),
+								created_at: Utc::now(),
+								updated_at: Utc::now(),
+								created_by: None,
+								updated_by: None,
 							})
 							.await?;
 

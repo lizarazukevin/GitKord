@@ -2,7 +2,9 @@
 
 use crate::error::AppError;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Subscription {
 	/// Full repository name in `owner/project` form.
@@ -10,6 +12,10 @@ pub struct Subscription {
 	pub guild_id: u64,
 	pub channel_id: u64,
 	pub installation_id: u64,
+	pub created_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
+	pub created_by: Option<String>,
+	pub updated_by: Option<String>,
 }
 
 /// Persistence for `Discord` channel subscriptions to a repository's PR updates.

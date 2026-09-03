@@ -22,7 +22,14 @@ serenity = { version = "0.12", features = ["client", "gateway", "model", "cache"
 octocrab = "0.54"
 
 # Postgres persistence (compile-time checked queries)
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "migrate"] }
+sqlx = { version = "0.9", features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "migrate",
+    "chrono"
+] }
+
 
 # Structured logging
 tracing = "0.1"

@@ -9,6 +9,7 @@ use crate::github;
 use crate::github::api::client::GitHubClient;
 use crate::github::api::pull_requests::split_repo;
 use crate::models::subscription::{Subscription, SubscriptionStore};
+use chrono::Utc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubscribeAction {
@@ -59,6 +60,10 @@ impl SubscribeService {
 						guild_id: req.guild_id,
 						channel_id: req.channel_id,
 						installation_id,
+						created_at: Utc::now(),
+						updated_at: Utc::now(),
+						created_by: None,
+						updated_by: None,
 					})
 					.await?;
 
