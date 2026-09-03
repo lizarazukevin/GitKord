@@ -37,23 +37,6 @@ impl PgPrMessageStore {
 	}
 }
 
-/// Create the `pr_messages` table if it does not already exist.
-pub(super) async fn create_table(pool: &PgPool) -> Result<(), AppError> {
-	sqlx::query(
-		"CREATE TABLE IF NOT EXISTS pr_messages (
-            repository  TEXT NOT NULL,
-            pr          BIGINT NOT NULL,
-            channel_id  BIGINT NOT NULL,
-            message_id  BIGINT NOT NULL,
-            thread_id   BIGINT NOT NULL,
-            PRIMARY KEY (repository, pr, channel_id)
-        )",
-	)
-	.execute(pool)
-	.await?;
-	Ok(())
-}
-
 #[async_trait]
 impl PrStore for PgPrMessageStore {
 	async fn upsert(&self, record: PrMessage) -> Result<(), AppError> {
