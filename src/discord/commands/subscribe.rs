@@ -53,6 +53,7 @@ impl SubscribeModule {
 			action,
 			guild_id: guild_id.get(),
 			channel_id: cmd.channel_id.get(),
+			discord_id: cmd.user.id.get(),
 		}))
 	}
 }

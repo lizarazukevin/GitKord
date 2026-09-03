@@ -48,15 +48,18 @@ impl PgSubscriptionStore {
 impl SubscriptionStore for PgSubscriptionStore {
 	async fn upsert(&self, sub: Subscription) -> Result<(), AppError> {
 		sqlx::query(
-			"INSERT INTO subscriptions (repository, guild_id, channel_id, installation_id)
-             VALUES ($1, $2, $3, $4)
+			"INSERT INTO subscriptions (repository, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, NOW(), NOW(), $5, $5)
              ON CONFLICT (repository, guild_id, channel_id) DO UPDATE SET
-                installation_id = EXCLUDED.installation_id",
+                installation_id = EXCLUDED.installation_id,
+                updated_at = NOW(),
+                updated_by = EXCLUDED.updated_by",
 		)
 		.bind(&sub.repository)
 		.bind(sub.guild_id.cast_signed())
 		.bind(sub.channel_id.cast_signed())
 		.bind(sub.installation_id.cast_signed())
+		.bind(sub.updated_by.as_deref())
 		.execute(&self.pool)
 		.await?;
 

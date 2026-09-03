@@ -50,17 +50,21 @@ impl PgPrMessageStore {
 impl PrStore for PgPrMessageStore {
 	async fn upsert(&self, record: PrMessage) -> Result<(), AppError> {
 		sqlx::query(
-			"INSERT INTO pr_messages (repository, pr, channel_id, message_id, thread_id)
-             VALUES ($1, $2, $3, $4, $5)
+			"INSERT INTO pr_messages (repository, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
              ON CONFLICT (repository, pr, channel_id) DO UPDATE SET
                 message_id = EXCLUDED.message_id,
-                thread_id = EXCLUDED.thread_id",
+                thread_id = EXCLUDED.thread_id,
+                updated_at = NOW(),
+                updated_by = EXCLUDED.updated_by",
 		)
 		.bind(&record.repository)
 		.bind(record.pr.cast_signed())
 		.bind(record.channel_id.cast_signed())
 		.bind(record.message_id.cast_signed())
 		.bind(record.thread_id.cast_signed())
+		.bind(record.created_by.as_deref())
+		.bind(record.updated_by.as_deref())
 		.execute(&self.pool)
 		.await?;
 

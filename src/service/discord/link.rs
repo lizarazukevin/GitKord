@@ -47,8 +47,8 @@ impl UserLinkService {
 								github_login: verified.clone(),
 								created_at: Utc::now(),
 								updated_at: Utc::now(),
-								created_by: None,
-								updated_by: None,
+								created_by: Some(req.discord_id.to_string()),
+								updated_by: Some(req.discord_id.to_string()),
 							})
 							.await?;
 
