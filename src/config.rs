@@ -126,9 +126,7 @@ impl EnvConfig {
 }
 
 fn local_dev_flag() -> bool {
-	std::env::var("LOCAL_DEV")
-		.ok()
-		.is_some_and(|v| v == "true" || v == "1")
+	std::env::var("LOCAL_DEV").is_ok_and(|v| v == "true" || v == "1")
 }
 
 fn parse_port(key: &str, default: u16) -> Result<u16> {
