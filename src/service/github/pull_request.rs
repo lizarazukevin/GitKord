@@ -14,6 +14,7 @@ use crate::models::pr_message::{PrMessage, PrStore};
 use crate::models::subscription::SubscriptionStore;
 use crate::models::user_link::UserStore;
 use crate::service::github::pr_messages::{load_pr_message_data, update_all_pr_messages};
+use chrono::Utc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PullRequestAction {
@@ -145,6 +146,10 @@ impl PullRequestService {
 					channel_id: sub.channel_id,
 					message_id: posted.message_id,
 					thread_id: posted.thread_id,
+					created_at: Utc::now(),
+					updated_at: Utc::now(),
+					created_by: None,
+					updated_by: None,
 				})
 				.await?;
 		}

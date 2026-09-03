@@ -3,6 +3,7 @@
 use crate::error::AppError;
 use crate::models::user_link::{UserLink, UserStore};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -11,6 +12,10 @@ use std::collections::HashMap;
 struct UserLinkRow {
 	discord_id: i64,
 	github_login: String,
+	created_at: DateTime<Utc>,
+	updated_at: DateTime<Utc>,
+	created_by: Option<String>,
+	updated_by: Option<String>,
 }
 
 impl From<UserLinkRow> for UserLink {
@@ -18,6 +23,10 @@ impl From<UserLinkRow> for UserLink {
 		Self {
 			discord_id: row.discord_id.cast_unsigned(),
 			github_login: row.github_login,
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			created_by: row.created_by,
+			updated_by: row.updated_by,
 		}
 	}
 }
@@ -51,7 +60,7 @@ impl UserStore for PgUserStore {
 
 	async fn fetch_by_discord_id(&self, discord_id: u64) -> Result<Option<UserLink>, AppError> {
 		let row = sqlx::query_as::<_, UserLinkRow>(
-			"SELECT discord_id, github_login FROM user_links WHERE discord_id = $1",
+			"SELECT discord_id, github_login, created_at, updated_at, created_by, updated_by FROM user_links WHERE discord_id = $1",
 		)
 		.bind(discord_id.cast_signed())
 		.fetch_optional(&self.pool)
@@ -69,7 +78,7 @@ impl UserStore for PgUserStore {
 		}
 
 		let rows = sqlx::query_as::<_, UserLinkRow>(
-			"SELECT discord_id, github_login FROM user_links WHERE github_login = ANY($1)",
+			"SELECT discord_id, github_login, created_at, updated_at, created_by, updated_by FROM user_links WHERE github_login = ANY($1)",
 		)
 		.bind(github_logins)
 		.fetch_all(&self.pool)

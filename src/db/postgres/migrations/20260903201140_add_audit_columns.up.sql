@@ -1,0 +1,17 @@
+ALTER TABLE pr_messages
+    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN created_by TEXT,
+    ADD COLUMN updated_by TEXT;
+
+ALTER TABLE subscriptions
+    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN created_by TEXT,
+    ADD COLUMN updated_by TEXT;
+
+ALTER TABLE user_links
+    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN created_by TEXT,
+    ADD COLUMN updated_by TEXT;

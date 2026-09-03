@@ -3,6 +3,7 @@
 use crate::error::AppError;
 use crate::models::pr_message::{PrMessage, PrStore};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 /// `Postgres` row representation of a pull request channel message mapping.
@@ -13,6 +14,10 @@ struct PrMessageRow {
 	channel_id: i64,
 	message_id: i64,
 	thread_id: i64,
+	created_at: DateTime<Utc>,
+	updated_at: DateTime<Utc>,
+	created_by: Option<String>,
+	updated_by: Option<String>,
 }
 
 impl From<PrMessageRow> for PrMessage {
@@ -23,6 +28,10 @@ impl From<PrMessageRow> for PrMessage {
 			channel_id: row.channel_id.cast_unsigned(),
 			message_id: row.message_id.cast_unsigned(),
 			thread_id: row.thread_id.cast_unsigned(),
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			created_by: row.created_by,
+			updated_by: row.updated_by,
 		}
 	}
 }
@@ -60,7 +69,7 @@ impl PrStore for PgPrMessageStore {
 
 	async fn fetch_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>, AppError> {
 		let row = sqlx::query_as::<_, PrMessageRow>(
-			"SELECT repository, pr, channel_id, message_id, thread_id
+			"SELECT repository, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by
                  FROM pr_messages
                  WHERE thread_id = $1",
 		)
@@ -77,7 +86,7 @@ impl PrStore for PgPrMessageStore {
 		pr_number: u64,
 	) -> Result<Vec<PrMessage>, AppError> {
 		let rows = sqlx::query_as::<_, PrMessageRow>(
-            "SELECT repository, pr, channel_id, message_id, thread_id FROM pr_messages WHERE repository = $1 AND pr = $2"
+            "SELECT repository, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by FROM pr_messages WHERE repository = $1 AND pr = $2"
         )
             .bind(repo)
             .bind(pr_number.cast_signed())

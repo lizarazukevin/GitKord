@@ -2,12 +2,18 @@
 
 use crate::error::AppError;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct UserLink {
 	pub discord_id: u64,
 	pub github_login: String,
+	pub created_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
+	pub created_by: Option<String>,
+	pub updated_by: Option<String>,
 }
 
 /// Persistence for the `Discord` ID to `GitHub` login mapping.
