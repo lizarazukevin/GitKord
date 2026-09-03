@@ -59,7 +59,7 @@ impl CommandRegistry {
 	}
 
 	/// Sends every module's command definitions to `Discord` as global commands.
-	pub(crate) async fn register_all(&self, ctx: &Context) -> Result<(), serenity::Error> {
+	pub(crate) async fn register_all(&self, ctx: &Context) -> Result<(), AppError> {
 		Command::set_global_commands(ctx, self.all_commands()).await?;
 		Ok(())
 	}
