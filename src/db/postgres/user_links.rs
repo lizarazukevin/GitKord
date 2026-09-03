@@ -32,19 +32,6 @@ impl PgUserStore {
 	}
 }
 
-/// Create the `user_links` table if it does not already exist.
-pub(super) async fn create_table(pool: &PgPool) -> Result<(), AppError> {
-	sqlx::query(
-		"CREATE TABLE IF NOT EXISTS user_links (
-            discord_id   BIGINT PRIMARY KEY,
-            github_login TEXT NOT NULL UNIQUE
-        )",
-	)
-	.execute(pool)
-	.await?;
-	Ok(())
-}
-
 #[async_trait]
 impl UserStore for PgUserStore {
 	async fn upsert(&self, link: UserLink) -> Result<(), AppError> {

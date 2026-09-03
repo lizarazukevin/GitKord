@@ -35,22 +35,6 @@ impl PgSubscriptionStore {
 	}
 }
 
-/// Create the `subscriptions` table if it does not already exist.
-pub(super) async fn create_table(pool: &PgPool) -> Result<(), AppError> {
-	sqlx::query(
-		"CREATE TABLE IF NOT EXISTS subscriptions (
-                repository        TEXT NOT NULL,
-                guild_id    BIGINT NOT NULL,
-                channel_id  BIGINT NOT NULL,
-                installation_id BIGINT NOT NULL,
-                PRIMARY KEY (repository, guild_id, channel_id)
-            )",
-	)
-	.execute(pool)
-	.await?;
-	Ok(())
-}
-
 #[async_trait]
 impl SubscriptionStore for PgSubscriptionStore {
 	async fn upsert(&self, sub: Subscription) -> Result<(), AppError> {
