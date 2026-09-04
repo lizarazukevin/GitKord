@@ -32,10 +32,11 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies
+        id: cache
         uses: Swatinem/rust-cache@v2
         with:
-          # Cache all targets to speed up subsequent runs
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          save-if: ${{ github.event_name == 'push' }}
+          cache-on-failure: true
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -44,7 +45,15 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Build
-        run: cargo build --all-targets --all-features
+        run: cargo build --all-targets --all-features --timings
+
+      - name: Upload build timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-timings
+          path: target/cargo-timings/*.html
+          retention-days: 7
 
   test:
     needs: build-and-lint
@@ -57,9 +66,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Rust dependencies
+        id: cache
         uses: Swatinem/rust-cache@v2
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          save-if: ${{ github.event_name == 'push' }}
+          cache-on-failure: true
 
       - name: Run tests
         run: cargo test --all-targets --all-features
