@@ -111,8 +111,10 @@ async fn installation_client_for_repo(
 	owner: &str,
 	project: &str,
 ) -> Result<Option<Octocrab>, AppError> {
-	let repository = format!("{owner}/{project}");
-	let Some(id) = sub_store.fetch_installation_id_by_repo(&repository).await? else {
+	let Some(id) = sub_store
+		.fetch_installation_id_by_owner_project(owner, project)
+		.await?
+	else {
 		return Ok(None);
 	};
 	Ok(Some(github.scoped_to_installation(id)?))

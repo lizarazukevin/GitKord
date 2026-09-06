@@ -48,6 +48,8 @@ impl SubscribeService {
 	/// For subscribe in local dev: registers a webhook on the repository.
 	/// For unsubscribe: just removes the database record.
 	pub async fn handle(&self, req: SubscribeRequest) -> Result<String, AppError> {
+		let (owner, project) = split_repo(&req.repo)?;
+
 		let installation_id = match req.action {
 			SubscribeAction::Subscribe => self.resolve_installation_id(&req.repo).await?,
 			SubscribeAction::Unsubscribe => 0,
@@ -57,7 +59,8 @@ impl SubscribeService {
 			SubscribeAction::Subscribe => {
 				self.sub_store
 					.upsert(Subscription {
-						repository: req.repo.clone(),
+						owner: owner.to_owned(),
+						project: project.to_owned(),
 						guild_id: req.guild_id,
 						channel_id: req.channel_id,
 						installation_id,
@@ -77,7 +80,7 @@ impl SubscribeService {
 			}
 			SubscribeAction::Unsubscribe => {
 				self.sub_store
-					.delete(&req.repo, req.guild_id, req.channel_id)
+					.delete(owner, project, req.guild_id, req.channel_id)
 					.await?;
 
 				info!(repo = %req.repo, "channel unsubscribed");
