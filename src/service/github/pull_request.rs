@@ -130,7 +130,10 @@ impl PullRequestService {
 			return Ok(());
 		};
 
-		let subscriptions = self.sub_store.fetch_all_by_repo(&repository).await?;
+		let subscriptions = self
+			.sub_store
+			.fetch_all_by_owner_project(&req.owner, &req.project)
+			.await?;
 		for sub in &subscriptions {
 			let posted = post_pull_request_message(
 				&self.http,

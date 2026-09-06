@@ -9,7 +9,8 @@ use sqlx::PgPool;
 /// `Postgres` row representation of a subscription.
 #[derive(sqlx::FromRow)]
 struct SubscriptionRow {
-	repository: String,
+	owner: String,
+	project: String,
 	guild_id: i64,
 	channel_id: i64,
 	installation_id: i64,
@@ -22,7 +23,8 @@ struct SubscriptionRow {
 impl From<SubscriptionRow> for Subscription {
 	fn from(row: SubscriptionRow) -> Self {
 		Self {
-			repository: row.repository,
+			owner: row.owner,
+			project: row.project,
 			guild_id: row.guild_id.cast_unsigned(),
 			channel_id: row.channel_id.cast_unsigned(),
 			installation_id: row.installation_id.cast_unsigned(),
@@ -48,14 +50,15 @@ impl PgSubscriptionStore {
 impl SubscriptionStore for PgSubscriptionStore {
 	async fn upsert(&self, sub: Subscription) -> Result<(), AppError> {
 		sqlx::query(
-			"INSERT INTO subscriptions (repository, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, NOW(), NOW(), $5, $5)
-             ON CONFLICT (repository, guild_id, channel_id) DO UPDATE SET
+			"INSERT INTO subscriptions (owner, project, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $6)
+             ON CONFLICT (owner, project, guild_id, channel_id) DO UPDATE SET
                 installation_id = EXCLUDED.installation_id,
                 updated_at = NOW(),
                 updated_by = EXCLUDED.updated_by",
 		)
-		.bind(&sub.repository)
+		.bind(&sub.owner)
+		.bind(&sub.project)
 		.bind(sub.guild_id.cast_signed())
 		.bind(sub.channel_id.cast_signed())
 		.bind(sub.installation_id.cast_signed())
@@ -66,37 +69,54 @@ impl SubscriptionStore for PgSubscriptionStore {
 		Ok(())
 	}
 
-	async fn fetch_installation_id_by_repo(&self, repo: &str) -> Result<Option<u64>, AppError> {
+	async fn fetch_installation_id_by_owner_project(
+		&self,
+		owner: &str,
+		project: &str,
+	) -> Result<Option<u64>, AppError> {
 		let id: Option<i64> = sqlx::query_scalar(
 			"SELECT installation_id
          FROM subscriptions
-         WHERE repository = $1
+         WHERE owner = $1 AND project = $2
          LIMIT 1",
 		)
-		.bind(repo)
+		.bind(owner)
+		.bind(project)
 		.fetch_optional(&self.pool)
 		.await?;
 
 		Ok(id.map(i64::cast_unsigned))
 	}
 
-	async fn fetch_all_by_repo(&self, repo: &str) -> Result<Vec<Subscription>, AppError> {
+	async fn fetch_all_by_owner_project(
+		&self,
+		owner: &str,
+		project: &str,
+	) -> Result<Vec<Subscription>, AppError> {
 		let rows = sqlx::query_as::<_, SubscriptionRow>(
-            "SELECT repository, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by FROM subscriptions WHERE repository = $1",
+            "SELECT owner, project, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by FROM subscriptions WHERE owner = $1 AND project = $2",
         )
-        .bind(repo)
+        .bind(owner)
+        .bind(project)
         .fetch_all(&self.pool)
         .await?;
 
 		Ok(rows.into_iter().map(Subscription::from).collect())
 	}
 
-	async fn delete(&self, repo: &str, guild_id: u64, channel_id: u64) -> Result<(), AppError> {
+	async fn delete(
+		&self,
+		owner: &str,
+		project: &str,
+		guild_id: u64,
+		channel_id: u64,
+	) -> Result<(), AppError> {
 		sqlx::query(
 			"DELETE FROM subscriptions
-         WHERE repository = $1 AND guild_id = $2 AND channel_id = $3",
+         WHERE owner = $1 AND project = $2 AND guild_id = $3 AND channel_id = $4",
 		)
-		.bind(repo)
+		.bind(owner)
+		.bind(project)
 		.bind(guild_id.cast_signed())
 		.bind(channel_id.cast_signed())
 		.execute(&self.pool)
@@ -105,9 +125,14 @@ impl SubscriptionStore for PgSubscriptionStore {
 		Ok(())
 	}
 
-	async fn delete_all_by_repo(&self, repo: &str) -> Result<(), AppError> {
-		sqlx::query("DELETE FROM subscriptions WHERE repository = $1")
-			.bind(repo)
+	async fn delete_all_by_owner_project(
+		&self,
+		owner: &str,
+		project: &str,
+	) -> Result<(), AppError> {
+		sqlx::query("DELETE FROM subscriptions WHERE owner = $1 AND project = $2")
+			.bind(owner)
+			.bind(project)
 			.execute(&self.pool)
 			.await?;
 

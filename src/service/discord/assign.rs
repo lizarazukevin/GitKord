@@ -57,6 +57,8 @@ impl AssignService {
 			.resolve_pr_context(req.channel_id, req.repo, req.pr)
 			.await?;
 
+		let (owner, project) = split_repo(&repo)?;
+
 		let reviewer_login = self.resolve_reviewer_login(&req.reviewer).await?;
 
 		if github::api::users::verify(&self.github, &reviewer_login)
@@ -69,7 +71,10 @@ impl AssignService {
 			)));
 		}
 
-		let Some(installation_id) = self.sub_store.fetch_installation_id_by_repo(&repo).await?
+		let Some(installation_id) = self
+			.sub_store
+			.fetch_installation_id_by_owner_project(owner, project)
+			.await?
 		else {
 			return Err(AppError::message(format_error(
 				"Repository is not subscribed",
@@ -77,8 +82,6 @@ impl AssignService {
 			)));
 		};
 		let gh_install_client = self.github.scoped_to_installation(installation_id)?;
-
-		let (owner, project) = split_repo(&repo)?;
 
 		let requested_revs = github::api::pull_requests::fetch_requested_reviewers(
 			&gh_install_client,

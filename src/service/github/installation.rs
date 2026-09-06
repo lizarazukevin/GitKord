@@ -1,6 +1,7 @@
 //! Service layer for `GitHub` App installation events.
 
 use crate::error::AppError;
+use crate::github::api::pull_requests::split_repo;
 use crate::github::webhook::events::installation::InstallationPayload;
 use crate::models::subscription::SubscriptionStore;
 use std::sync::Arc;
@@ -53,7 +54,12 @@ impl InstallationService {
 				info!("app uninstalled, cleaning up subscriptions");
 
 				for repo in &req.repositories {
-					if let Err(e) = self.sub_store.delete_all_by_repo(repo).await {
+					let (owner, project) = split_repo(repo)?;
+					if let Err(e) = self
+						.sub_store
+						.delete_all_by_owner_project(owner, project)
+						.await
+					{
 						error!(
 							error = %e,
 							repo = %repo,
