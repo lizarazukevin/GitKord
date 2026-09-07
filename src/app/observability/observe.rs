@@ -11,12 +11,18 @@ use std::time::{Duration, Instant};
 use tracing::{error, info, info_span, Instrument, Span};
 use uuid::Uuid;
 
+/// The request scope of the span currently executing for the duration
+/// of the future they wrap.
+struct RequestScope {
+	/// This operation's own request ID.
+	request_id: Uuid,
+	/// The root request ID of the whole trace (the originating HTTP request
+	/// or Discord command). Equal to `request_id` for the root operation.
+	trace_id: Uuid,
+}
+
 tokio::task_local! {
-	/// The request ID of the span currently executing for the duration
-	/// of the future they wrap. This means nested `observe` calls can read
-	/// its enclosing span's ID as its own `parent_request_id` without
-	/// explicit threading.
-	static CURRENT_REQUEST_ID: Uuid;
+	static CURRENT_SCOPE: RequestScope;
 }
 
 /// Wraps a future in a span carrying the operation's classification, context,
@@ -36,10 +42,8 @@ pub async fn observe<F, R>(
 where
 	F: Future<Output = Result<R, AppError>>,
 {
-	let (span, request_id) = build_span(kind, name, context);
-	let (result, duration_ms) = CURRENT_REQUEST_ID
-		.scope(request_id, timed(&span, future))
-		.await;
+	let (span, scope) = build_span(kind, name, context);
+	let (result, duration_ms) = CURRENT_SCOPE.scope(scope, timed(&span, future)).await;
 
 	match &result {
 		Ok(_) => {
@@ -83,10 +87,8 @@ where
 	F: Future<Output = R>,
 	R: IntoResponse,
 {
-	let (span, request_id) = build_span(EventKind::HttpRequest, name, &LogContext::default());
-	let (result, duration_ms) = CURRENT_REQUEST_ID
-		.scope(request_id, timed(&span, future))
-		.await;
+	let (span, scope) = build_span(EventKind::HttpRequest, name, &LogContext::default());
+	let (result, duration_ms) = CURRENT_SCOPE.scope(scope, timed(&span, future)).await;
 	let response = result.into_response();
 
 	let success = response.status().is_success();
@@ -162,10 +164,21 @@ pub fn record_context_on_current_span(context: &LogContext) {
 }
 
 /// Build the span carrying the operation's classification and context fields.
-/// Creates a fresh request ID for this invocation, alongside their `parent_request_id`.
-fn build_span(kind: EventKind, name: &str, context: &LogContext) -> (Span, Uuid) {
-	let request_id = Uuid::new_v4();
-	let parent_request_id = CURRENT_REQUEST_ID.try_with(|id| *id).ok();
+///
+/// The request ID defaults to a fresh UUID unless the caller provided one via
+/// `context.request_id`. The trace ID is inherited from the enclosing scope
+/// (the originating HTTP request or Discord command); if this operation is the
+/// root, the trace ID equals its own request ID.
+fn build_span(kind: EventKind, name: &str, context: &LogContext) -> (Span, RequestScope) {
+	let parent_scope = CURRENT_SCOPE
+		.try_with(|s| RequestScope {
+			request_id: s.request_id,
+			trace_id: s.trace_id,
+		})
+		.ok();
+
+	let request_id = context.request_id.unwrap_or_else(Uuid::new_v4);
+	let trace_id = parent_scope.as_ref().map_or(request_id, |s| s.trace_id);
 
 	let span = info_span!(
 		"observe",
@@ -173,6 +186,9 @@ fn build_span(kind: EventKind, name: &str, context: &LogContext) -> (Span, Uuid)
 		event_name = name,
 		event_success = tracing::field::Empty,
 		event_duration_ms = tracing::field::Empty,
+		request_id = tracing::field::Empty,
+		trace_id = tracing::field::Empty,
+		parent_request_id = tracing::field::Empty,
 		repository = tracing::field::Empty,
 		pr_number = tracing::field::Empty,
 		github_user = tracing::field::Empty,
@@ -184,12 +200,20 @@ fn build_span(kind: EventKind, name: &str, context: &LogContext) -> (Span, Uuid)
 		command_args = tracing::field::Empty,
 	);
 
-	if let Some(parent_id) = parent_request_id {
-		span.record("parent_request_id", parent_id.to_string().as_str());
+	span.record("request_id", request_id.to_string().as_str());
+	span.record("trace_id", trace_id.to_string().as_str());
+	if let Some(parent) = &parent_scope {
+		span.record("parent_request_id", parent.request_id.to_string().as_str());
 	}
 
 	record_context(&span, context);
-	(span, request_id)
+	(
+		span,
+		RequestScope {
+			request_id,
+			trace_id,
+		},
+	)
 }
 
 /// Emit a single structured `info!` event parented to the operation's span.
