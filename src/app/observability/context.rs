@@ -1,6 +1,7 @@
 //! Structured log context: classification, context, and builder.
 
 use serenity::all::CommandDataOption;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventKind {
@@ -30,6 +31,8 @@ impl EventKind {
 /// failures where only the event name is available.
 #[derive(Debug, Clone, Default)]
 pub struct LogContext {
+	/// Request ID for this operation. Defaults to a fresh UUID if unset.
+	pub request_id: Option<Uuid>,
 	/// Repository in `owner/name` form.
 	pub repository: Option<String>,
 	/// Pull request number.
