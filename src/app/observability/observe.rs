@@ -43,9 +43,7 @@ where
 	F: Future<Output = Result<R, AppError>>,
 {
 	let (span, scope) = build_span(kind, name, context);
-	let (result, duration_ms) = CURRENT_SCOPE
-		.scope(scope, timed(&span, future))
-		.await;
+	let (result, duration_ms) = CURRENT_SCOPE.scope(scope, timed(&span, future)).await;
 
 	match &result {
 		Ok(_) => {
@@ -90,9 +88,7 @@ where
 	R: IntoResponse,
 {
 	let (span, scope) = build_span(EventKind::HttpRequest, name, &LogContext::default());
-	let (result, duration_ms) = CURRENT_SCOPE
-		.scope(scope, timed(&span, future))
-		.await;
+	let (result, duration_ms) = CURRENT_SCOPE.scope(scope, timed(&span, future)).await;
 	let response = result.into_response();
 
 	let success = response.status().is_success();
@@ -174,15 +170,15 @@ pub fn record_context_on_current_span(context: &LogContext) {
 /// (the originating HTTP request or Discord command); if this operation is the
 /// root, the trace ID equals its own request ID.
 fn build_span(kind: EventKind, name: &str, context: &LogContext) -> (Span, RequestScope) {
-	let parent_scope = CURRENT_SCOPE.try_with(|s| RequestScope {
-		request_id: s.request_id,
-		trace_id: s.trace_id,
-	}).ok();
+	let parent_scope = CURRENT_SCOPE
+		.try_with(|s| RequestScope {
+			request_id: s.request_id,
+			trace_id: s.trace_id,
+		})
+		.ok();
 
 	let request_id = context.request_id.unwrap_or_else(Uuid::new_v4);
-	let trace_id = parent_scope
-		.as_ref()
-		.map_or(request_id, |s| s.trace_id);
+	let trace_id = parent_scope.as_ref().map_or(request_id, |s| s.trace_id);
 
 	let span = info_span!(
 		"observe",
