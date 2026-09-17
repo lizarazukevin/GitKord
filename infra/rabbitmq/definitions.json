@@ -1,0 +1,36 @@
+{
+  "rabbit_version": "4.3.5",
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "exchanges": [
+    {
+      "name": "gitkord.github.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "github.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "gitkord.github.events",
+      "vhost": "/",
+      "destination": "github.events",
+      "destination_type": "queue",
+      "routing_key": "github.#",
+      "arguments": {}
+    }
+  ]
+}

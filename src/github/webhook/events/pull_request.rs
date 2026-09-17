@@ -9,8 +9,6 @@ use crate::github::webhook::router::WebhookEventHandler;
 use crate::service::github::pull_request::{PullRequestRequest, PullRequestService};
 use async_trait::async_trait;
 use axum::body::Bytes;
-use axum::response::{IntoResponse, Response};
-use http::StatusCode;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -38,9 +36,8 @@ impl WebhookEventHandler for PullRequestEventHandler {
 		GitHubEvent::PullRequest
 	}
 
-	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
-		let payload: PullRequestPayload =
-			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+	async fn execute(&self, body: Bytes) -> Result<(), AppError> {
+		let payload: PullRequestPayload = serde_json::from_slice(&body)?;
 
 		record_context_on_current_span(&LogContext {
 			repository: Some(payload.repository.full_name()),
@@ -50,7 +47,6 @@ impl WebhookEventHandler for PullRequestEventHandler {
 		});
 
 		let req = PullRequestRequest::from_payload(payload);
-		self.service.handle(req).await?;
-		Ok(StatusCode::OK.into_response())
+		self.service.handle(req).await
 	}
 }

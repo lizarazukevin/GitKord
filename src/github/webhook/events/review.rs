@@ -9,8 +9,6 @@ use crate::github::webhook::router::WebhookEventHandler;
 use crate::service::github::review::{ReviewRequest, ReviewService};
 use async_trait::async_trait;
 use axum::body::Bytes;
-use axum::response::{IntoResponse, Response};
-use http::StatusCode;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -38,9 +36,8 @@ impl WebhookEventHandler for ReviewEventHandler {
 		GitHubEvent::PullRequestReview
 	}
 
-	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
-		let payload: PullRequestReviewPayload =
-			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+	async fn execute(&self, body: Bytes) -> Result<(), AppError> {
+		let payload: PullRequestReviewPayload = serde_json::from_slice(&body)?;
 
 		record_context_on_current_span(&LogContext {
 			repository: Some(payload.repository.full_name()),
@@ -50,7 +47,6 @@ impl WebhookEventHandler for ReviewEventHandler {
 		});
 
 		let req = ReviewRequest::from_payload(payload);
-		self.service.handle(req).await?;
-		Ok(StatusCode::OK.into_response())
+		self.service.handle(req).await
 	}
 }

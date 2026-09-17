@@ -30,7 +30,9 @@ sqlx = { version = "0.9", features = [
     "chrono"
 ] }
 
-
+# RabbitMQ, an AMQP message broker
+lapin = "4.11"
+futures-lite = "2.6"
 # Structured logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -55,7 +57,6 @@ async-trait = "0.1"
 anyhow = "1.0"
 thiserror = "2.0"
 chrono = "0.4"
-
 indexmap = "2.14"
 jsonwebtoken = "10.4"
 metrics-exporter-prometheus = "0.18"
