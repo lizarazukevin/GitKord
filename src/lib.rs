@@ -2,6 +2,7 @@
 //! reviewer management directly into your server.
 
 mod app;
+mod broker;
 mod config;
 mod db;
 mod discord;

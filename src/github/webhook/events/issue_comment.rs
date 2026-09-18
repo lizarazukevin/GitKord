@@ -7,8 +7,6 @@ use crate::github::webhook::router::WebhookEventHandler;
 use crate::service::github::issue_comment::{IssueCommentRequest, IssueCommentService};
 use async_trait::async_trait;
 use axum::body::Bytes;
-use axum::response::{IntoResponse, Response};
-use http::StatusCode;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -35,9 +33,8 @@ impl WebhookEventHandler for IssueCommentEventHandler {
 		GitHubEvent::IssueComment
 	}
 
-	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
-		let payload: IssueCommentPayload =
-			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+	async fn execute(&self, body: Bytes) -> Result<(), AppError> {
+		let payload: IssueCommentPayload = serde_json::from_slice(&body)?;
 
 		record_context_on_current_span(&LogContext {
 			repository: Some(payload.repository.full_name()),
@@ -46,7 +43,6 @@ impl WebhookEventHandler for IssueCommentEventHandler {
 		});
 
 		let req = IssueCommentRequest::from_payload(payload);
-		self.service.handle(req).await?;
-		Ok(StatusCode::OK.into_response())
+		self.service.handle(req).await
 	}
 }

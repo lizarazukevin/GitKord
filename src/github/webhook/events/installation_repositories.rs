@@ -9,8 +9,6 @@ use crate::service::github::installation_repositories::{
 };
 use async_trait::async_trait;
 use axum::body::Bytes;
-use axum::response::{IntoResponse, Response};
-use http::StatusCode;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -41,9 +39,8 @@ impl WebhookEventHandler for InstallationRepositoriesEventHandler {
 		GitHubEvent::InstallationRepositories
 	}
 
-	async fn execute(&self, body: Bytes) -> Result<Response, AppError> {
-		let payload: InstallationRepositoriesPayload =
-			serde_json::from_slice(&body).map_err(anyhow::Error::from)?;
+	async fn execute(&self, body: Bytes) -> Result<(), AppError> {
+		let payload: InstallationRepositoriesPayload = serde_json::from_slice(&body)?;
 
 		record_context_on_current_span(&LogContext {
 			installation_id: Some(payload.installation.id.0),
@@ -52,7 +49,6 @@ impl WebhookEventHandler for InstallationRepositoriesEventHandler {
 		});
 
 		let req = InstallationRepositoriesRequest::from_payload(payload);
-		self.service.handle(req).await?;
-		Ok(StatusCode::OK.into_response())
+		self.service.handle(req).await
 	}
 }

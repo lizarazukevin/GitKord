@@ -76,6 +76,14 @@ pub struct EnvConfig {
 	/// Log shipping endpoint URL (e.g. Loki).
 	/// Optional, logs are only written to stdout by default.
 	pub log_endpoint: Option<String>,
+
+	/// AMQP connection URI for the `RabbitMQ` broker
+	/// (e.g. `amqp://user:pass@rabbitmq.railway.internal:5672/%2f`).
+	pub rabbitmq_url: String,
+
+	/// Max number of unacknowledged messages the queue consumer holds at
+	/// once. Defaults to `10`.
+	pub rabbitmq_prefetch: u16,
 }
 
 impl EnvConfig {
@@ -91,13 +99,16 @@ impl EnvConfig {
 		let discord_token = require_env("DISCORD_TOKEN")?;
 		let github_webhook_secret = require_env("GITHUB_WEBHOOK_SECRET")?;
 		let database_url = require_env("DATABASE_URL")?;
-		let port = parse_port("PORT", 3000)?;
-		let internal_port = parse_port("INTERNAL_PORT", 9090)?;
+		let port = parse_u16_env("PORT", 3000)?;
+		let internal_port = parse_u16_env("INTERNAL_PORT", 9090)?;
 
 		let (github_app_id, github_app_private_key) = github_app_credentials(local_dev)?;
 		let (github_token, public_domain) = local_dev_credentials(local_dev)?;
 
 		let log_endpoint = std::env::var("LOG_ENDPOINT").ok();
+
+		let rabbitmq_url = require_env("RABBITMQ_URL")?;
+		let rabbitmq_prefetch = parse_u16_env("RABBITMQ_PREFETCH", 10)?;
 
 		Ok(Self {
 			discord_token,
@@ -111,6 +122,8 @@ impl EnvConfig {
 			github_token,
 			public_domain,
 			log_endpoint,
+			rabbitmq_url,
+			rabbitmq_prefetch,
 		})
 	}
 
@@ -129,7 +142,7 @@ fn local_dev_flag() -> bool {
 	std::env::var("LOCAL_DEV").is_ok_and(|v| v == "true" || v == "1")
 }
 
-fn parse_port(key: &str, default: u16) -> Result<u16> {
+fn parse_u16_env(key: &str, default: u16) -> Result<u16> {
 	std::env::var(key)
 		.unwrap_or_else(|_| default.to_string())
 		.parse::<u16>()

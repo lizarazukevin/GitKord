@@ -6,6 +6,7 @@
 
 use crate::app::observability::loki::LokiError;
 use crate::app::observability::prometheus::MetricsError;
+use crate::broker::BrokerError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use std::sync::Arc;
@@ -39,6 +40,22 @@ pub enum AppError {
 	/// Loki setup failure.
 	#[error("observability error: {0}")]
 	Loki(#[from] LokiError),
+
+	/// Message-broker publish, topology, or consumer failure. See
+	/// `broker::error::BrokerError` — kept broker-implementation-agnostic
+	/// so this variant doesn't change if we ever swap off `RabbitMQ`.
+	#[error("broker error: {0}")]
+	Broker(#[from] BrokerError),
+
+	/// Routing key mismatches or lack of registered handler between the
+	/// published message and consumer. Never retryable.
+	#[error("no handler registered for event type: {0}")]
+	UnroutableEvent(String),
+
+	/// Failed to deserialize a webhook payload into its expected shape.
+	/// Never retryable — the same bytes fail identically every time.
+	#[error("failed to parse webhook payload: {0}")]
+	Deserialization(#[from] serde_json::Error),
 
 	/// User-facing validation/business error surfaced verbatim (no prefix).
 	///
@@ -74,6 +91,9 @@ impl AppError {
 			Self::Database(_) | Self::Migration(_) => "database",
 			Self::Metrics(_) => "metrics",
 			Self::Loki(_) => "loki",
+			Self::Broker(_) => "broker",
+			Self::UnroutableEvent(_) => "unroutable_event",
+			Self::Deserialization(_) => "deserialization",
 			Self::Message(_) => "validation",
 			Self::Internal(_) => "internal",
 		}
@@ -85,11 +105,15 @@ impl IntoResponse for AppError {
 		let status = match &self {
 			Self::InvalidSignature => StatusCode::UNAUTHORIZED,
 			Self::GitHub(_) => StatusCode::BAD_GATEWAY,
-			Self::Message(_) => StatusCode::BAD_REQUEST,
-			Self::Metrics(_) | Self::Loki(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			Self::Discord(_) | Self::Database(_) | Self::Migration(_) | Self::Internal(_) => {
-				StatusCode::INTERNAL_SERVER_ERROR
-			}
+			Self::Message(_) | Self::Deserialization(_) => StatusCode::BAD_REQUEST,
+			Self::UnroutableEvent(_) => StatusCode::UNPROCESSABLE_ENTITY,
+			Self::Metrics(_)
+			| Self::Loki(_)
+			| Self::Discord(_)
+			| Self::Database(_)
+			| Self::Migration(_)
+			| Self::Internal(_)
+			| Self::Broker(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		};
 
 		// Only user-facing errors echo their message, else generic message.
@@ -102,7 +126,10 @@ impl IntoResponse for AppError {
 			| Self::Migration(_)
 			| Self::Internal(_)
 			| Self::Metrics(_)
-			| Self::Loki(_) => {
+			| Self::Loki(_)
+			| Self::Broker(_)
+			| Self::UnroutableEvent(_)
+			| Self::Deserialization(_) => {
 				tracing::error!(error = %self, "internal error");
 				"internal server error".to_string()
 			}
