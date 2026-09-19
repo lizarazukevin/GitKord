@@ -36,7 +36,7 @@ export default defineRailway(() => {
     replicas: { "us-east4-eqdc4a": 1 },
     networking: { privateNetworkEndpoint: "rabbitmq" },
     volumeMounts: { "/var/lib/rabbitmq": rabbitmqVolume },
-    env: { PORT: preserve() },
+    env: { RABBITMQ_DEFAULT_USER: preserve(), RABBITMQ_DEFAULT_PASS: preserve(), AMQP_PORT: preserve(), PORT: preserve() },
   });
 
   // ── infra/prometheus ─────────────────────────────────────────────────────
