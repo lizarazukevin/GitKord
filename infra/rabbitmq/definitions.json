@@ -1,5 +1,4 @@
 {
-  "rabbit_version": "4.3.5",
   "vhosts": [
     { "name": "/" }
   ],
