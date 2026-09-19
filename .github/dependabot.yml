@@ -48,6 +48,19 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm-patch-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: docker
     directory: /
     schedule:
@@ -80,6 +93,16 @@ updates:
 
   - package-ecosystem: docker
     directory: "/infra/grafana"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: "/infra/rabbitmq"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
