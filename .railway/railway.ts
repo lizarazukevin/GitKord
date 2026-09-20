@@ -11,7 +11,7 @@ import {
 
 export default defineRailway(() => {
   // ── Volumes ──────────────────────────────────────────────────────────────
-  const rabbitmqVolume = volume("rabbitmq-volume-PIra", {
+  const rabbitmqVolume = volume("rabbitmq-volume", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
     region: "us-east4-eqdc4a",
@@ -58,7 +58,7 @@ export default defineRailway(() => {
       LOG_ENDPOINT: preserve(),
       METRIC_ENDPOINT: preserve(),
       PORT: preserve(),
-      RAILWAY_RUN_UID: preserve(),
+      RAILWAY_RUN_UID: "0",
     },
   })
 
@@ -72,7 +72,7 @@ export default defineRailway(() => {
     replicas: { "us-east4-eqdc4a": 1 },
     networking: { privateNetworkEndpoint: "loki" },
     volumeMounts: { "/loki": lokiLogsVolume },
-    env: { PORT: preserve(), RAILWAY_RUN_UID: preserve() },
+    env: { PORT: preserve(), RAILWAY_RUN_UID: "0" },
   })
 
   // ── infra/rabbitmq ───────────────────────────────────────────────────────
@@ -90,6 +90,7 @@ export default defineRailway(() => {
       RABBITMQ_DEFAULT_PASS: preserve(),
       AMQP_PORT: preserve(),
       PORT: preserve(),
+      RAILWAY_RUN_UID: "0",
     },
   })
 
@@ -103,7 +104,7 @@ export default defineRailway(() => {
     replicas: { "us-east4-eqdc4a": 1 },
     networking: { privateNetworkEndpoint: "prometheus" },
     volumeMounts: { "/prometheus": prometheusMetricsVolume },
-    env: { PORT: preserve(), RAILWAY_RUN_UID: preserve() },
+    env: { PORT: preserve(), RAILWAY_RUN_UID: "0" },
   })
 
   // ── GitKord ──────────────────────────────────────────────────────────────
