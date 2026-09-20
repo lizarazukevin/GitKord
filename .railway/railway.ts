@@ -91,6 +91,7 @@ export default defineRailway(() => {
       AMQP_PORT: preserve(),
       PORT: preserve(),
       RAILWAY_RUN_UID: "0",
+      RABBITMQ_NODENAME: preserve(),
     },
   })
 
