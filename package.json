@@ -1,5 +1,17 @@
 {
   "dependencies": {
     "railway": "^3.11.0"
+  },
+  "devDependencies": {
+    "oxlint": "^0.16.0",
+    "oxfmt": "^0.1.0",
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "lint": "oxlint .railway",
+    "lint:fix": "oxlint --fix .railway",
+    "format:check": "oxfmt --check .railway",
+    "format": "oxfmt -w .railway",
+    "typecheck": "tsc --noEmit"
   }
 }

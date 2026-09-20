@@ -6,7 +6,7 @@
 # test suite. Cargo's dependency and build artifacts are cached so that
 # follow‑up runs complete quickly.
 #
-# Steps run in order: format check → clippy lint → build → test.
+# Steps run in order: format check → clippy/ts lint → build → test.
 
 name: Rust Build
 
@@ -54,6 +54,30 @@ jobs:
           name: cargo-timings
           path: target/cargo-timings/*.html
           retention-days: 7
+
+  ts-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint TypeScript
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type-check
+        run: npm run typecheck
 
   test:
     needs: build-and-lint
