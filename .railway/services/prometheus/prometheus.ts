@@ -10,7 +10,7 @@ export const prometheusMetricsVolume = volume("prometheus-metrics-volume", {
 export const PrometheusMetrics = service("Prometheus Metrics", {
   source: github("lizarazukevin/GitKord", {
     checkSuites: false,
-    rootDirectory: ".railway/services/prometheus",
+    rootDirectory: "/.railway/services/prometheus",
   }),
   healthcheck: "/-/healthy",
   replicas: { "us-east4-eqdc4a": 1 },

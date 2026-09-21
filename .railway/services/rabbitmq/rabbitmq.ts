@@ -10,7 +10,7 @@ export const rabbitmqVolume = volume("rabbitmq-volume", {
 export const RabbitMQ = service("RabbitMQ", {
   source: github("lizarazukevin/GitKord", {
     checkSuites: false,
-    rootDirectory: ".railway/services/rabbitmq",
+    rootDirectory: "/.railway/services/rabbitmq",
   }),
   healthcheck: "/api/health/checks/ready-to-serve-clients",
   replicas: { "us-east4-eqdc4a": 1 },

@@ -10,7 +10,7 @@ export const lokiLogsVolume = volume("loki-logs-volume", {
 export const LokiLogs = service("Loki Logs", {
   source: github("lizarazukevin/GitKord", {
     checkSuites: false,
-    rootDirectory: ".railway/services/loki",
+    rootDirectory: "/.railway/services/loki",
   }),
   healthcheck: "/ready",
   replicas: { "us-east4-eqdc4a": 1 },

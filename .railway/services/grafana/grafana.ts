@@ -10,7 +10,7 @@ export const grafanaGraphsVolume = volume("grafana-graphs-volume", {
 export const GrafanaGraphs = service("Grafana Graphs", {
   source: github("lizarazukevin/GitKord", {
     checkSuites: false,
-    rootDirectory: ".railway/services/grafana",
+    rootDirectory: "/.railway/services/grafana",
   }),
   healthcheck: "/api/health",
   replicas: { "us-east4-eqdc4a": 1 },
