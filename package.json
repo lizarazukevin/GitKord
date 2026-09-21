@@ -3,7 +3,7 @@
     "railway": "^3.11.0"
   },
   "devDependencies": {
-    "oxlint": "^0.16.0",
+    "oxlint": "^1.83.0",
     "oxfmt": "^0.1.0",
     "typescript": "^7.0.2"
   },
