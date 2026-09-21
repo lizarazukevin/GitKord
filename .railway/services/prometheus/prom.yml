@@ -8,10 +8,10 @@ storage:
       size: 500MB
 
 scrape_configs:
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
-  - job_name: 'GitKord'
+  - job_name: "GitKord"
     static_configs:
-      - targets: ['gitkord.railway.internal:9090']
+      - targets: ["gitkord.railway.internal:9090"]
