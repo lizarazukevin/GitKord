@@ -1,7 +1,5 @@
 {
-  "vhosts": [
-    { "name": "/" }
-  ],
+  "vhosts": [{ "name": "/" }],
   "exchanges": [
     {
       "name": "gitkord.github.events",
