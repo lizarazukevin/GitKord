@@ -7,7 +7,7 @@ import {
   project,
   service,
   volume,
-} from "railway/iac"
+} from "railway/iac";
 
 export default defineRailway(() => {
   // ── Volumes ──────────────────────────────────────────────────────────────
@@ -16,31 +16,31 @@ export default defineRailway(() => {
     allowOnlineResize: true,
     region: "us-east4-eqdc4a",
     sizeMB: 5000,
-  })
+  });
   const postgresVolume = volume("postgres-volume-rEUz", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
     region: "us-east4-eqdc4a",
     sizeMB: 5000,
-  })
+  });
   const prometheusMetricsVolume = volume("prometheus-metrics-volume", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
     region: "us-east4-eqdc4a",
     sizeMB: 5000,
-  })
+  });
   const grafanaGraphsVolume = volume("grafana-graphs-volume", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
     region: "us-east4-eqdc4a",
     sizeMB: 5000,
-  })
+  });
   const lokiLogsVolume = volume("loki-logs-volume", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
     region: "us-east4-eqdc4a",
     sizeMB: 5000,
-  })
+  });
 
   // ── infra/grafana ────────────────────────────────────────────────────────
   const GrafanaGraphs = service("Grafana Graphs", {
@@ -60,7 +60,7 @@ export default defineRailway(() => {
       PORT: preserve(),
       RAILWAY_RUN_UID: "0",
     },
-  })
+  });
 
   // ── infra/loki ───────────────────────────────────────────────────────────
   const LokiLogs = service("Loki Logs", {
@@ -73,7 +73,7 @@ export default defineRailway(() => {
     networking: { privateNetworkEndpoint: "loki" },
     volumeMounts: { "/loki": lokiLogsVolume },
     env: { PORT: preserve(), RAILWAY_RUN_UID: "0" },
-  })
+  });
 
   // ── infra/rabbitmq ───────────────────────────────────────────────────────
   const RabbitMq = service("RabbitMq", {
@@ -93,7 +93,7 @@ export default defineRailway(() => {
       RAILWAY_RUN_UID: "0",
       RABBITMQ_NODENAME: preserve(),
     },
-  })
+  });
 
   // ── infra/prometheus ─────────────────────────────────────────────────────
   const PrometheusMetrics = service("Prometheus Metrics", {
@@ -106,7 +106,7 @@ export default defineRailway(() => {
     networking: { privateNetworkEndpoint: "prometheus" },
     volumeMounts: { "/prometheus": prometheusMetricsVolume },
     env: { PORT: preserve(), RAILWAY_RUN_UID: "0" },
-  })
+  });
 
   // ── GitKord ──────────────────────────────────────────────────────────────
   const GitKord = service("GitKord", {
@@ -127,15 +127,15 @@ export default defineRailway(() => {
       PORT: preserve(),
       RABBITMQ_URL: preserve(),
     },
-  })
+  });
 
   // ── Postgres ─────────────────────────────────────────────────────────────
-  const Postgres = postgres("Postgres", { region: "us-east4-eqdc4a" })
+  const Postgres = postgres("Postgres", { region: "us-east4-eqdc4a" });
   Postgres.networking = {
     privateNetworkEndpoint: "postgres",
     tcpProxies: { "5432": {} },
-  }
-  const PostgreSQL = group("PostgreSQL", [Postgres])
+  };
+  const PostgreSQL = group("PostgreSQL", [Postgres]);
 
   return project("GitKord Backend", {
     resources: [
@@ -151,5 +151,5 @@ export default defineRailway(() => {
       lokiLogsVolume,
       PostgreSQL,
     ],
-  })
-})
+  });
+});

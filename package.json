@@ -11,7 +11,7 @@
     "lint": "oxlint .railway",
     "lint:fix": "oxlint --fix .railway",
     "format:check": "oxfmt --check .railway",
-    "format": "oxfmt -w .railway",
+    "format": "oxfmt --write .railway",
     "typecheck": "tsc --noEmit"
   }
 }
