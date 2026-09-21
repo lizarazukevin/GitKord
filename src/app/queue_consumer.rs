@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tracing::error;
 
 /// The queue this consumer reads from.
-/// Synced with `infra/rabbitmq/definitions.json`'s `github.events` queue.
+/// Synced with `definitions.json`'s `github.events` queue.
 pub const GITHUB_EVENTS_QUEUE: &str = "github.events";
 
 /// Runs until the broker connection is lost or the consumer is canceled.

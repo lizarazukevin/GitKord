@@ -11,7 +11,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true
   },
   "include": [".railway/**/*.ts"]
 }
