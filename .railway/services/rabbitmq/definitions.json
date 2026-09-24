@@ -19,11 +19,11 @@
       "auto_delete": false,
       "arguments": {
         "x-dead-letter-exchange": "gitkord.github.events",
-        "x-dead-letter-routing": "dlq"
+        "x-dead-letter-routing-key": "dlq"
       }
     },
     {
-      "name": "github.events.rery.30s",
+      "name": "github.events.retry.30s",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
@@ -34,7 +34,7 @@
       }
     },
     {
-      "name": "github.events.rery.2m",
+      "name": "github.events.retry.2m",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
@@ -45,7 +45,7 @@
       }
     },
     {
-      "name": "github.events.rery.8m",
+      "name": "github.events.retry.8m",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
