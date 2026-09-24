@@ -1,59 +1,10 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "bargauge",
-      "name": "Bar gauge",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "11.6.0"
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
         "builtIn": 1,
         "datasource": {
-          "type": "datasource",
+          "type": "grafana",
           "uid": "grafana"
         },
         "enable": true,
@@ -74,10 +25,12 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": null,
   "links": [
     {
+      "asDropdown": false,
       "icon": "doc",
+      "includeVars": false,
+      "keepTime": false,
       "tags": [],
       "targetBlank": true,
       "title": "Monitoring with Prometheus & Grafana",
@@ -86,13 +39,13 @@
       "url": "https://www.rabbitmq.com/prometheus.html"
     }
   ],
+  "liveNow": false,
   "panels": [
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -113,7 +66,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#37872D"
+                "color": "#37872D",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -126,8 +80,13 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 0,
+        "y": 0
       },
       "id": 64,
       "maxDataPoints": 100,
@@ -146,7 +105,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -157,7 +116,6 @@
           "exemplar": false,
           "expr": "sum(rabbitmq_queue_messages_ready * on(instance, job) group_left(rabbitmq_cluster) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\", rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "interval": "",
           "intervalFactor": 1,
@@ -174,7 +132,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -197,7 +154,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -210,8 +168,7 @@
             ]
           },
           "unit": "short"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -236,7 +193,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -247,7 +204,6 @@
           "exemplar": false,
           "expr": "sum(irate(rabbitmq_global_messages_delivered_total[$__rate_interval]) * on(instance, job) group_left(rabbitmq_cluster) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "intervalFactor": 1,
           "legendFormat": "",
@@ -263,7 +219,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -284,7 +239,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -297,8 +253,7 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -323,7 +278,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -349,7 +304,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -370,7 +324,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -383,8 +338,7 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -409,7 +363,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -436,7 +390,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -457,7 +410,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -470,8 +424,7 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -496,7 +449,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -522,7 +475,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -543,7 +495,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#37872D"
+                "color": "#37872D",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -556,8 +509,7 @@
             ]
           },
           "unit": "short"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -582,7 +534,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -593,7 +545,6 @@
           "exemplar": false,
           "expr": "sum(rabbitmq_queue_messages_unacked * on(instance, job) group_left(rabbitmq_cluster) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "intervalFactor": 1,
           "legendFormat": "",
@@ -609,7 +560,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -632,7 +582,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -645,8 +596,7 @@
             ]
           },
           "unit": "short"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -671,7 +621,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -698,7 +648,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -719,7 +668,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -732,8 +682,7 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -758,7 +707,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -805,7 +754,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A"
+                "color": "#C4162A",
+                "value": 0
               },
               {
                 "color": "#1F60C4",
@@ -818,8 +768,7 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -844,7 +793,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -870,7 +819,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -892,7 +840,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#1F60C4"
+                "color": "#1F60C4",
+                "value": 0
               },
               {
                 "color": "#37872D",
@@ -905,8 +854,7 @@
             ]
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 3,
@@ -931,7 +879,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -960,8 +908,7 @@
         "x": 0,
         "y": 6
       },
-      "id": 4,
-      "panels": [],
+      "id": 78,
       "title": "NODES",
       "type": "row"
     },
@@ -980,14 +927,17 @@
             "cellOptions": {
               "type": "auto"
             },
+            "footer": {
+              "reducers": []
+            },
             "inspect": false
           },
-          "mappings": [],
           "thresholds": {
             "mode": "percentage",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1012,7 +962,8 @@
                 "value": "none"
               },
               {
-                "id": "custom.align"
+                "id": "custom.align",
+                "value": null
               },
               {
                 "id": "thresholds",
@@ -1020,7 +971,8 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "rgba(50, 172, 45, 0.97)"
+                      "color": "rgba(50, 172, 45, 0.97)",
+                      "value": 0
                     },
                     {
                       "color": "rgba(237, 129, 40, 0.89)"
@@ -1046,7 +998,8 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "rgba(245, 54, 54, 0.9)"
+                      "color": "rgba(245, 54, 54, 0.9)",
+                      "value": 0
                     },
                     {
                       "color": "rgba(237, 129, 40, 0.89)"
@@ -1063,7 +1016,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1084,7 +1037,8 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "rgba(245, 54, 54, 0.9)"
+                      "color": "rgba(245, 54, 54, 0.9)",
+                      "value": 0
                     },
                     {
                       "color": "rgba(237, 129, 40, 0.89)"
@@ -1101,7 +1055,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1113,7 +1067,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": false
               },
               {
@@ -1133,7 +1087,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1145,7 +1099,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1157,7 +1111,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1169,7 +1123,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1181,7 +1135,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1193,7 +1147,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1205,7 +1159,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1217,7 +1171,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1229,7 +1183,7 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
@@ -1245,15 +1199,9 @@
       "id": 69,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": ["sum"],
-          "show": false
-        },
         "showHeader": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -1272,6 +1220,7 @@
           "refId": "A"
         }
       ],
+      "title": "",
       "transformations": [
         {
           "id": "organize",
@@ -1332,6 +1281,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": true,
             "stacking": {
               "group": "A",
@@ -1342,13 +1292,12 @@
             }
           },
           "decimals": 1,
-          "links": [],
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -1523,6 +1472,10 @@
       },
       "id": 7,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -1535,7 +1488,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -1589,6 +1542,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": true,
             "stacking": {
               "group": "A",
@@ -1599,13 +1553,12 @@
             }
           },
           "decimals": 1,
-          "links": [],
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -1780,6 +1733,10 @@
       },
       "id": 8,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -1792,7 +1749,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -1819,8 +1776,7 @@
         "x": 0,
         "y": 20
       },
-      "id": 27,
-      "panels": [],
+      "id": 79,
       "title": "QUEUED MESSAGES",
       "type": "row"
     },
@@ -1859,6 +1815,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1869,14 +1826,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -2047,6 +2003,10 @@
       },
       "id": 9,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -2059,7 +2019,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -2113,6 +2073,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2123,14 +2084,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -2301,6 +2261,10 @@
       },
       "id": 19,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -2313,7 +2277,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -2340,8 +2304,7 @@
         "x": 0,
         "y": 26
       },
-      "id": 11,
-      "panels": [],
+      "id": 80,
       "title": "INCOMING MESSAGES",
       "type": "row"
     },
@@ -2380,6 +2343,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2390,14 +2354,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -2568,6 +2531,10 @@
       },
       "id": 13,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -2580,7 +2547,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -2611,14 +2578,13 @@
             "mode": "thresholds"
           },
           "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
           "noValue": "Requires RabbitMQ 4.1+",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -2627,8 +2593,7 @@
             ]
           },
           "unit": "decbytes"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 5,
@@ -2653,7 +2618,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -2664,7 +2629,6 @@
           "exemplar": false,
           "expr": "sum (increase(rabbitmq_message_size_bytes_sum[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) / sum (increase(rabbitmq_message_size_bytes_count[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": false,
           "legendFormat": "{{protocol}}",
           "range": true,
@@ -2686,14 +2650,13 @@
             "mode": "thresholds"
           },
           "decimals": 1,
-          "fieldMinMax": false,
-          "mappings": [],
           "noValue": "Requires RabbitMQ 4.1+",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -2870,7 +2833,7 @@
         "sizing": "auto",
         "valueMode": "color"
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -2881,7 +2844,6 @@
           "exemplar": false,
           "expr": "sum(increase(rabbitmq_message_size_bytes_bucket{le=\"100.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "0-100B",
           "range": false,
@@ -2896,7 +2858,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1000.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"100.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "100B-1KB",
           "range": false,
@@ -2911,7 +2872,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"10000.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1000.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "1KB-10KB",
           "range": false,
@@ -2926,7 +2886,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"100000.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"10000.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "10KB-100KB",
           "range": false,
@@ -2941,7 +2900,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1e+06\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"100000.0\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "100KB-1MB",
           "range": false,
@@ -2956,7 +2914,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1e+07\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1e+06\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "1MB-10MB",
           "range": false,
@@ -2971,7 +2928,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"5e+07\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1e+07\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "10MB-50MB",
           "range": false,
@@ -2986,7 +2942,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1e+08\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"5e+07\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "50MB-100MB",
           "range": false,
@@ -3001,7 +2956,6 @@
           "exemplar": false,
           "expr": "(sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) - sum(increase(rabbitmq_message_size_bytes_bucket{le=\"1e+08\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})) / sum(increase(rabbitmq_message_size_bytes_bucket{le=\"+Inf\"}[$__range]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"})",
           "format": "time_series",
-          "hide": false,
           "instant": true,
           "legendFormat": "100MB+",
           "range": false,
@@ -3046,6 +3000,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3056,14 +3011,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -3234,6 +3188,10 @@
       },
       "id": 61,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -3246,7 +3204,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -3300,6 +3258,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3310,14 +3269,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -3488,6 +3446,10 @@
       },
       "id": 18,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -3500,7 +3462,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -3554,6 +3516,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3563,14 +3526,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "red",
@@ -3606,6 +3568,10 @@
       },
       "id": 34,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -3618,7 +3584,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -3640,7 +3606,6 @@
           },
           "editorMode": "code",
           "expr": "sum(rate(rabbitmq_global_messages_unroutable_returned_total[60s]) * on(instance, job) group_left(rabbitmq_cluster, rabbitmq_node) rabbitmq_identity_info{rabbitmq_cluster=\"$rabbitmq_cluster\", namespace=\"$namespace\",rabbitmq_endpoint=\"$endpoint\"}) by(rabbitmq_node)",
-          "hide": false,
           "instant": false,
           "legendFormat": "returned to publishers {{rabbitmq_node}}",
           "range": true,
@@ -3685,6 +3650,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": true,
             "stacking": {
               "group": "A",
@@ -3695,14 +3661,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -3873,6 +3838,10 @@
       },
       "id": 12,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -3885,7 +3854,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -3912,8 +3881,7 @@
         "x": 0,
         "y": 42
       },
-      "id": 29,
-      "panels": [],
+      "id": 81,
       "title": "OUTGOING MESSAGES",
       "type": "row"
     },
@@ -3952,6 +3920,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3962,14 +3931,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -4140,6 +4108,10 @@
       },
       "id": 14,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -4152,7 +4124,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -4206,6 +4178,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4215,14 +4188,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -4397,6 +4369,10 @@
       },
       "id": 15,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -4409,7 +4385,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -4463,6 +4439,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4473,14 +4450,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -4651,6 +4627,10 @@
       },
       "id": 20,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -4663,7 +4643,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -4717,6 +4697,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4727,14 +4708,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -4905,6 +4885,10 @@
       },
       "id": 21,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -4917,7 +4901,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -4971,6 +4955,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4981,14 +4966,13 @@
             }
           },
           "decimals": 0,
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -5159,6 +5143,10 @@
       },
       "id": 22,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -5171,7 +5159,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -5225,6 +5213,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -5234,14 +5223,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "red",
@@ -5277,6 +5265,10 @@
       },
       "id": 24,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -5289,7 +5281,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -5343,6 +5335,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -5352,14 +5345,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "red",
@@ -5395,6 +5387,10 @@
       },
       "id": 25,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -5407,7 +5403,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -5461,6 +5457,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -5470,14 +5467,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "red",
@@ -5513,6 +5509,10 @@
       },
       "id": 23,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -5525,7 +5525,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -5552,8 +5552,7 @@
         "x": 0,
         "y": 63
       },
-      "id": 53,
-      "panels": [],
+      "id": 82,
       "title": "QUEUES",
       "type": "row"
     },
@@ -5592,6 +5591,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -5601,14 +5601,13 @@
               "mode": "off"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -5779,6 +5778,10 @@
       },
       "id": 57,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -5791,7 +5794,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -5846,6 +5849,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -5855,14 +5859,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -6037,6 +6040,10 @@
       },
       "id": 58,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -6049,7 +6056,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -6103,6 +6110,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -6112,14 +6120,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -6294,6 +6301,10 @@
       },
       "id": 60,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -6306,7 +6317,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -6360,6 +6371,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -6369,14 +6381,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -6551,6 +6562,10 @@
       },
       "id": 59,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -6563,7 +6578,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -6590,8 +6605,7 @@
         "x": 0,
         "y": 69
       },
-      "id": 51,
-      "panels": [],
+      "id": 83,
       "title": "CHANNELS",
       "type": "row"
     },
@@ -6630,6 +6644,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -6639,14 +6654,13 @@
               "mode": "off"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -6817,6 +6831,10 @@
       },
       "id": 54,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -6829,7 +6847,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -6883,6 +6901,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -6892,14 +6911,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -7074,6 +7092,10 @@
       },
       "id": 55,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -7086,7 +7108,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -7140,6 +7162,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -7149,14 +7172,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -7331,6 +7353,10 @@
       },
       "id": 56,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -7343,7 +7369,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -7370,8 +7396,7 @@
         "x": 0,
         "y": 75
       },
-      "id": 46,
-      "panels": [],
+      "id": 84,
       "title": "CONNECTIONS",
       "type": "row"
     },
@@ -7410,6 +7435,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -7419,14 +7445,13 @@
               "mode": "off"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -7597,6 +7622,10 @@
       },
       "id": 47,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -7609,7 +7638,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -7663,6 +7692,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -7672,14 +7702,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -7854,6 +7883,10 @@
       },
       "id": 48,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -7866,7 +7899,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -7921,6 +7954,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -7930,14 +7964,13 @@
               "mode": "line+area"
             }
           },
-          "links": [],
-          "mappings": [],
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent"
+                "color": "transparent",
+                "value": 0
               },
               {
                 "color": "orange",
@@ -8112,6 +8145,10 @@
       },
       "id": 49,
       "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
         "legend": {
           "calcs": ["lastNotNull", "max", "min"],
           "displayMode": "list",
@@ -8124,7 +8161,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.0",
+      "pluginVersion": "13.0.2",
       "targets": [
         {
           "datasource": {
@@ -8142,35 +8179,327 @@
       ],
       "title": "Connections closed / s",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 81
+      },
+      "id": 85,
+      "title": "Custom Row",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 82
+      },
+      "id": 75,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rabbitmq_detailed_queue_messages_ready{queue=\"github.events.dlq\"}",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "DLQ Depth",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "source": "rabbitmq_detailed_queue_messages_ready"
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "queue"
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 82
+      },
+      "id": 76,
+      "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "13.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rabbitmq_detailed_queue_messages_ready{queue=~\"github.events.*\"}",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "All Queue Depths",
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "queue"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "#EAB839",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 82
+      },
+      "id": 77,
+      "options": {
+        "barShape": "flat",
+        "barWidthFactor": 0.5,
+        "effects": {
+          "barGlow": false,
+          "centerGlow": false,
+          "gradient": true
+        },
+        "endpointMarker": "point",
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "segmentCount": 1,
+        "segmentSpacing": 0.3,
+        "shape": "gauge",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "sparkline": true,
+        "textMode": "auto"
+      },
+      "pluginVersion": "13.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rabbitmq_detailed_queue_messages_ready{queue=\"github.events\"} / 10000",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Limit",
+      "type": "gauge"
     }
   ],
+  "preload": false,
   "refresh": "15s",
-  "schemaVersion": 41,
+  "schemaVersion": 42,
   "tags": ["rabbitmq-prometheus"],
   "templating": {
     "list": [
       {
-        "current": {},
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "hide": 2,
         "includeAll": false,
         "label": "datasource",
+        "multi": false,
         "name": "DS_PROMETHEUS",
         "options": [],
         "query": "prometheus",
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "type": "datasource"
       },
       {
         "allValue": ".*",
-        "current": {},
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
         "definition": "label_values(rabbitmq_identity_info, namespace)",
+        "hide": 0,
         "includeAll": false,
         "label": "Namespace",
+        "multi": false,
         "name": "namespace",
         "options": [],
         "query": {
@@ -8179,19 +8508,27 @@
         },
         "refresh": 2,
         "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
-        "current": {},
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
         "definition": "label_values(rabbitmq_identity_info{namespace=\"$namespace\"},rabbitmq_cluster)",
+        "hide": 0,
         "includeAll": false,
         "label": "RabbitMQ Cluster",
+        "multi": false,
         "name": "rabbitmq_cluster",
         "options": [],
         "query": {
@@ -8201,13 +8538,18 @@
         },
         "refresh": 2,
         "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "allValue": ".*",
         "allowCustomValue": false,
-        "current": {},
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
@@ -8217,6 +8559,7 @@
         "hide": 2,
         "includeAll": false,
         "label": "Endpoint",
+        "multi": false,
         "name": "endpoint",
         "options": [],
         "query": {
@@ -8226,6 +8569,8 @@
         },
         "refresh": 2,
         "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       }
@@ -8238,10 +8583,9 @@
   "timepicker": {
     "refresh_intervals": ["15s", "30s", "1m", "5m", "10m"]
   },
-  "timezone": "",
+  "timezone": "browser",
   "title": "RabbitMQ Overview",
+  "version": 3,
   "uid": "rabbitmq-overview",
-  "version": 16,
-  "weekStart": "",
-  "gnetId": 10991
+  "id": 4493982816976896
 }
