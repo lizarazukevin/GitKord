@@ -3,11 +3,10 @@
 use crate::broker::{BrokerError, MessagePublisher};
 use async_trait::async_trait;
 use lapin::options::{BasicPublishOptions, ConfirmSelectOptions};
+use lapin::types::{AMQPValue, FieldTable};
 use lapin::Confirmation;
 use lapin::{BasicProperties, Channel};
-
-/// The exchange every `GitHub` webhook event is published to.
-pub const GITHUB_EVENTS_EXCHANGE: &str = "gitkord.github.events";
+use std::collections::HashMap;
 
 /// Publishes onto a single exchange with publisher confirms enabled.
 /// Broker will return `Ok(())` once the broker has actually accepted and
@@ -40,12 +39,14 @@ impl MessagePublisher for RabbitMqPublisher {
 		&self,
 		routing_key: &str,
 		delivery_id: &str,
+		headers: &HashMap<String, String>,
 		payload: &[u8],
 	) -> Result<(), BrokerError> {
 		let properties = BasicProperties::default()
-			.with_delivery_mode(2)
+			.with_delivery_mode(2) // persistent option
 			.with_content_type("application/json".into())
-			.with_message_id(delivery_id.into());
+			.with_message_id(delivery_id.into())
+			.with_headers(to_field_table(headers));
 
 		let confirmation: Confirmation = self
 			.channel
@@ -69,4 +70,16 @@ impl MessagePublisher for RabbitMqPublisher {
 
 		Ok(())
 	}
+}
+
+/// Converts map of headers into an AMQP `FieldTable` as `LongString` values.
+fn to_field_table(headers: &HashMap<String, String>) -> FieldTable {
+	let mut table = FieldTable::default();
+	for (key, value) in headers {
+		table.insert(
+			key.as_str().into(),
+			AMQPValue::LongString(value.as_str().into()),
+		);
+	}
+	table
 }

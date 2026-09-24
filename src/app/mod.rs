@@ -2,7 +2,6 @@
 
 mod bootstrap;
 pub mod observability;
-pub mod queue_consumer;
 mod server;
 mod shutdown;
 mod telemetry;

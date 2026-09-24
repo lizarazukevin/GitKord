@@ -3,15 +3,14 @@
 use super::observability::prometheus;
 use crate::app::observability::renderer::MetricsRenderer;
 use crate::app::observability::MetricsRecorder;
-use crate::app::queue_consumer::run_queue_consumer;
 use crate::app::server::serve_http;
 use crate::app::shutdown::shutdown_signal;
-use crate::broker::rabbitmq::publisher::GITHUB_EVENTS_EXCHANGE;
 use crate::broker::rabbitmq::{RabbitMqConnection, RabbitMqConsumer, RabbitMqPublisher};
-use crate::broker::{MessageConsumer, MessagePublisher};
+use crate::broker::{MessageConsumer, MessagePublisher, GITHUB_EVENTS_EXCHANGE};
 use crate::config::{EnvConfig, Environment};
 use crate::db::create_stores;
 use crate::error::AppError;
+use crate::github::webhook::consumer::run_queue_consumer;
 use crate::github::webhook::events::installation::InstallationEventHandler;
 use crate::github::webhook::events::installation_repositories::InstallationRepositoriesEventHandler;
 use crate::github::webhook::events::issue_comment::IssueCommentEventHandler;
@@ -37,6 +36,7 @@ pub(super) struct Application {
 	discord_client: serenity::Client,
 	webhook_router: Arc<WebhookRouter>,
 	queue_consumer: Arc<dyn MessageConsumer>,
+	retry_publisher: Arc<dyn MessagePublisher>,
 	port: u16,
 	internal_port: u16,
 	metrics_recorder: Arc<dyn MetricsRecorder>,
@@ -44,6 +44,7 @@ pub(super) struct Application {
 }
 
 impl Application {
+	#[allow(clippy::too_many_lines)]
 	pub async fn build(env_config: EnvConfig) -> Result<Self, AppError> {
 		let webhook_registration_config = env_config.webhook_registration_config();
 
@@ -140,40 +141,7 @@ impl Application {
 			Arc::clone(&stores.subscriptions),
 		));
 
-		let webhook_router = Arc::new(WebhookRouter::new(
-			env_config.github_webhook_secret.clone(),
-			Self::build_webhook_handlers(
-				pull_request_service,
-				review_service,
-				issue_comment_service,
-				installation_service,
-				installation_repositories_service,
-			),
-			Arc::clone(&metrics_recorder),
-			publisher,
-		));
-
-		Ok(Self {
-			discord_client,
-			webhook_router,
-			queue_consumer,
-			port: env_config.port,
-			internal_port: env_config.internal_port,
-			metrics_recorder,
-			metrics_renderer,
-		})
-	}
-
-	/// Constructs the webhook event handlers from their services. Lives in the
-	/// composition root so the router stays agnostic of concrete services.
-	fn build_webhook_handlers(
-		pull_request_service: Arc<PullRequestService>,
-		review_service: Arc<ReviewService>,
-		issue_comment_service: Arc<IssueCommentService>,
-		installation_service: Arc<InstallationService>,
-		installation_repositories_service: Arc<InstallationRepositoriesService>,
-	) -> [Arc<dyn WebhookEventHandler>; 5] {
-		[
+		let handlers: [Arc<dyn WebhookEventHandler>; 5] = [
 			Arc::new(PullRequestEventHandler::new(pull_request_service)),
 			Arc::new(ReviewEventHandler::new(review_service)),
 			Arc::new(IssueCommentEventHandler::new(issue_comment_service)),
@@ -181,7 +149,25 @@ impl Application {
 			Arc::new(InstallationRepositoriesEventHandler::new(
 				installation_repositories_service,
 			)),
-		]
+		];
+
+		let webhook_router = Arc::new(WebhookRouter::new(
+			env_config.github_webhook_secret.clone(),
+			handlers,
+			Arc::clone(&metrics_recorder),
+			Arc::clone(&publisher),
+		));
+
+		Ok(Self {
+			discord_client,
+			webhook_router,
+			queue_consumer,
+			retry_publisher: publisher,
+			port: env_config.port,
+			internal_port: env_config.internal_port,
+			metrics_recorder,
+			metrics_renderer,
+		})
 	}
 
 	pub async fn run(mut self) -> Result<(), AppError> {
@@ -195,7 +181,11 @@ impl Application {
 			self.metrics_recorder,
 		));
 		let mut discord = spawn(async move { self.discord_client.start().await });
-		let mut queue = spawn(run_queue_consumer(self.queue_consumer, self.webhook_router));
+		let mut queue = spawn(run_queue_consumer(
+			self.queue_consumer,
+			self.retry_publisher,
+			self.webhook_router,
+		));
 
 		select! {
 			res = &mut http => {
