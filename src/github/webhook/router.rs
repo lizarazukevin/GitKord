@@ -3,7 +3,7 @@
 //! for that event type.
 
 use crate::app::observability::{observe, EventKind, LogContext, MetricsRecorder};
-use crate::broker::MessagePublisher;
+use crate::broker::{MessagePublisher, ORIGINAL_ROUTING_KEY_HEADER, RETRY_ATTEMPT_HEADER};
 use crate::error::AppError;
 use crate::github::webhook::events::models::GitHubEvent;
 use crate::github::webhook::signature::WebhookVerifier;
@@ -78,6 +78,9 @@ impl WebhookRouter {
 		self.publish(&event_type, &headers, body).await
 	}
 
+	/// Publishes the raw webhook body onto the broker. Tags every publish
+	/// with `RETRY_ATTEMPT_HEADER` (starting at `"1"`) and
+	/// `ORIGINAL_ROUTING_KEY_HEADER` to the routing key (e.g. `github.pull_request`).
 	async fn publish(
 		&self,
 		event_type: &GitHubEvent,
@@ -91,9 +94,13 @@ impl WebhookRouter {
 
 		let routing_key = format!("github.{}", event_type.as_str());
 
+		let mut broker_headers = HashMap::with_capacity(2);
+		broker_headers.insert(RETRY_ATTEMPT_HEADER.to_owned(), "1".to_owned());
+		broker_headers.insert(ORIGINAL_ROUTING_KEY_HEADER.to_owned(), routing_key.clone());
+
 		match self
 			.publisher
-			.publish(&routing_key, &delivery_id, &body)
+			.publish(&routing_key, &delivery_id, &broker_headers, &body)
 			.await
 		{
 			Ok(()) => StatusCode::OK.into_response(),

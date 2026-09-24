@@ -17,7 +17,52 @@
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": {}
+      "arguments": {
+        "x-dead-letter-exchange": "gitkord.github.events",
+        "x-dead-letter-routing-key": "dlq"
+      }
+    },
+    {
+      "name": "github.events.retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 30000,
+        "x-dead-letter-exchange": "gitkord.github.events",
+        "x-dead-letter-routing-key": "github.requeue"
+      }
+    },
+    {
+      "name": "github.events.retry.2m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 120000,
+        "x-dead-letter-exchange": "gitkord.github.events",
+        "x-dead-letter-routing-key": "github.requeue"
+      }
+    },
+    {
+      "name": "github.events.retry.8m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 480000,
+        "x-dead-letter-exchange": "gitkord.github.events",
+        "x-dead-letter-routing-key": "github.requeue"
+      }
+    },
+    {
+      "name": "github.events.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 1209600000
+      }
     }
   ],
   "bindings": [
@@ -27,6 +72,38 @@
       "destination": "github.events",
       "destination_type": "queue",
       "routing_key": "github.#",
+      "arguments": {}
+    },
+    {
+      "source": "gitkord.github.events",
+      "vhost": "/",
+      "destination": "github.events.retry.30s",
+      "destination_type": "queue",
+      "routing_key": "retry.30s",
+      "arguments": {}
+    },
+    {
+      "source": "gitkord.github.events",
+      "vhost": "/",
+      "destination": "github.events.retry.2m",
+      "destination_type": "queue",
+      "routing_key": "retry.2m",
+      "arguments": {}
+    },
+    {
+      "source": "gitkord.github.events",
+      "vhost": "/",
+      "destination": "github.events.retry.8m",
+      "destination_type": "queue",
+      "routing_key": "retry.8m",
+      "arguments": {}
+    },
+    {
+      "source": "gitkord.github.events",
+      "vhost": "/",
+      "destination": "github.events.dlq",
+      "destination_type": "queue",
+      "routing_key": "dlq",
       "arguments": {}
     }
   ]

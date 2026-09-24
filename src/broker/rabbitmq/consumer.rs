@@ -6,8 +6,9 @@ use futures_lite::stream::StreamExt;
 use lapin::options::{
 	BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicQosOptions, BasicRejectOptions,
 };
-use lapin::types::FieldTable;
+use lapin::types::{AMQPValue, FieldTable};
 use lapin::Channel;
+use std::collections::HashMap;
 
 /// Consumes from a single queue with a bounded prefetch, so a crash never
 /// leaves more than `prefetch` messages in flight to be redelivered.
@@ -57,11 +58,13 @@ impl MessageConsumer for RabbitMqConsumer {
 				.message_id()
 				.as_ref()
 				.map(ToString::to_string);
+			let headers = from_field_table(delivery.properties.headers().as_ref());
 
 			let message = BrokerMessage {
 				routing_key: delivery.routing_key.to_string(),
 				payload: delivery.data.clone(),
 				delivery_id,
+				headers,
 			};
 
 			let outcome = handler(message).await;
@@ -77,4 +80,21 @@ impl MessageConsumer for RabbitMqConsumer {
 
 		Ok(())
 	}
+}
+
+/// Converts an AMQP `FieldTable` back to a map of string headers.
+fn from_field_table(table: Option<&FieldTable>) -> HashMap<String, String> {
+	let Some(table) = table else {
+		return HashMap::new();
+	};
+
+	table
+		.inner()
+		.iter()
+		.filter_map(|(key, value)| match value {
+			AMQPValue::LongString(s) => Some((key.to_string(), s.to_string())),
+			AMQPValue::ShortString(s) => Some((key.to_string(), s.to_string())),
+			_ => None,
+		})
+		.collect()
 }

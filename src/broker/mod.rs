@@ -4,10 +4,34 @@ pub mod error;
 pub mod rabbitmq;
 
 pub use error::BrokerError;
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use std::future::Future;
 use std::pin::Pin;
+
+/// The topic exchange every `GitHub` webhook event is published to.
+pub const GITHUB_EVENTS_EXCHANGE: &str = "gitkord.github.events";
+
+/// The queue this consumer reads from.
+/// Synced with `definitions.json`'s `github.events` queue.
+pub const GITHUB_EVENTS_QUEUE: &str = "github.events";
+
+/// Routing key bound to the terminal dead-letter queue.
+pub const DLQ_ROUTING_KEY: &str = "dlq";
+
+/// Routing key for retry-tier queues.
+pub const REQUEUE_ROUTING_KEY: &str = "github.requeue";
+
+/// Backoff tiers for failed deliveries, escalating in exponential retries
+/// before ending up in the DLQ. Order matters for this sequence of routing keys.
+pub const RETRY_TIERS: [&str; 3] = ["retry.30s", "retry.2m", "retry.8m"];
+
+/// Header carrying how many times a message has been attempted.
+pub const RETRY_ATTEMPT_HEADER: &str = "x-gitkord-attempt";
+
+/// Header carrying the original routing key a message was published under.
+pub const ORIGINAL_ROUTING_KEY_HEADER: &str = "x-gitkord-routing-key";
 
 /// A message pulled off a queue.
 #[derive(Debug, Clone)]
@@ -20,6 +44,8 @@ pub struct BrokerMessage {
 	/// downstream for idempotency and log correlation, `None` when unset.
 	/// (e.g. `GitHub` webhooks use `X-GitHub-Delivery` header value)
 	pub delivery_id: Option<String>,
+	/// Arbitrary, broker-agnostic string headers carried with the message.
+	pub headers: HashMap<String, String>,
 }
 
 /// Message paths after consumer processes the delivery.
@@ -27,6 +53,7 @@ pub struct BrokerMessage {
 pub enum ConsumeOutcome {
 	/// Processed successfully; the broker may remove the message.
 	Ack,
+	#[allow(dead_code)]
 	/// Transient failure; the broker should retry per its own policy.
 	Retry,
 	/// Non-retryable failure (e.g. malformed payload); route straight to
@@ -54,6 +81,7 @@ pub trait MessagePublisher: Send + Sync {
 		&self,
 		routing_key: &str,
 		delivery_id: &str,
+		headers: &HashMap<String, String>,
 		payload: &[u8],
 	) -> Result<(), BrokerError>;
 }
