@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+#
+# Local dev build (docker compose only).
+# Builds natively for glibc no musl toolchain/cross-compile linker config.
+FROM rust:1.98-bookworm AS builder
+RUN apt-get update && apt-get install -y \
+    perl \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+RUN rm src/main.rs
+
+COPY src ./src
+RUN touch src/main.rs
+RUN cargo build --release
+
+FROM gcr.io/distroless/cc-debian12
+COPY --from=builder /app/target/release/git_kord /usr/local/bin/git_kord
+CMD ["git_kord"]
