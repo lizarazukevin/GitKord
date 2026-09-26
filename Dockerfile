@@ -11,10 +11,6 @@ RUN apt-get update && apt-get install -y  \
     make \
     && rm -rf /var/lib/apt/lists/*
 
-# Tells cc-rs and rustc which compiler/linker to use for the musl target.
-ENV CC_x86_64_unknown_linux_musl=musl-gcc
-ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
-
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
