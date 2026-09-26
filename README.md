@@ -122,7 +122,9 @@ cargo test                    # tests
 
 You do not need the GitHub App to develop against GitKord. In local dev mode it registers a webhook directly on the repository using a personal access token and points it at your tunnel, so real GitHub events reach the bot on your machine.
 
-You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer, [Docker](https://docs.docker.com/get-docker/) (to run Postgres) or a local [Postgres](https://www.postgresql.org/) installation, a personal [Discord bot application](https://discord.com/developers/applications), a [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope, and [ngrok](https://ngrok.com) (or any tunnel) to expose your local port.
+GitKord's infra isn't optional, the app fails to start without a reachable RabbitMQ broker and logging/metrics (Loki, Prometheus, Grafana) are treated as part of the standard local setup.
+
+You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer with an IDE that can run/debug a Cargo binary (CLion or RustRover, or any IDE with the Rust plugin), [Docker](https://docs.docker.com/get-docker/) and Docker Compose (for Postgres, RabbitMQ, Loki, Prometheus, and Grafana), a personal [Discord bot application](https://discord.com/developers/applications), a [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope, and [ngrok](https://ngrok.com) (or any tunnel) to expose your local port.
 
 #### Creating a Discord bot application
 
@@ -133,46 +135,42 @@ You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer, [Do
    - **Bot Permissions**: `Send Messages`, `Manage Threads`, `Read Message History`, `Send Messages in Threads`, `Embed Links`
 4. Use the generated URL to invite the bot to a test Discord server.
 
-#### Testing Changes
-Set `LOCAL_DEV=true` and provide the following:
+#### Environment variables
+
+Set `LOCAL_DEV=true` and provide the following (read in `src/config.rs`):
 
 | Variable | Required | Description                                                                                                                  |
-|----------|----------|------------------------------------------------------------------------------------------------------------------------------|
+|----------|----------|--------------------------------------------------------------------------------------------------------------------------------|
 | `DISCORD_TOKEN` | Yes | Discord bot token from the Developer Portal (Bot → Reset Token).                                                             |
 | `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`).                                                         |
-| `GITHUB_TOKEN` | Yes | GitHub PAT with repository access and read/write permissions for pull requests and webhooks, used instead of GitHub App auth. |
-| `PUBLIC_DOMAIN` | Yes | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                              |
+| `GITHUB_TOKEN` | Yes (local dev) | GitHub PAT with repository access and read/write permissions for pull requests and webhooks, used instead of GitHub App auth. |
+| `PUBLIC_DOMAIN` | Yes (local dev) | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                              |
 | `DATABASE_URL` | Yes | Postgres connection string.                                                                                                  |
+| `RABBITMQ_URL` | Yes | AMQP connection URI for the RabbitMQ broker, e.g. `amqp://user:pass@host:5672/%2f`. The app will not start without this.     |
 | `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                 |
 | `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                 |
 | `LOG_ENDPOINT` | No | Log shipping URL (e.g. Loki push URL). When set, logs are shipped to the backend; otherwise logs go to stdout only. |
+| `RABBITMQ_PREFETCH` | No | Max unacknowledged messages the queue consumer holds at once. Defaults to `10`.                                              |
 | `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                        |
-| `INTERNAL_PORT` | No | Internal metrics/health listen port. Defaults to `9090`.                                                                     |
+| `INTERNAL_PORT` | No | Internal metrics/health listen port, scraped by Prometheus. Defaults to `9090`.                                              |
 
-A typical loop, in three terminals:
+#### Running the Complete Service
+
+GitKord, Postgres, RabbitMQ, Loki, Prometheus, and Grafana run via the `docker-compose.yml` at the repo root:
 
 ```bash
-# 1. Postgres
-docker run -d --name gitkord-pg \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=gitkord \
-  -p 5432:5432 \
-  postgres:16
-
-# 2. Tunnel
-ngrok http 3000
-
-# 3. The bot
-LOCAL_DEV=true \
-DISCORD_TOKEN=... \
-GITHUB_WEBHOOK_SECRET=... \
-GITHUB_TOKEN=ghp_... \
-PUBLIC_DOMAIN=your-tunnel-host.ngrok-free.app \
-DATABASE_URL=postgres://postgres:password@localhost:5432/gitkord \
-cargo run
+docker compose up
 ```
 
-Set `RUST_LOG=debug` to see full event payloads while you work. If you have `cargo-watch` installed, `cargo watch -x run` rebuilds on save.
+> This won't work automatically, you need to have included the environment variables before starting the containers.
+
+In your IDE of choice (e.g. Rust Rover), select the _Run Configuration_ option and add a Docker configuration targeting the compose file and fill out the table for all required environment variables.
+
+Start your tunnel separately, same as before:
+
+```bash
+ngrok http 3001
+```
 
 ## Roadmap
 
@@ -188,16 +186,22 @@ Set `RUST_LOG=debug` to see full event payloads while you work. If you have `car
 ✅ Commit pushes to an open PR refresh its message everywhere it is posted.<br>
 ✅ Railway deployment on a persistent URL.<br>
 ✅ Error handling packaged in user-friendly ephemeral messages.<br>
+✅ Observability stack deployed (Prometheus, Loki, Grafana).<br>
+✅ RabbitMQ message broker to retry and store failed messages, alleviating backpressure.
+✅ Update local development to encompass message broker and observability stacks via Docker Compose.
+✅ Migrate Config-as-Code to Infra-as-Code for Railway deployment.
 
 #### In progress:
 
-- [ ] A broader test suite covering signature verification, persistence, and formatting.
+- [ ] Dedicated GitKord domain.
+- [ ] Checks handling for GitHub actions.
+- [ ] Configure alarms to trigger on high latency and DLQ depth.
 
 #### Planned:
 
-- [ ] Checks handling for GitHub actions.
 - [ ] AI summary view of new PRs.
-- [ ] Dedicated GitKord domain.
+- [ ] Setup RabbitMQ node cluster.
+- [ ] Implement load balancer for multiple backend containers.
 
 ## License
 
