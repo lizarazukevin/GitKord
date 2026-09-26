@@ -1,0 +1,98 @@
+# LOCAL DEV ONLY
+
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: gitkord
+      POSTGRES_PASSWORD: local-dev-only
+      POSTGRES_DB: gitkord
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitkord"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    build: ./.railway/services/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP, `lapin`/RABBITMQ_URL connection
+      - "15672:15672" # Management UI (http://localhost:15672)
+      - "15692:15692" # Prometheus scrape endpoint
+    environment:
+      RABBITMQ_DEFAULT_USER: gitkord
+      RABBITMQ_DEFAULT_PASS: local-dev-only
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  loki:
+    build: ./.railway/services/loki
+    ports:
+      - "3100:3100"   # HTTP, LOG_ENDPOINT connection
+    volumes:
+      - loki_data:/loki
+
+  prometheus:
+    build: ./.railway/services/prometheus
+    ports:
+      - "9090:9090"   # UI + scrape, METRIC_ENDPOINT connection
+    volumes:
+      - prometheus_data:/prometheus
+      # Local override: replaces the prod prom.yml
+      - ./.railway/services/prometheus/prom.local.yml:/etc/prometheus/prom-config.yml:ro
+
+  grafana:
+    build: ./.railway/services/grafana
+    ports:
+      - "3000:3000"   # UI (http://localhost:3000)
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: local-dev-only
+      METRIC_ENDPOINT: http://prometheus:9090
+      LOG_ENDPOINT: http://loki:3100
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  gitkord:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    ports:
+      - "3001:3001"   # Public webhook, ngrok target
+      - "9091:9090"   # Internal metrics (Prometheus scrapes gitkord:9090)
+    environment:
+      DATABASE_URL: postgres://gitkord:local-dev-only@postgres:5432/gitkord
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      LOCAL_DEV: "true"
+      LOG_ENDPOINT: http://loki:3100
+      PORT: "3001"
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN}
+      RABBITMQ_URL: amqp://gitkord:local-dev-only@rabbitmq:5672/%2f
+      RUST_LOG: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      prometheus:
+        condition: service_started
+
+volumes:
+  postgres_data: {}
+  rabbitmq_data: {}
+  loki_data: {}
+  prometheus_data: {}
+  grafana_data: {}
