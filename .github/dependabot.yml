@@ -72,6 +72,17 @@ updates:
           - "*"
 
   - package-ecosystem: docker
+    directory: /
+    dockerfile: Dockerfile.local
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
     directory: ".railway/services/loki"
     schedule:
       interval: weekly
