@@ -10,7 +10,7 @@ const GROWTH_EXPONENT: f64 = 0.4;
 
 /// Assemble the full PR status message.
 pub(super) fn format_pr_message(data: &PrMessageData, timestamp: &str) -> String {
-	let repo_base_url = data.url.split("/pull").next().unwrap_or(&data.url);
+	let repo_base_url = data.pr_url.split("/pull").next().unwrap_or(&data.pr_url);
 
 	let branches = format!(
 		"[`{head}`](<{url}/tree/{head}>) → [`{base}`](<{url}/tree/{base}>)",
@@ -20,8 +20,8 @@ pub(super) fn format_pr_message(data: &PrMessageData, timestamp: &str) -> String
 	);
 
 	format!(
-		"## {status_emoji} PR #{number} — {title}\n\
-         > ↳ 👤 **{author}**  **·**  🌿 {branches}  **·**  📦 [{repo}](<{url}>)\n\n\
+		"## {status_emoji} [PR #{number}](<{pr_url}>) — {title}\n\
+         > ↳ 👤 **{author}**  **·**  🌿 {branches}  **·**  📦 [{repo}](<{html_url}>)\n\n\
          {bar}\n\n\
          {stats}\n\
          {checks_section}\
@@ -33,7 +33,8 @@ pub(super) fn format_pr_message(data: &PrMessageData, timestamp: &str) -> String
 		author = data.author,
 		branches = branches,
 		repo = data.repository,
-		url = data.url,
+		pr_url = data.pr_url,
+		html_url = data.html_url,
 		bar = format_diff_bar(data.additions, data.deletions),
 		stats = format_pr_stats(data.files, data.commits, data.comments),
 		checks_section = format_checks(&data.checks),
