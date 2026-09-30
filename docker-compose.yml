@@ -65,7 +65,7 @@ services:
   gitkord:
     build:
       context: .
-      dockerfile: Dockerfile.local
+      dockerfile: Dockerfile.dev
     ports:
       - "3001:3001"   # Public webhook, ngrok target
       - "9091:9090"   # Internal metrics (Prometheus scrapes gitkord:9090)
@@ -80,6 +80,11 @@ services:
       PUBLIC_DOMAIN: ${PUBLIC_DOMAIN}
       RABBITMQ_URL: amqp://gitkord:local-dev-only@rabbitmq:5672/%2f
       RUST_LOG: debug
+    # Hot-reload: Persist compiled deps/cargo registry so only app crate recompiles.
+    volumes:
+      - .:/app
+      - cargo_target:/app/target
+      - cargo_registry:/usr/local/cargo/registry
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,3 +101,5 @@ volumes:
   loki_data: {}
   prometheus_data: {}
   grafana_data: {}
+  cargo_target: {}
+  cargo_registry: {}

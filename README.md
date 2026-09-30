@@ -172,6 +172,18 @@ Start your tunnel separately, same as before:
 ngrok http 3001
 ```
 
+##### Hot-reload (dev loop)
+
+The local `gitkord` service builds from `Dockerfile.dev`, bind-mounts the repo (`.:/app`) and runs a file watcher (`watchexec`) that recompiles and restarts the app **in place** whenever `src/` changes — no image rebuild per edit.
+
+Use `--build` on the first start and whenever the image may be stale:
+
+```bash
+docker compose up --build
+```
+
+The first `--build` start compiles all dependencies into the `cargo_target` volume (a few minutes, one-time). `docker compose down -V` resets the `cargo_target` / `cargo_registry` caches (next start recompiles dependencies).
+
 ## Roadmap
 
 #### Shipped:
@@ -187,9 +199,9 @@ ngrok http 3001
 ✅ Railway deployment on a persistent URL.<br>
 ✅ Error handling packaged in user-friendly ephemeral messages.<br>
 ✅ Observability stack deployed (Prometheus, Loki, Grafana).<br>
-✅ RabbitMQ message broker to retry and store failed messages, alleviating backpressure.
-✅ Update local development to encompass message broker and observability stacks via Docker Compose.
-✅ Migrate Config-as-Code to Infra-as-Code for Railway deployment.
+✅ RabbitMQ message broker to retry and store failed messages, alleviating backpressure.<br>
+✅ Update local development to encompass message broker and observability stacks via Docker Compose.<br>
+✅ Migrate Config-as-Code to Infra-as-Code for Railway deployment.<br>
 
 #### In progress:
 

@@ -1,0 +1,11 @@
+# Build only needs (Cargo files + src).
+.git
+.gitignore
+.idea
+.claude
+.dockerignore
+docs
+target
+node_modules
+*.db
+.DS_Store
