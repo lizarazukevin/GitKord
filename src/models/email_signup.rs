@@ -2,11 +2,11 @@
 
 #![allow(dead_code)]
 
-use std::str::FromStr;
+use crate::AppError;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use email_address::EmailAddress;
-use crate::AppError;
+use std::str::FromStr;
 
 const MAX_EMAIL_LENGTH: usize = 320;
 
@@ -17,55 +17,61 @@ const MAX_EMAIL_LENGTH: usize = 320;
 pub struct InvalidEmail;
 
 impl From<InvalidEmail> for AppError {
-    fn from(e: InvalidEmail) -> Self {
-        Self::Message(e.to_string())
-    }
+	fn from(e: InvalidEmail) -> Self {
+		Self::Message(e.to_string())
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Email(String);
 
 impl Email {
-    pub fn parse(raw: &str) -> Result<Self, InvalidEmail> {
-        if raw.len() > MAX_EMAIL_LENGTH {
-            return Err(InvalidEmail);
-        }
+	pub fn parse(raw: &str) -> Result<Self, InvalidEmail> {
+		if raw.len() > MAX_EMAIL_LENGTH {
+			return Err(InvalidEmail);
+		}
 
-        let s = raw.trim().to_ascii_lowercase();
-        if !s.is_ascii() {
-            return Err(InvalidEmail);
-        }
+		let s = raw.trim().to_ascii_lowercase();
+		if !s.is_ascii() {
+			return Err(InvalidEmail);
+		}
 
-        let addr = EmailAddress::from_str(&s).map_err(|_| InvalidEmail)?;
+		let addr = EmailAddress::from_str(&s).map_err(|_| InvalidEmail)?;
 
-        if !addr.domain().contains('.') {
-            return Err(InvalidEmail);
-        }
+		if !addr.domain().contains('.') {
+			return Err(InvalidEmail);
+		}
 
-        Ok(Self(s))
-    }
+		Ok(Self(s))
+	}
 
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+	pub fn as_str(&self) -> &str {
+		&self.0
+	}
 }
 
 #[derive(Debug, Clone)]
 pub struct EmailSignup {
-    pub id: i64,
-    pub email: String,
-    pub subscribed: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+	pub id: i64,
+	pub email: String,
+	pub subscribed: bool,
+	pub created_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
 }
 
 #[async_trait]
 pub trait EmailSignupStore: Send + Sync {
-    /// Insert an email or re-subscribe if it exists.
-    async fn upsert(&self, email: &Email) -> Result<(), AppError>;
+	/// Insert an email or re-subscribe if it exists.
+	async fn upsert(&self, email: &Email) -> Result<(), AppError>;
 
-    /// Mark an email as opted out.
-    async fn unsubscribe(&self, email: &Email) -> Result<(), AppError>;
-    /// Oldest first, offset-paginated.
-    async fn fetch_all_email_signups(&self, next_token: Option<i64>, max_results: u32, is_subscribed: bool) -> Result<Vec<EmailSignup>, AppError>;
+	/// Mark an email as opted out.
+	async fn unsubscribe(&self, email: &Email) -> Result<(), AppError>;
+	/// Oldest first, offset-paginated.
+    /// None = all, Some(true) = opted in, Some(false) = opted out
+	async fn fetch_all_email_signups(
+		&self,
+		next_token: Option<i64>,
+		max_results: u32,
+		is_subscribed: Option<bool>,
+	) -> Result<Vec<EmailSignup>, AppError>;
 }

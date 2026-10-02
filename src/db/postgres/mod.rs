@@ -11,11 +11,11 @@ use crate::models::user_link::UserStore;
 use sqlx::PgPool;
 use std::sync::Arc;
 
+mod email_signups;
 mod migrate;
 mod pr_messages;
 mod subscriptions;
 mod user_links;
-mod email_signups;
 
 pub struct Stores {
 	pub(crate) prs: Arc<dyn PrStore>,
