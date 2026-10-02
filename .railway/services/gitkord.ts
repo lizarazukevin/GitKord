@@ -5,6 +5,7 @@ export const GitKord = service("GitKord", {
   healthcheck: "/healthz",
   healthcheckTimeout: 300,
   replicas: { "us-east4-eqdc4a": 1 },
+  domains: ["api.gitkord.com"],
   networking: { privateNetworkEndpoint: "gitkord" },
   env: {
     ADMIN_TOKEN: preserve(),

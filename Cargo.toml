@@ -15,6 +15,9 @@ tokio = { version = "1.53", features = ["full"] }
 # HTTP server — receives GitHub webhooks
 axum = { version = "0.8", features = ["macros"] }
 
+# CORS for the public newsletter endpoint (browser signups from the website)
+tower-http = { version = "0.6", features = ["cors"] }
+
 # Discord gateway + slash registry
 serenity = { version = "0.12", features = ["client", "gateway", "model", "cache", "http"] }
 
