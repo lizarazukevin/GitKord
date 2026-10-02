@@ -1,8 +1,6 @@
-//! `Postgres` implementation of `EmailSignupStore`.
+//! `Postgres` implementation of `NewsletterSignupStore`.
 
-#![allow(dead_code)]
-
-use crate::models::email_signup::{Email, EmailSignup, EmailSignupStore};
+use crate::models::newsletter_signup::{Email, NewsletterSignup, NewsletterSignupStore};
 use crate::AppError;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -11,7 +9,7 @@ use sqlx::PgPool;
 const MAX_PAGE_SIZE: u32 = 100;
 
 #[derive(sqlx::FromRow)]
-struct EmailSignupRow {
+struct NewsletterSignupRow {
 	id: i64,
 	email: String,
 	subscribed: bool,
@@ -19,8 +17,8 @@ struct EmailSignupRow {
 	updated_at: DateTime<Utc>,
 }
 
-impl From<EmailSignupRow> for EmailSignup {
-	fn from(row: EmailSignupRow) -> Self {
+impl From<NewsletterSignupRow> for NewsletterSignup {
+	fn from(row: NewsletterSignupRow) -> Self {
 		Self {
 			id: row.id,
 			email: row.email,
@@ -31,21 +29,21 @@ impl From<EmailSignupRow> for EmailSignup {
 	}
 }
 
-pub(super) struct PgEmailSignupStore {
+pub(super) struct PgNewsletterSignupStore {
 	pool: PgPool,
 }
 
-impl PgEmailSignupStore {
+impl PgNewsletterSignupStore {
 	pub(super) const fn new(pool: PgPool) -> Self {
 		Self { pool }
 	}
 }
 
 #[async_trait]
-impl EmailSignupStore for PgEmailSignupStore {
+impl NewsletterSignupStore for PgNewsletterSignupStore {
 	async fn upsert(&self, email: &Email) -> Result<(), AppError> {
 		sqlx::query(
-			"INSERT INTO email_signups (email, created_at, updated_at)
+			"INSERT INTO newsletter_signups (email, created_at, updated_at)
              VALUES ($1, NOW(), NOW())
              ON CONFLICT (email) DO UPDATE SET
                 subscribed = TRUE,
@@ -60,7 +58,7 @@ impl EmailSignupStore for PgEmailSignupStore {
 
 	async fn unsubscribe(&self, email: &Email) -> Result<(), AppError> {
 		sqlx::query(
-			"UPDATE email_signups
+			"UPDATE newsletter_signups
              SET subscribed = FALSE, updated_at = NOW()
              WHERE email = $1 AND subscribed",
 		)
@@ -71,15 +69,15 @@ impl EmailSignupStore for PgEmailSignupStore {
 		Ok(())
 	}
 
-	async fn fetch_all_email_signups(
+	async fn fetch_all_newsletter_signup_emails(
 		&self,
 		next_token: Option<i64>,
 		max_results: u32,
 		is_subscribed: Option<bool>,
-	) -> Result<Vec<EmailSignup>, AppError> {
-		let rows = sqlx::query_as::<_, EmailSignupRow>(
+	) -> Result<Vec<NewsletterSignup>, AppError> {
+		let rows = sqlx::query_as::<_, NewsletterSignupRow>(
 			"SELECT id, email, subscribed, created_at, updated_at
-             FROM email_signups
+             FROM newsletter_signups
              WHERE id > $1 AND ($2::boolean IS NULL OR subscribed = $2)
              ORDER BY id
              LIMIT $3",
@@ -90,6 +88,6 @@ impl EmailSignupStore for PgEmailSignupStore {
 		.fetch_all(&self.pool)
 		.await?;
 
-		Ok(rows.into_iter().map(EmailSignup::from).collect())
+		Ok(rows.into_iter().map(NewsletterSignup::from).collect())
 	}
 }

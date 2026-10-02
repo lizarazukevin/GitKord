@@ -5,6 +5,7 @@ pub mod observability;
 mod server;
 mod shutdown;
 mod telemetry;
+mod website;
 
 use crate::error::AppError;
 use crate::EnvConfig;

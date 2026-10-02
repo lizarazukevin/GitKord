@@ -5,6 +5,7 @@ use crate::app::observability::renderer::MetricsRenderer;
 use crate::app::observability::MetricsRecorder;
 use crate::app::server::serve_http;
 use crate::app::shutdown::shutdown_signal;
+use crate::app::website;
 use crate::broker::rabbitmq::{RabbitMqConnection, RabbitMqConsumer, RabbitMqPublisher};
 use crate::broker::{MessageConsumer, MessagePublisher, GITHUB_EVENTS_EXCHANGE};
 use crate::config::{EnvConfig, Environment};
@@ -28,6 +29,7 @@ use crate::service::github::pull_request::PullRequestService;
 use crate::service::github::review::ReviewService;
 use crate::{discord, github};
 use anyhow::anyhow;
+use axum::Router;
 use std::sync::Arc;
 use tokio::{select, spawn};
 use tracing::{error, info};
@@ -41,6 +43,7 @@ pub(super) struct Application {
 	internal_port: u16,
 	metrics_recorder: Arc<dyn MetricsRecorder>,
 	metrics_renderer: Arc<dyn MetricsRenderer>,
+	website_routes: Router,
 }
 
 impl Application {
@@ -56,6 +59,8 @@ impl Application {
 		)?);
 
 		let stores = create_stores(&env_config.database_url).await?;
+
+		let website_routes = website::router(Arc::clone(&stores.newsletter_signups));
 
 		let environment = Environment::from(env_config.local_dev);
 		let (recorder, exporter) = prometheus::init(&environment.to_string())?;
@@ -167,6 +172,7 @@ impl Application {
 			internal_port: env_config.internal_port,
 			metrics_recorder,
 			metrics_renderer,
+			website_routes,
 		})
 	}
 
@@ -179,6 +185,7 @@ impl Application {
 			Arc::clone(&self.webhook_router),
 			self.metrics_renderer,
 			self.metrics_recorder,
+			self.website_routes,
 		));
 		let mut discord = spawn(async move { self.discord_client.start().await });
 		let mut queue = spawn(run_queue_consumer(

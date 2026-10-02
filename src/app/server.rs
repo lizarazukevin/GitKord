@@ -30,6 +30,7 @@ pub async fn serve_http(
 	router: Arc<WebhookRouter>,
 	renderer: Arc<dyn MetricsRenderer>,
 	recorder: Arc<dyn MetricsRecorder>,
+	website_routes: Router,
 ) -> Result<(), AppError> {
 	let public_app = Router::new()
 		.route(
@@ -56,7 +57,8 @@ pub async fn serve_http(
 					}
 				}
 			}),
-		);
+		)
+		.merge(website_routes);
 
 	let internal_app = Router::new()
 		.route(

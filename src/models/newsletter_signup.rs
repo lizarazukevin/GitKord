@@ -1,11 +1,10 @@
 //! Domain model and traits for collected email signups.
 
-#![allow(dead_code)]
-
 use crate::AppError;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use email_address::EmailAddress;
+use serde::Serialize;
 use std::str::FromStr;
 
 const MAX_EMAIL_LENGTH: usize = 320;
@@ -50,8 +49,8 @@ impl Email {
 	}
 }
 
-#[derive(Debug, Clone)]
-pub struct EmailSignup {
+#[derive(Debug, Clone, Serialize)]
+pub struct NewsletterSignup {
 	pub id: i64,
 	pub email: String,
 	pub subscribed: bool,
@@ -60,18 +59,19 @@ pub struct EmailSignup {
 }
 
 #[async_trait]
-pub trait EmailSignupStore: Send + Sync {
+pub trait NewsletterSignupStore: Send + Sync {
 	/// Insert an email or re-subscribe if it exists.
 	async fn upsert(&self, email: &Email) -> Result<(), AppError>;
 
 	/// Mark an email as opted out.
+	#[allow(dead_code)]
 	async fn unsubscribe(&self, email: &Email) -> Result<(), AppError>;
 	/// Oldest first, offset-paginated.
-    /// None = all, Some(true) = opted in, Some(false) = opted out
-	async fn fetch_all_email_signups(
+	/// None = all, Some(true) = opted in, Some(false) = opted out
+	async fn fetch_all_newsletter_signup_emails(
 		&self,
 		next_token: Option<i64>,
 		max_results: u32,
 		is_subscribed: Option<bool>,
-	) -> Result<Vec<EmailSignup>, AppError>;
+	) -> Result<Vec<NewsletterSignup>, AppError>;
 }
