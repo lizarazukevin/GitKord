@@ -46,6 +46,9 @@ hmac = "0.13"
 sha2 = "0.11"
 hex = "0.4"
 
+# Constant-time comparison for the admin bearer-token check
+subtle = "2.6"
+
 # Serialization / deserialization (JSON payloads, config)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -64,6 +67,9 @@ tracing-loki = "0.2"
 url = "2.5"
 metrics = "0.24"
 uuid = { version = "1.25", features = ["v4"] }
+
+# Newsletter
+email_address = "0.2.9"
 
 # Inspired by: https://www.namtao.com/rust/
 [lints.clippy]

@@ -1,7 +1,9 @@
 //! Application lifecycle orchestration.
 
+mod admin;
 mod bootstrap;
 pub mod observability;
+mod public;
 mod server;
 mod shutdown;
 mod telemetry;

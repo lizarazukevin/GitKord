@@ -4,6 +4,7 @@ import { LokiLogs, lokiLogsVolume } from "./services/loki/loki.ts";
 import { RabbitMQ, rabbitmqVolume } from "./services/rabbitmq/rabbitmq.ts";
 import { PrometheusMetrics, prometheusMetricsVolume } from "./services/prometheus/prometheus.ts";
 import { GitKord } from "./services/gitkord.ts";
+import { GitKordFrontend } from "./services/gitkordFrontend.ts";
 import { PostgreSQL, postgresqlVolume } from "./services/postgresql/postgres.ts";
 
 export default defineRailway(() => {
@@ -15,6 +16,7 @@ export default defineRailway(() => {
       prometheusMetricsVolume,
       rabbitmqVolume,
       GitKord,
+      GitKordFrontend,
       GrafanaGraphs,
       LokiLogs,
       PrometheusMetrics,
