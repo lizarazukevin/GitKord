@@ -7,6 +7,7 @@ export const GitKord = service("GitKord", {
   replicas: { "us-east4-eqdc4a": 1 },
   networking: { privateNetworkEndpoint: "gitkord" },
   env: {
+    ADMIN_TOKEN: preserve(),
     DATABASE_URL: preserve(),
     DISCORD_TOKEN: preserve(),
     GITHUB_APP_ID: preserve(),
