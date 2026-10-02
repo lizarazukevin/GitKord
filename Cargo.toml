@@ -65,6 +65,9 @@ url = "2.5"
 metrics = "0.24"
 uuid = { version = "1.25", features = ["v4"] }
 
+# Newsletter
+email_address = "0.2.9"
+
 # Inspired by: https://www.namtao.com/rust/
 [lints.clippy]
 # Opinionated and developing lints

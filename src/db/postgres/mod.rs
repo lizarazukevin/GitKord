@@ -15,6 +15,7 @@ mod migrate;
 mod pr_messages;
 mod subscriptions;
 mod user_links;
+mod email_signups;
 
 pub struct Stores {
 	pub(crate) prs: Arc<dyn PrStore>,
