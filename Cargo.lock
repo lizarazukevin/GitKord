@@ -1418,6 +1418,7 @@ dependencies = [
  "serenity",
  "sha2 0.11.0",
  "sqlx",
+ "subtle",
  "thiserror 2.0.21",
  "tokio",
  "tracing",

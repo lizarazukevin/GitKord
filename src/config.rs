@@ -84,6 +84,9 @@ pub struct EnvConfig {
 	/// Max number of unacknowledged messages the queue consumer holds at
 	/// once. Defaults to `10`.
 	pub rabbitmq_prefetch: u16,
+
+	/// Randomized bearer token to verify admin access on protected endpoints.
+	pub admin_token: String,
 }
 
 impl EnvConfig {
@@ -110,6 +113,8 @@ impl EnvConfig {
 		let rabbitmq_url = require_env("RABBITMQ_URL")?;
 		let rabbitmq_prefetch = parse_u16_env("RABBITMQ_PREFETCH", 10)?;
 
+		let admin_token = require_env("ADMIN_TOKEN")?;
+
 		Ok(Self {
 			discord_token,
 			github_webhook_secret,
@@ -124,6 +129,7 @@ impl EnvConfig {
 			log_endpoint,
 			rabbitmq_url,
 			rabbitmq_prefetch,
+			admin_token,
 		})
 	}
 

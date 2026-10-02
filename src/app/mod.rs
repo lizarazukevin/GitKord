@@ -1,11 +1,12 @@
 //! Application lifecycle orchestration.
 
+mod admin;
 mod bootstrap;
 pub mod observability;
+mod public;
 mod server;
 mod shutdown;
 mod telemetry;
-mod website;
 
 use crate::error::AppError;
 use crate::EnvConfig;

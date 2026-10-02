@@ -64,14 +64,13 @@ pub trait NewsletterSignupStore: Send + Sync {
 	async fn upsert(&self, email: &Email) -> Result<(), AppError>;
 
 	/// Mark an email as opted out.
-	#[allow(dead_code)]
 	async fn unsubscribe(&self, email: &Email) -> Result<(), AppError>;
-	/// Oldest first, offset-paginated.
+	/// Oldest first, keyset-paginated by `id`.
 	/// None = all, Some(true) = opted in, Some(false) = opted out
 	async fn fetch_all_newsletter_signup_emails(
 		&self,
-		next_token: Option<i64>,
 		max_results: u32,
+		next_token: Option<i64>,
 		is_subscribed: Option<bool>,
 	) -> Result<Vec<NewsletterSignup>, AppError>;
 }

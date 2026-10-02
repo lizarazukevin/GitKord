@@ -2,6 +2,8 @@
 //! - webhook traffic from `GitHub`
 //! - health endpoint for deployment monitoring
 //! - metric endpoint for observability
+//! - protected endpoints for internal use
+//! - public endpoints for interactions (e.g. Newsletter)
 
 use anyhow::Context;
 use std::net::SocketAddr;
@@ -30,7 +32,8 @@ pub async fn serve_http(
 	router: Arc<WebhookRouter>,
 	renderer: Arc<dyn MetricsRenderer>,
 	recorder: Arc<dyn MetricsRecorder>,
-	website_routes: Router,
+	public_routes: Router,
+	admin_routes: Router,
 ) -> Result<(), AppError> {
 	let public_app = Router::new()
 		.route(
@@ -58,7 +61,7 @@ pub async fn serve_http(
 				}
 			}),
 		)
-		.merge(website_routes);
+		.merge(public_routes);
 
 	let internal_app = Router::new()
 		.route(
@@ -82,7 +85,8 @@ pub async fn serve_http(
 				move || observe_http("GET /healthz", async { healthz() }, recorder.clone())
 			}),
 		)
-		.with_state(renderer);
+		.with_state(renderer)
+		.merge(admin_routes);
 
 	let public_listener = bind_listener(SocketAddr::from(([0, 0, 0, 0], port)), "public").await?;
 	let internal_listener =

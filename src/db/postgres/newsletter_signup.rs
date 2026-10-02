@@ -71,8 +71,8 @@ impl NewsletterSignupStore for PgNewsletterSignupStore {
 
 	async fn fetch_all_newsletter_signup_emails(
 		&self,
-		next_token: Option<i64>,
 		max_results: u32,
+		next_token: Option<i64>,
 		is_subscribed: Option<bool>,
 	) -> Result<Vec<NewsletterSignup>, AppError> {
 		let rows = sqlx::query_as::<_, NewsletterSignupRow>(
