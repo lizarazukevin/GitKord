@@ -4,7 +4,7 @@ export const GitKord = service("GitKord", {
   source: github("lizarazukevin/GitKord", { checkSuites: false }),
   healthcheck: "/healthz",
   healthcheckTimeout: 300,
-  replicas: { "us-east4-eqdc4a": 1 },
+  replicas: { "us-east4-eqdc4a": 2 },
   domains: ["api.gitkord.com"],
   networking: { privateNetworkEndpoint: "gitkord" },
   env: {
