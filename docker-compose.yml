@@ -70,6 +70,7 @@ services:
       - "3001:3001"   # Public webhook, ngrok target
       - "9091:9090"   # Internal metrics (Prometheus scrapes gitkord:9090)
     environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN},
       DATABASE_URL: postgres://gitkord:local-dev-only@postgres:5432/gitkord
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
