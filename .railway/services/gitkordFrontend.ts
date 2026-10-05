@@ -1,4 +1,4 @@
-import {github, preserve, service} from "railway/iac";
+import { github, preserve, service } from "railway/iac";
 
 export const GitKordFrontend = service("GitKordFrontend", {
   source: github("lizarazukevin/GitKordFrontend", { checkSuites: false }),
@@ -11,5 +11,5 @@ export const GitKordFrontend = service("GitKordFrontend", {
     VITE_GITKORD_GITHUB_LINK: preserve(),
     VITE_NEWSLETTER_SIGNUP_LINK: preserve(),
     VITE_SUPPORT_MAILTO: preserve(),
-  }
+  },
 });
