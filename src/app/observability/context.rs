@@ -11,6 +11,8 @@ pub enum EventKind {
 	Webhook,
 	/// An HTTP request handled by the Axum server.
 	HttpRequest,
+	/// The periodic `BusinessMetricsWorker` refresh of business metrics.
+	Aggregation,
 }
 
 impl EventKind {
@@ -20,6 +22,7 @@ impl EventKind {
 			Self::Command => "command",
 			Self::Webhook => "webhook",
 			Self::HttpRequest => "http_request",
+			Self::Aggregation => "metrics_aggregation",
 		}
 	}
 }

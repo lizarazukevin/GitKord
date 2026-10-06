@@ -7,6 +7,7 @@ mod public;
 mod server;
 mod shutdown;
 mod telemetry;
+pub mod workers;
 
 use crate::error::AppError;
 use crate::EnvConfig;

@@ -90,4 +90,13 @@ impl NewsletterSignupStore for PgNewsletterSignupStore {
 
 		Ok(rows.into_iter().map(NewsletterSignup::from).collect())
 	}
+
+	async fn count_subscribed(&self) -> Result<u64, AppError> {
+		let count: i64 =
+			sqlx::query_scalar("SELECT COUNT(*) FROM newsletter_signups WHERE subscribed")
+				.fetch_one(&self.pool)
+				.await?;
+
+		Ok(count.cast_unsigned())
+	}
 }

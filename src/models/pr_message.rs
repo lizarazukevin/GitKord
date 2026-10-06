@@ -35,4 +35,6 @@ pub trait PrStore: Send + Sync {
 		repo: &str,
 		pr_number: u64,
 	) -> Result<Vec<PrMessage>, AppError>;
+	/// Count the number of distinct pull requests a message has been posted for.
+	async fn count_distinct_prs(&self) -> Result<u64, AppError>;
 }

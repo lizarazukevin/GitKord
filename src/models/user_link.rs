@@ -33,4 +33,6 @@ pub trait UserStore: Send + Sync {
 	) -> Result<HashMap<String, u64>, AppError>;
 	/// Remove the link for a Discord user, if any.
 	async fn delete(&self, discord_id: u64) -> Result<(), AppError>;
+	/// Count the number of registered users (Discord ↔ GitHub links).
+	async fn count_registered(&self) -> Result<u64, AppError>;
 }
