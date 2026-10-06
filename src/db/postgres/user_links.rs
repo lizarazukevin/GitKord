@@ -104,4 +104,12 @@ impl UserStore for PgUserStore {
 
 		Ok(())
 	}
+
+	async fn count_registered(&self) -> Result<u64, AppError> {
+		let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM user_links")
+			.fetch_one(&self.pool)
+			.await?;
+
+		Ok(count.cast_unsigned())
+	}
 }

@@ -1,6 +1,7 @@
 //! Service layers interacting with data stores and clients
 //! to conduct ruthlessly efficient business logic.
 
+pub mod business_metrics;
 pub mod discord;
 pub mod github;
 pub mod newsletter;

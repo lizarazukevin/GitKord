@@ -73,4 +73,7 @@ pub trait NewsletterSignupStore: Send + Sync {
 		next_token: Option<i64>,
 		is_subscribed: Option<bool>,
 	) -> Result<Vec<NewsletterSignup>, AppError>;
+
+	/// Count the number of currently-subscribed signups.
+	async fn count_subscribed(&self) -> Result<u64, AppError>;
 }

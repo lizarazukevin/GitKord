@@ -99,4 +99,13 @@ impl PrStore for PgPrMessageStore {
 
 		Ok(rows.into_iter().map(PrMessage::from).collect())
 	}
+
+	async fn count_distinct_prs(&self) -> Result<u64, AppError> {
+		let count: i64 =
+			sqlx::query_scalar("SELECT COUNT(DISTINCT (repository, pr)) FROM pr_messages")
+				.fetch_one(&self.pool)
+				.await?;
+
+		Ok(count.cast_unsigned())
+	}
 }

@@ -5,6 +5,7 @@ use crate::app::observability::renderer::MetricsRenderer;
 use crate::app::observability::MetricsRecorder;
 use crate::app::server::serve_http;
 use crate::app::shutdown::shutdown_signal;
+use crate::app::workers::business_metrics_worker::BusinessMetricsWorker;
 use crate::app::{admin, public};
 use crate::broker::rabbitmq::{RabbitMqConnection, RabbitMqConsumer, RabbitMqPublisher};
 use crate::broker::{MessageConsumer, MessagePublisher, GITHUB_EVENTS_EXCHANGE};
@@ -18,6 +19,7 @@ use crate::github::webhook::events::issue_comment::IssueCommentEventHandler;
 use crate::github::webhook::events::pull_request::PullRequestEventHandler;
 use crate::github::webhook::events::review::ReviewEventHandler;
 use crate::github::webhook::router::{WebhookEventHandler, WebhookRouter};
+use crate::service::business_metrics::BusinessMetricsService;
 use crate::service::discord::assign::AssignService;
 use crate::service::discord::health::HealthService;
 use crate::service::discord::link::UserLinkService;
@@ -32,6 +34,7 @@ use crate::{discord, github};
 use anyhow::anyhow;
 use axum::Router;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::{select, spawn};
 use tracing::{error, info};
 
@@ -44,6 +47,7 @@ pub(super) struct Application {
 	internal_port: u16,
 	metrics_recorder: Arc<dyn MetricsRecorder>,
 	metrics_renderer: Arc<dyn MetricsRenderer>,
+	business_metrics_worker: BusinessMetricsWorker,
 	public_routes: Router,
 	admin_routes: Router,
 }
@@ -62,20 +66,38 @@ impl Application {
 
 		let stores = create_stores(&env_config.database_url).await?;
 
+		let environment = Environment::from(env_config.local_dev);
+
+		let business_metrics_service = Arc::new(BusinessMetricsService::new(
+			Arc::clone(&stores.prs),
+			Arc::clone(&stores.users),
+			Arc::clone(&stores.subscriptions),
+			Arc::clone(&stores.newsletter_signups),
+			environment.to_string(),
+		));
+
 		let newsletter_service = Arc::new(NewsletterService::new(Arc::clone(
 			&stores.newsletter_signups,
 		)));
 
-		let public_routes = public::router(Arc::clone(&newsletter_service));
+		let public_routes = public::router(
+			Arc::clone(&newsletter_service),
+			Arc::clone(&business_metrics_service),
+		);
 		let admin_routes = admin::router(
 			Arc::clone(&newsletter_service),
 			Arc::from(env_config.admin_token.as_str()),
 		);
 
-		let environment = Environment::from(env_config.local_dev);
 		let (recorder, exporter) = prometheus::init(&environment.to_string())?;
 		let metrics_recorder: Arc<dyn MetricsRecorder> = Arc::new(recorder);
 		let metrics_renderer: Arc<dyn MetricsRenderer> = Arc::new(exporter);
+
+		let business_metrics_worker = BusinessMetricsWorker::new(
+			Arc::clone(&business_metrics_service),
+			Arc::clone(&metrics_recorder),
+			Duration::from_secs(env_config.metrics_aggregate_interval_secs),
+		);
 
 		// One AMQP connection and a publisher and consumer channel on a TCP connection
 		let rabbitmq_connection = RabbitMqConnection::connect(&env_config.rabbitmq_url).await?;
@@ -182,6 +204,7 @@ impl Application {
 			internal_port: env_config.internal_port,
 			metrics_recorder,
 			metrics_renderer,
+			business_metrics_worker,
 			public_routes,
 			admin_routes,
 		})
@@ -189,6 +212,8 @@ impl Application {
 
 	pub async fn run(mut self) -> Result<(), AppError> {
 		let shard_manager = self.discord_client.shard_manager.clone();
+
+		let metrics_agg = spawn(self.business_metrics_worker.run());
 
 		let mut http = spawn(serve_http(
 			self.port,
@@ -231,7 +256,7 @@ impl Application {
 			}
 		}
 
-		let _ = tokio::join!(http, discord, queue);
+		let _ = tokio::join!(http, discord, queue, metrics_agg);
 		Ok(())
 	}
 }

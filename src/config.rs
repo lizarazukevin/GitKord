@@ -87,6 +87,9 @@ pub struct EnvConfig {
 
 	/// Randomized bearer token to verify admin access on protected endpoints.
 	pub admin_token: String,
+
+	/// How often the `BusinessMetricsWorker` refreshes business metrics.
+	pub metrics_aggregate_interval_secs: u64,
 }
 
 impl EnvConfig {
@@ -115,6 +118,8 @@ impl EnvConfig {
 
 		let admin_token = require_env("ADMIN_TOKEN")?;
 
+		let metrics_aggregate_interval_secs = parse_u64_env("METRICS_AGGREGATE_INTERVAL_SECS", 60)?;
+
 		Ok(Self {
 			discord_token,
 			github_webhook_secret,
@@ -130,6 +135,7 @@ impl EnvConfig {
 			rabbitmq_url,
 			rabbitmq_prefetch,
 			admin_token,
+			metrics_aggregate_interval_secs,
 		})
 	}
 
@@ -153,6 +159,13 @@ fn parse_u16_env(key: &str, default: u16) -> Result<u16> {
 		.unwrap_or_else(|_| default.to_string())
 		.parse::<u16>()
 		.with_context(|| format!("{key} must be a valid port number"))
+}
+
+fn parse_u64_env(key: &str, default: u64) -> Result<u64> {
+	std::env::var(key)
+		.unwrap_or_else(|_| default.to_string())
+		.parse::<u64>()
+		.with_context(|| format!("{key} must be a valid number"))
 }
 
 /// `GitHub` app credentials required in production.

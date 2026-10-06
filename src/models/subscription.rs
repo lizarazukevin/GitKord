@@ -49,4 +49,9 @@ pub trait SubscriptionStore: Send + Sync {
 	/// Remove every subscription for repository (used on app uninstall).
 	async fn delete_all_by_owner_project(&self, owner: &str, project: &str)
 		-> Result<(), AppError>;
+	/// Count the number of distinct `Discord` guilds with at least one
+	/// subscription — i.e. servers the bot is installed on.
+	async fn count_distinct_guilds(&self) -> Result<u64, AppError>;
+	/// Count the number of distinct repositories subscribed to (owner, project).
+	async fn count_distinct_repos(&self) -> Result<u64, AppError>;
 }

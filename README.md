@@ -153,6 +153,7 @@ Set `LOCAL_DEV=true` and provide the following (read in `src/config.rs`):
 | `RABBITMQ_PREFETCH` | No | Max unacknowledged messages the queue consumer holds at once. Defaults to `10`.                                              |
 | `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                        |
 | `INTERNAL_PORT` | No | Internal metrics/health listen port, scraped by Prometheus. Defaults to `9090`.                                              |
+| `METRICS_AGGREGATE_INTERVAL_SECS` | No | How often the `BusinessMetricsWorker` refreshes cached business metrics. Defaults to `60`.                                    |
 
 #### Running the Complete Service
 

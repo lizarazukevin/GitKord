@@ -138,4 +138,21 @@ impl SubscriptionStore for PgSubscriptionStore {
 
 		Ok(())
 	}
+
+	async fn count_distinct_guilds(&self) -> Result<u64, AppError> {
+		let count: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT guild_id) FROM subscriptions")
+			.fetch_one(&self.pool)
+			.await?;
+
+		Ok(count.cast_unsigned())
+	}
+
+	async fn count_distinct_repos(&self) -> Result<u64, AppError> {
+		let count: i64 =
+			sqlx::query_scalar("SELECT COUNT(DISTINCT (owner, project)) FROM subscriptions")
+				.fetch_one(&self.pool)
+				.await?;
+
+		Ok(count.cast_unsigned())
+	}
 }
