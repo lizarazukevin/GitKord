@@ -3,7 +3,7 @@
 # Production build (Railway).
 # Minimal image footprint produces static musl binary.
 
-FROM rust:1.98-bookworm AS builder
+FROM rust:1.99-bookworm AS builder
 RUN rustup target add x86_64-unknown-linux-musl
 RUN apt-get update && apt-get install -y  \
     musl-tools  \
