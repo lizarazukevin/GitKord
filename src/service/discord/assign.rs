@@ -153,7 +153,9 @@ impl AssignService {
 
 		Ok(match req.action {
 			AssignAction::Assign => {
-				format!("Requested a review from **{reviewer_login}** on PR #**{pr}** in **{repo}**")
+				format!(
+					"Requested a review from **{reviewer_login}** on PR #**{pr}** in **{repo}**"
+				)
 			}
 			AssignAction::Unassign => format!(
 				"Removed review request from **{reviewer_login}** on PR #**{pr}** in **{repo}**"
