@@ -1,6 +1,6 @@
 //! Runtime configuration for `GitKord`.
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::fmt;
 
 pub const APP_NAME: &str = "GitKord";
@@ -57,6 +57,20 @@ pub struct EnvConfig {
 	/// Database connection string (e.g. `Postgres`).
 	pub database_url: String,
 
+	/// Max number of `Postgres` connections the app process may open in its
+	/// `SQLx` pool (`DATABASE_MAX_CONNECTIONS`). Defaults to `10`.
+	///
+	/// Keep `replicas * max_connections` comfortably **below** your database
+	/// server's connection limit.
+	pub database_max_connections: u32,
+
+	/// Minimum number of `Postgres` connections the `SQLx` pool keeps warm
+	/// (`DATABASE_MIN_CONNECTIONS`). Defaults to `1`.
+	///
+	/// Warm connections avoid cold-start setup latency on the first query and
+	/// validate database connectivity at startup.
+	pub database_min_connections: u32,
+
 	/// TCP port the Axum HTTP server listens on. Defaults to `3000`.
 	pub port: u16,
 
@@ -105,6 +119,18 @@ impl EnvConfig {
 		let discord_token = require_env("DISCORD_TOKEN")?;
 		let github_webhook_secret = require_env("GITHUB_WEBHOOK_SECRET")?;
 		let database_url = require_env("DATABASE_URL")?;
+		let database_max_connections = parse_u32_env("DATABASE_MAX_CONNECTIONS", 10)?;
+		let database_min_connections = parse_u32_env("DATABASE_MIN_CONNECTIONS", 1)?;
+
+		if database_max_connections == 0 {
+			return Err(anyhow!("DATABASE_MAX_CONNECTIONS must be at least 1"));
+		}
+		if database_min_connections > database_max_connections {
+			return Err(anyhow!(
+				"DATABASE_MIN_CONNECTIONS ({database_min_connections}) must be <= DATABASE_MAX_CONNECTIONS ({database_max_connections})"
+			));
+		}
+
 		let port = parse_u16_env("PORT", 3000)?;
 		let internal_port = parse_u16_env("INTERNAL_PORT", 9090)?;
 
@@ -126,6 +152,8 @@ impl EnvConfig {
 			github_app_id,
 			github_app_private_key,
 			database_url,
+			database_max_connections,
+			database_min_connections,
 			port,
 			internal_port,
 			local_dev,
@@ -165,6 +193,13 @@ fn parse_u64_env(key: &str, default: u64) -> Result<u64> {
 	std::env::var(key)
 		.unwrap_or_else(|_| default.to_string())
 		.parse::<u64>()
+		.with_context(|| format!("{key} must be a valid number"))
+}
+
+fn parse_u32_env(key: &str, default: u32) -> Result<u32> {
+	std::env::var(key)
+		.unwrap_or_else(|_| default.to_string())
+		.parse::<u32>()
 		.with_context(|| format!("{key} must be a valid number"))
 }
 
