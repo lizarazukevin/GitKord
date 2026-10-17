@@ -64,7 +64,12 @@ impl Application {
 			env_config.local_dev,
 		)?);
 
-		let stores = create_stores(&env_config.database_url).await?;
+		let stores = create_stores(
+			&env_config.database_url,
+			env_config.database_min_connections,
+			env_config.database_max_connections,
+		)
+		.await?;
 
 		let environment = Environment::from(env_config.local_dev);
 

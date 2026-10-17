@@ -10,7 +10,7 @@ use crate::models::newsletter_signup::NewsletterSignupStore;
 use crate::models::pr_message::PrStore;
 use crate::models::subscription::SubscriptionStore;
 use crate::models::user_link::UserStore;
-use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
 mod migrate;
@@ -26,13 +26,22 @@ pub struct Stores {
 	pub(crate) newsletter_signups: Arc<dyn NewsletterSignupStore>,
 }
 
-/// Create the three `Postgres`‑backed stores, ready for injection.
+/// Create the `Postgres`‑backed stores.
 ///
-/// Opens a connection pool, runs schema migrations, and returns
-/// the stores wrapped in `Arc` so they can be shared across the
-/// application. Call once at startup.
-pub async fn create_stores(database_url: &str) -> Result<Stores, AppError> {
-	let pool = PgPool::connect(database_url).await?;
+/// Opens a shared connection pool kept warm to `min_connections` and bounded
+/// to `max_connections`, runs schema migrations, and returns the stores
+/// wrapped in `Arc` so they can be shared across the application. Call once
+/// at startup.
+pub async fn create_stores(
+	database_url: &str,
+	min_connections: u32,
+	max_connections: u32,
+) -> Result<Stores, AppError> {
+	let pool = PgPoolOptions::new()
+		.min_connections(min_connections)
+		.max_connections(max_connections)
+		.connect(database_url)
+		.await?;
 
 	run_migrations(&pool).await?;
 
