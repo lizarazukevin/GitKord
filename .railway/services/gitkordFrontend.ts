@@ -11,5 +11,9 @@ export const GitKordFrontend = service("GitKordFrontend", {
     VITE_GITKORD_GITHUB_LINK: preserve(),
     VITE_NEWSLETTER_SIGNUP_LINK: preserve(),
     VITE_SUPPORT_MAILTO: preserve(),
+    VITE_GITKORD_DISCOVERY_LINK: preserve(),
+    VITE_GITKORD_SERVER_INVITE_LINK: preserve(),
+    VITE_METRICS_SUMMARY_LINK: preserve(),
+    VITE_TOPGG_LINK: preserve(),
   },
 });

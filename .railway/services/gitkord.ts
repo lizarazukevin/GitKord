@@ -19,5 +19,6 @@ export const GitKord = service("GitKord", {
     METRIC_ENDPOINT: preserve(),
     PORT: preserve(),
     RABBITMQ_URL: preserve(),
+    DATABASE_MAX_CONNECTIONS: preserve(),
   },
 });
