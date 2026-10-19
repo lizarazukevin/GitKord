@@ -26,7 +26,9 @@ impl RabbitMqConnection {
 	/// Returns [`BrokerError::Connection`] if the broker can't be reached
 	/// or the AMQP handshake fails.
 	pub async fn connect(uri: &str) -> Result<Self, BrokerError> {
-		let options = ConnectionProperties::default().with_connection_name(APP_NAME.into());
+		let options = ConnectionProperties::default()
+			.with_connection_name(APP_NAME.into())
+			.enable_auto_recover();
 
 		let inner = Connection::connect(uri, options)
 			.await
