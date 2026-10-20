@@ -53,7 +53,7 @@ impl PrStore for PgPrMessageStore {
 	async fn upsert(&self, record: PrMessage) -> Result<(), AppError> {
 		sqlx::query(
 			"INSERT INTO pr_messages (owner, project, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7, $8)
              ON CONFLICT (owner, project, pr, channel_id) DO UPDATE SET
                 message_id = EXCLUDED.message_id,
                 thread_id = EXCLUDED.thread_id,
