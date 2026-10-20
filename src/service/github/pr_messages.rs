@@ -180,12 +180,13 @@ async fn enrich_reviewers(
 pub async fn update_all_pr_messages(
 	pr_store: &dyn PrStore,
 	http: &Http,
-	repository: &str,
+	owner: &str,
+	project: &str,
 	pr_number: u64,
 	message_data: &PrMessageData,
 ) -> Result<Vec<PrMessage>, AppError> {
 	let pr_messages = pr_store
-		.fetch_all_by_repo_and_pr(repository, pr_number)
+		.fetch_all_by_repository_and_pr(owner, project, pr_number)
 		.await?;
 	for msg in &pr_messages {
 		update_pull_request_message(

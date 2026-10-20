@@ -9,7 +9,8 @@ use sqlx::PgPool;
 /// `Postgres` row representation of a pull request channel message mapping.
 #[derive(sqlx::FromRow)]
 struct PrMessageRow {
-	repository: String,
+	owner: String,
+	project: String,
 	pr: i64,
 	channel_id: i64,
 	message_id: i64,
@@ -23,7 +24,8 @@ struct PrMessageRow {
 impl From<PrMessageRow> for PrMessage {
 	fn from(row: PrMessageRow) -> Self {
 		Self {
-			repository: row.repository,
+			owner: row.owner,
+			project: row.project,
 			pr: row.pr.cast_unsigned(),
 			channel_id: row.channel_id.cast_unsigned(),
 			message_id: row.message_id.cast_unsigned(),
@@ -50,15 +52,16 @@ impl PgPrMessageStore {
 impl PrStore for PgPrMessageStore {
 	async fn upsert(&self, record: PrMessage) -> Result<(), AppError> {
 		sqlx::query(
-			"INSERT INTO pr_messages (repository, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by)
+			"INSERT INTO pr_messages (owner, project, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by)
              VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
-             ON CONFLICT (repository, pr, channel_id) DO UPDATE SET
+             ON CONFLICT (owner, project, pr, channel_id) DO UPDATE SET
                 message_id = EXCLUDED.message_id,
                 thread_id = EXCLUDED.thread_id,
                 updated_at = NOW(),
                 updated_by = EXCLUDED.updated_by",
 		)
-		.bind(&record.repository)
+		.bind(&record.owner)
+		.bind(&record.project)
 		.bind(record.pr.cast_signed())
 		.bind(record.channel_id.cast_signed())
 		.bind(record.message_id.cast_signed())
@@ -73,7 +76,7 @@ impl PrStore for PgPrMessageStore {
 
 	async fn fetch_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>, AppError> {
 		let row = sqlx::query_as::<_, PrMessageRow>(
-			"SELECT repository, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by
+			"SELECT owner, project, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by
                  FROM pr_messages
                  WHERE thread_id = $1",
 		)
@@ -84,15 +87,17 @@ impl PrStore for PgPrMessageStore {
 		Ok(row.map(PrMessage::from))
 	}
 
-	async fn fetch_all_by_repo_and_pr(
+	async fn fetch_all_by_repository_and_pr(
 		&self,
-		repo: &str,
+		owner: &str,
+		project: &str,
 		pr_number: u64,
 	) -> Result<Vec<PrMessage>, AppError> {
 		let rows = sqlx::query_as::<_, PrMessageRow>(
-            "SELECT repository, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by FROM pr_messages WHERE repository = $1 AND pr = $2"
+            "SELECT owner, project, pr, channel_id, message_id, thread_id, created_at, updated_at, created_by, updated_by FROM pr_messages WHERE owner = $1 AND project = $2 AND pr = $3"
         )
-            .bind(repo)
+            .bind(owner)
+			.bind(project)
             .bind(pr_number.cast_signed())
             .fetch_all(&self.pool)
             .await?;
@@ -102,7 +107,7 @@ impl PrStore for PgPrMessageStore {
 
 	async fn count_distinct_prs(&self) -> Result<u64, AppError> {
 		let count: i64 =
-			sqlx::query_scalar("SELECT COUNT(DISTINCT (repository, pr)) FROM pr_messages")
+			sqlx::query_scalar("SELECT COUNT(DISTINCT (owner, project, pr)) FROM pr_messages")
 				.fetch_one(&self.pool)
 				.await?;
 

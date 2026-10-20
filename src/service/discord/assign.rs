@@ -5,7 +5,7 @@ use crate::discord::messaging::audit::post_to_thread;
 use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
-use crate::github::api::pull_requests::split_repo;
+use crate::github::api::pull_requests::{join_repo, split_repo};
 use crate::models::pr_message::PrStore;
 use crate::models::subscription::SubscriptionStore;
 use crate::models::user_link::UserStore;
@@ -53,11 +53,10 @@ impl AssignService {
 	/// Resolve the PR context and reviewer, then (un)assign on `GitHub`
 	/// and send audit message on the thread.
 	pub async fn handle(&self, req: AssignRequest, http: &Http) -> Result<String, AppError> {
-		let (repo, pr) = self
+		let (owner, project, pr) = self
 			.resolve_pr_context(req.channel_id, req.repo, req.pr)
 			.await?;
-
-		let (owner, project) = split_repo(&repo)?;
+		let repo = join_repo(&owner, &project);
 
 		let reviewer_login = self.resolve_reviewer_login(&req.reviewer).await?;
 
@@ -73,7 +72,7 @@ impl AssignService {
 
 		let Some(installation_id) = self
 			.sub_store
-			.fetch_installation_id_by_owner_project(owner, project)
+			.fetch_installation_id_by_owner_project(&owner, &project)
 			.await?
 		else {
 			return Err(AppError::message(format_error(
@@ -85,8 +84,8 @@ impl AssignService {
 
 		let requested_revs = github::api::pull_requests::fetch_requested_reviewers(
 			&gh_install_client,
-			owner,
-			project,
+			&owner,
+			&project,
 			pr,
 		)
 		.await?;
@@ -103,7 +102,8 @@ impl AssignService {
 				}
 				github::api::pull_requests::assign_reviewer(
 					&gh_install_client,
-					&repo,
+					&owner,
+					&project,
 					pr,
 					&reviewer_login,
 				)
@@ -124,7 +124,8 @@ impl AssignService {
 				}
 				github::api::pull_requests::unassign_reviewer(
 					&gh_install_client,
-					&repo,
+					&owner,
+					&project,
 					pr,
 					&reviewer_login,
 				)
@@ -148,8 +149,16 @@ impl AssignService {
 			if req.action == AssignAction::Assign { "assigned" } else { "unassigned" }
 		);
 
-		self.broadcast_audit(http, &repo, pr, &req.actor, &reviewer_login, req.action)
-			.await;
+		self.broadcast_audit(
+			http,
+			&owner,
+			&project,
+			pr,
+			&req.actor,
+			&reviewer_login,
+			req.action,
+		)
+		.await;
 
 		Ok(match req.action {
 			AssignAction::Assign => {
@@ -163,23 +172,23 @@ impl AssignService {
 		})
 	}
 
-	/// Determine the target `(repository, pr)` from explicit args, or fall
+	/// Determine the target `(owner, project, pr)` from explicit args, or fall
 	/// back to the PR thread the command was run in.
 	async fn resolve_pr_context(
 		&self,
 		channel_id: u64,
 		repo: Option<String>,
 		pr: Option<u64>,
-	) -> Result<(String, u64), AppError> {
-		match (&repo, &pr) {
-			(Some(repo), Some(pr)) => return Ok((repo.clone(), *pr)),
-			(None, None) => {}
-			_ => {
-				return Err(AppError::message(format_error(
-					"Missing fields",
-					Some("Provide both `repository` and `pr`, or neither (inside a PR thread)."),
-				)))
-			}
+	) -> Result<(String, String, u64), AppError> {
+		if let (Some(repo), Some(pr)) = (&repo, &pr) {
+			let (owner, project) = split_repo(repo)?;
+			return Ok((owner.to_owned(), project.to_owned(), *pr));
+		}
+		if repo.is_some() != pr.is_some() {
+			return Err(AppError::message(format_error(
+				"Missing fields",
+				Some("Provide both `repository` and `pr`, or neither (inside a PR thread)."),
+			)));
 		}
 
 		let pr_msg = self
@@ -193,7 +202,7 @@ impl AssignService {
 				))
 			})?;
 
-		Ok((pr_msg.repository, pr_msg.pr))
+		Ok((pr_msg.owner, pr_msg.project, pr_msg.pr))
 	}
 
 	/// Resolve a reviewer input (`GitHub` login or `Discord` ID) to a `GitHub` login.
@@ -220,22 +229,30 @@ impl AssignService {
 	async fn broadcast_audit(
 		&self,
 		http: &Http,
-		repo: &str,
+		owner: &str,
+		project: &str,
 		pr: u64,
 		actor: &str,
 		reviewer_login: &str,
 		action: AssignAction,
 	) {
-		let pr_messages = match self.pr_store.fetch_all_by_repo_and_pr(repo, pr).await {
+		let pr_messages = match self
+			.pr_store
+			.fetch_all_by_repository_and_pr(owner, project, pr)
+			.await
+		{
 			Ok(messages) => messages,
 			Err(e) => {
-				error!(error = %e, repo, pr, "failed to fetch PR messages for audit");
+				error!(error = %e, owner, project, pr, "failed to fetch PR messages for audit");
 				return;
 			}
 		};
 
 		if pr_messages.is_empty() {
-			warn!(repo, pr, "no PR message records found for audit post");
+			warn!(
+				owner,
+				project, pr, "no PR message records found for audit post"
+			);
 			return;
 		}
 
