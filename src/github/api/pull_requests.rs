@@ -9,10 +9,10 @@ use octocrab::Octocrab;
 pub async fn fetch(
 	client: &Octocrab,
 	owner: &str,
-	repo: &str,
+	project: &str,
 	pr_number: u64,
 ) -> Result<PullRequest, AppError> {
-	Ok(client.pulls(owner, repo).get(pr_number).await?)
+	Ok(client.pulls(owner, project).get(pr_number).await?)
 }
 
 /// List all submitted reviews belonging to a pull request.
@@ -49,13 +49,13 @@ pub async fn fetch_requested_reviewers(
 /// Request a review from a user for a pull request.
 pub async fn assign_reviewer(
 	client: &Octocrab,
-	repository: &str,
+	owner: &str,
+	project: &str,
 	pr_number: u64,
 	reviewer: &str,
 ) -> Result<(), AppError> {
-	let (owner, repo) = split_repo(repository)?;
 	client
-		.pulls(owner, repo)
+		.pulls(owner, project)
 		.request_reviews(pr_number, vec![reviewer.to_owned()], vec![])
 		.await?;
 	Ok(())
@@ -64,14 +64,13 @@ pub async fn assign_reviewer(
 /// Remove a user from the pending requested reviewers of a pull request.
 pub async fn unassign_reviewer(
 	client: &Octocrab,
-	repository: &str,
+	owner: &str,
+	project: &str,
 	pr_number: u64,
 	reviewer: &str,
 ) -> Result<(), AppError> {
-	let (owner, repo) = split_repo(repository)?;
-
 	client
-		.pulls(owner, repo)
+		.pulls(owner, project)
 		.remove_requested_reviewers(pr_number, vec![reviewer.to_owned()], vec![])
 		.await?;
 
@@ -90,4 +89,10 @@ pub fn split_repo(repo: &str) -> Result<(&str, &str), AppError> {
 				"repository must be in owner/project format, got `{repo}`"
 			))
 		})
+}
+
+/// Join an `owner` and `project` into a full `owner/project` repository name.
+#[must_use]
+pub fn join_repo(owner: &str, project: &str) -> String {
+	format!("{owner}/{project}")
 }

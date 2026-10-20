@@ -86,11 +86,11 @@ impl IssueCommentService {
 			return Ok(());
 		};
 
-		let repository = format!("{}/{}", req.owner, req.project);
 		let pr_messages = pr_messages::update_all_pr_messages(
 			self.pr_store.as_ref(),
 			&self.http,
-			&repository,
+			&req.owner,
+			&req.project,
 			req.pr_number,
 			&message_data,
 		)

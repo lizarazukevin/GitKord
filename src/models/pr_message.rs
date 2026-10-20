@@ -6,8 +6,8 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
 pub struct PrMessage {
-	/// Full repository name in `owner/project` form.
-	pub repository: String,
+	pub owner: String,
+	pub project: String,
 	pub pr: u64,
 	pub channel_id: u64,
 	pub message_id: u64,
@@ -30,9 +30,10 @@ pub trait PrStore: Send + Sync {
 	/// Look up the PR message whose audit thread has the given ID, if any.
 	async fn fetch_by_thread_id(&self, thread_id: u64) -> Result<Option<PrMessage>, AppError>;
 	/// List every stored message for a repository's PR.
-	async fn fetch_all_by_repo_and_pr(
+	async fn fetch_all_by_repository_and_pr(
 		&self,
-		repo: &str,
+		owner: &str,
+		project: &str,
 		pr_number: u64,
 	) -> Result<Vec<PrMessage>, AppError>;
 	/// Count the number of distinct pull requests a message has been posted for.

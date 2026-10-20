@@ -5,10 +5,11 @@ use crate::discord::messaging::audit::post_to_thread;
 use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
-use crate::github::api::pull_requests::split_repo;
+use crate::github::api::pull_requests::{join_repo, split_repo};
 use crate::models::pr_message::PrStore;
 use crate::models::subscription::SubscriptionStore;
 use crate::models::user_link::UserStore;
+use octocrab::Octocrab;
 use serenity::http::Http;
 use std::sync::Arc;
 use tracing::{error, info, warn};
@@ -26,6 +27,16 @@ pub struct AssignRequest {
 	pub repo: Option<String>,
 	pub pr: Option<u64>,
 	pub channel_id: u64,
+}
+
+/// Resolved state for an assign/unassign, shared by the audit and response paths.
+struct AssignContext {
+	owner: String,
+	project: String,
+	pr: u64,
+	actor: String,
+	reviewer_login: String,
+	action: AssignAction,
 }
 
 pub struct AssignService {
@@ -53,15 +64,60 @@ impl AssignService {
 	/// Resolve the PR context and reviewer, then (un)assign on `GitHub`
 	/// and send audit message on the thread.
 	pub async fn handle(&self, req: AssignRequest, http: &Http) -> Result<String, AppError> {
-		let (repo, pr) = self
+		let (owner, project, pr) = self
 			.resolve_pr_context(req.channel_id, req.repo, req.pr)
 			.await?;
-
-		let (owner, project) = split_repo(&repo)?;
-
+		let repo = join_repo(&owner, &project);
 		let reviewer_login = self.resolve_reviewer_login(&req.reviewer).await?;
 
-		if github::api::users::verify(&self.github, &reviewer_login)
+		self.ensure_reviewer_exists(&reviewer_login).await?;
+		let gh_install_client = self.installation_client(&owner, &project).await?;
+
+		let requested_revs = github::api::pull_requests::fetch_requested_reviewers(
+			&gh_install_client,
+			&owner,
+			&project,
+			pr,
+		)
+		.await?;
+		let is_requested = requested_revs.contains(&reviewer_login);
+
+		let ctx = AssignContext {
+			owner,
+			project,
+			pr,
+			actor: req.actor,
+			reviewer_login,
+			action: req.action,
+		};
+
+		apply_review_change(&gh_install_client, &ctx, is_requested).await?;
+
+		info!(
+			pr = ctx.pr,
+			reviewer = %ctx.reviewer_login,
+			repo = %repo,
+			"reviewer {}",
+			if ctx.action == AssignAction::Assign { "assigned" } else { "unassigned" }
+		);
+
+		self.broadcast_audit(http, &ctx).await;
+
+		Ok(match ctx.action {
+			AssignAction::Assign => format!(
+				"Requested a review from **{}** on PR #**{}** in **{}**",
+				ctx.reviewer_login, ctx.pr, repo
+			),
+			AssignAction::Unassign => format!(
+				"Removed review request from **{}** on PR #**{}** in **{}**",
+				ctx.reviewer_login, ctx.pr, repo
+			),
+		})
+	}
+
+	/// Verify a `GitHub` login actually exists before requesting a review from it.
+	async fn ensure_reviewer_exists(&self, reviewer_login: &str) -> Result<(), AppError> {
+		if github::api::users::verify(&self.github, reviewer_login)
 			.await?
 			.is_none()
 		{
@@ -70,7 +126,11 @@ impl AssignService {
 				None,
 			)));
 		}
+		Ok(())
+	}
 
+	/// Build an installation-scoped `GitHub` client for the subscribed repository.
+	async fn installation_client(&self, owner: &str, project: &str) -> Result<Octocrab, AppError> {
 		let Some(installation_id) = self
 			.sub_store
 			.fetch_installation_id_by_owner_project(owner, project)
@@ -81,105 +141,26 @@ impl AssignService {
 				Some("Run `/subscribe` in a channel first."),
 			)));
 		};
-		let gh_install_client = self.github.scoped_to_installation(installation_id)?;
-
-		let requested_revs = github::api::pull_requests::fetch_requested_reviewers(
-			&gh_install_client,
-			owner,
-			project,
-			pr,
-		)
-		.await?;
-
-		let is_requested = requested_revs.contains(&reviewer_login);
-
-		match req.action {
-			AssignAction::Assign => {
-				if is_requested {
-					return Err(AppError::message(format_error(
-						"Review has already been requested by that user",
-						None,
-					)));
-				}
-				github::api::pull_requests::assign_reviewer(
-					&gh_install_client,
-					&repo,
-					pr,
-					&reviewer_login,
-				)
-				.await
-				.map_err(|_| {
-					AppError::message(format_error(
-						"Could not request a review from that user",
-						Some("Verify the reviewer has write/pull access and is not the PR author."),
-					))
-				})?;
-			}
-			AssignAction::Unassign => {
-				if !is_requested {
-					return Err(AppError::message(format_error(
-						"That user is not currently a requested reviewer",
-						Some("They may have already submitted a review or were never requested."),
-					)));
-				}
-				github::api::pull_requests::unassign_reviewer(
-					&gh_install_client,
-					&repo,
-					pr,
-					&reviewer_login,
-				)
-				.await
-				.map_err(|_| {
-					AppError::message(format_error(
-						"Could not remove the reviewer",
-						Some(
-							"Verify the user was actually requested and the PR number is correct.",
-						),
-					))
-				})?;
-			}
-		}
-
-		info!(
-			pr,
-			reviewer = %reviewer_login,
-			repo = %repo,
-			"reviewer {}",
-			if req.action == AssignAction::Assign { "assigned" } else { "unassigned" }
-		);
-
-		self.broadcast_audit(http, &repo, pr, &req.actor, &reviewer_login, req.action)
-			.await;
-
-		Ok(match req.action {
-			AssignAction::Assign => {
-				format!(
-					"Requested a review from **{reviewer_login}** on PR #**{pr}** in **{repo}**"
-				)
-			}
-			AssignAction::Unassign => format!(
-				"Removed review request from **{reviewer_login}** on PR #**{pr}** in **{repo}**"
-			),
-		})
+		self.github.scoped_to_installation(installation_id)
 	}
 
-	/// Determine the target `(repository, pr)` from explicit args, or fall
+	/// Determine the target `(owner, project, pr)` from explicit args, or fall
 	/// back to the PR thread the command was run in.
 	async fn resolve_pr_context(
 		&self,
 		channel_id: u64,
 		repo: Option<String>,
 		pr: Option<u64>,
-	) -> Result<(String, u64), AppError> {
-		match (&repo, &pr) {
-			(Some(repo), Some(pr)) => return Ok((repo.clone(), *pr)),
-			(None, None) => {}
-			_ => {
-				return Err(AppError::message(format_error(
-					"Missing fields",
-					Some("Provide both `repository` and `pr`, or neither (inside a PR thread)."),
-				)))
-			}
+	) -> Result<(String, String, u64), AppError> {
+		if let (Some(repo), Some(pr)) = (&repo, &pr) {
+			let (owner, project) = split_repo(repo)?;
+			return Ok((owner.to_owned(), project.to_owned(), *pr));
+		}
+		if repo.is_some() != pr.is_some() {
+			return Err(AppError::message(format_error(
+				"Missing fields",
+				Some("Provide both `repository` and `pr`, or neither (inside a PR thread)."),
+			)));
 		}
 
 		let pr_msg = self
@@ -193,7 +174,7 @@ impl AssignService {
 				))
 			})?;
 
-		Ok((pr_msg.repository, pr_msg.pr))
+		Ok((pr_msg.owner, pr_msg.project, pr_msg.pr))
 	}
 
 	/// Resolve a reviewer input (`GitHub` login or `Discord` ID) to a `GitHub` login.
@@ -217,41 +198,106 @@ impl AssignService {
 	}
 
 	/// Sends an assign audit message to every saved PR message's thread.
-	async fn broadcast_audit(
-		&self,
-		http: &Http,
-		repo: &str,
-		pr: u64,
-		actor: &str,
-		reviewer_login: &str,
-		action: AssignAction,
-	) {
-		let pr_messages = match self.pr_store.fetch_all_by_repo_and_pr(repo, pr).await {
+	async fn broadcast_audit(&self, http: &Http, ctx: &AssignContext) {
+		let pr_messages = match self
+			.pr_store
+			.fetch_all_by_repository_and_pr(&ctx.owner, &ctx.project, ctx.pr)
+			.await
+		{
 			Ok(messages) => messages,
 			Err(e) => {
-				error!(error = %e, repo, pr, "failed to fetch PR messages for audit");
+				error!(
+					error = %e,
+					owner = %ctx.owner,
+					project = %ctx.project,
+					pr = ctx.pr,
+					"failed to fetch PR messages for audit"
+				);
 				return;
 			}
 		};
 
 		if pr_messages.is_empty() {
-			warn!(repo, pr, "no PR message records found for audit post");
+			warn!(
+				owner = %ctx.owner,
+				project = %ctx.project,
+				pr = ctx.pr,
+				"no PR message records found for audit post"
+			);
 			return;
 		}
 
-		let msg = match action {
+		let msg = match ctx.action {
 			AssignAction::Assign => {
-				format!("👥 **{actor}** requested review from **{reviewer_login}**")
+				format!(
+					"👥 **{}** requested review from **{}**",
+					ctx.actor, ctx.reviewer_login
+				)
 			}
-			AssignAction::Unassign => {
-				format!("👤 **{actor}** removed review request from **{reviewer_login}**")
-			}
+			AssignAction::Unassign => format!(
+				"👤 **{}** removed review request from **{}**",
+				ctx.actor, ctx.reviewer_login
+			),
 		};
 
 		for message in pr_messages {
 			if let Err(e) = post_to_thread(http, message.thread_id, &msg).await {
 				error!(error = %e, thread_id = message.thread_id, "failed to post audit message");
 			}
+		}
+	}
+}
+
+/// Request or remove a review on `GitHub`, matching the requested action.
+async fn apply_review_change(
+	client: &Octocrab,
+	ctx: &AssignContext,
+	is_requested: bool,
+) -> Result<(), AppError> {
+	match ctx.action {
+		AssignAction::Assign => {
+			if is_requested {
+				return Err(AppError::message(format_error(
+					"Review has already been requested by that user",
+					None,
+				)));
+			}
+			github::api::pull_requests::assign_reviewer(
+				client,
+				&ctx.owner,
+				&ctx.project,
+				ctx.pr,
+				&ctx.reviewer_login,
+			)
+			.await
+			.map_err(|_| {
+				AppError::message(format_error(
+					"Could not request a review from that user",
+					Some("Verify the reviewer has write/pull access and is not the PR author."),
+				))
+			})
+		}
+		AssignAction::Unassign => {
+			if !is_requested {
+				return Err(AppError::message(format_error(
+					"That user is not currently a requested reviewer",
+					Some("They may have already submitted a review or were never requested."),
+				)));
+			}
+			github::api::pull_requests::unassign_reviewer(
+				client,
+				&ctx.owner,
+				&ctx.project,
+				ctx.pr,
+				&ctx.reviewer_login,
+			)
+			.await
+			.map_err(|_| {
+				AppError::message(format_error(
+					"Could not remove the reviewer",
+					Some("Verify the user was actually requested and the PR number is correct."),
+				))
+			})
 		}
 	}
 }

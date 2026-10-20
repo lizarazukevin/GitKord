@@ -115,8 +115,6 @@ impl PullRequestService {
 	/// A new PR was opened, post the initial message to every subscribed channel.
 	/// Side effect of [`post_pull_request_message`] is creating an audit thread.
 	async fn handle_opened(&self, req: PullRequestRequest) -> Result<(), AppError> {
-		let repository = format!("{}/{}", req.owner, req.project);
-
 		let Some(message_data) = load_pr_message_data(
 			&self.github,
 			self.sub_store.as_ref(),
@@ -144,7 +142,8 @@ impl PullRequestService {
 
 			self.pr_store
 				.upsert(PrMessage {
-					repository: repository.clone(),
+					owner: req.owner.clone(),
+					project: req.project.clone(),
 					pr: req.pr.number,
 					channel_id: sub.channel_id,
 					message_id: posted.message_id,
@@ -219,17 +218,15 @@ impl PullRequestService {
 	async fn update_pr_messages(
 		&self,
 		owner: &str,
-		repo: &str,
+		project: &str,
 		pr_number: u64,
 	) -> Result<Vec<PrMessage>, AppError> {
-		let repository = format!("{owner}/{repo}");
-
 		let Some(message_data) = load_pr_message_data(
 			&self.github,
 			self.sub_store.as_ref(),
 			self.user_store.as_ref(),
 			owner,
-			repo,
+			project,
 			pr_number,
 		)
 		.await?
@@ -240,7 +237,8 @@ impl PullRequestService {
 		update_all_pr_messages(
 			self.pr_store.as_ref(),
 			&self.http,
-			&repository,
+			owner,
+			project,
 			pr_number,
 			&message_data,
 		)
