@@ -14,6 +14,7 @@ pub enum GitHubEvent {
 	IssueComment,
 	Installation,
 	InstallationRepositories,
+	MarketplacePurchase,
 	Ping,
 	Unknown(String),
 }
@@ -27,6 +28,7 @@ impl From<&str> for GitHubEvent {
 			"issue_comment" => Self::IssueComment,
 			"installation" => Self::Installation,
 			"installation_repositories" => Self::InstallationRepositories,
+			"marketplace_purchase" => Self::MarketplacePurchase,
 			"ping" => Self::Ping,
 			other => Self::Unknown(other.to_owned()),
 		}
@@ -43,6 +45,7 @@ impl GitHubEvent {
 			Self::IssueComment => "issue_comment",
 			Self::Installation => "installation",
 			Self::InstallationRepositories => "installation_repositories",
+			Self::MarketplacePurchase => "marketplace_purchase",
 			Self::Ping => "ping",
 			Self::Unknown(other) => other,
 		}

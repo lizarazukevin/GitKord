@@ -16,6 +16,7 @@ use crate::github::webhook::consumer::run_queue_consumer;
 use crate::github::webhook::events::installation::InstallationEventHandler;
 use crate::github::webhook::events::installation_repositories::InstallationRepositoriesEventHandler;
 use crate::github::webhook::events::issue_comment::IssueCommentEventHandler;
+use crate::github::webhook::events::marketplace_purchase::MarketplacePurchaseEventHandler;
 use crate::github::webhook::events::pull_request::PullRequestEventHandler;
 use crate::github::webhook::events::review::ReviewEventHandler;
 use crate::github::webhook::router::{WebhookEventHandler, WebhookRouter};
@@ -183,7 +184,7 @@ impl Application {
 			Arc::clone(&stores.subscriptions),
 		));
 
-		let handlers: [Arc<dyn WebhookEventHandler>; 5] = [
+		let handlers: [Arc<dyn WebhookEventHandler>; 6] = [
 			Arc::new(PullRequestEventHandler::new(pull_request_service)),
 			Arc::new(ReviewEventHandler::new(review_service)),
 			Arc::new(IssueCommentEventHandler::new(issue_comment_service)),
@@ -191,6 +192,7 @@ impl Application {
 			Arc::new(InstallationRepositoriesEventHandler::new(
 				installation_repositories_service,
 			)),
+			Arc::new(MarketplacePurchaseEventHandler::new()),
 		];
 
 		let webhook_router = Arc::new(WebhookRouter::new(
