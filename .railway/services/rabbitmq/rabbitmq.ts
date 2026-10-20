@@ -24,4 +24,8 @@ export const RabbitMQ = service("RabbitMQ", {
     RAILWAY_RUN_UID: "0",
     RABBITMQ_NODENAME: preserve(),
   },
+  deploy: {
+    drainingSeconds: 30,
+    overlapSeconds: 0,
+  },
 });

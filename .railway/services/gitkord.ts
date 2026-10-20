@@ -21,4 +21,8 @@ export const GitKord = service("GitKord", {
     RABBITMQ_URL: preserve(),
     DATABASE_MAX_CONNECTIONS: preserve(),
   },
+  deploy: {
+    drainingSeconds: 30,
+    overlapSeconds: 60,
+  },
 });

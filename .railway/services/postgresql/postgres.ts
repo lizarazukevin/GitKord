@@ -13,4 +13,9 @@ Postgres.networking = {
   tcpProxies: { "5432": {} },
 };
 
+Postgres.deploy = {
+  drainingSeconds: 30,
+  overlapSeconds: 0,
+};
+
 export const PostgreSQL = group("PostgreSQL", [Postgres]);
