@@ -1,4 +1,4 @@
-[![Rust](https://img.shields.io/badge/rust-1.91%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.99%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/lizarazukevin/GitKord/actions/workflows/ci.yml/badge.svg)](https://github.com/lizarazukevin/GitKord/actions/workflows/ci.yml)
 [![GitHub App](https://img.shields.io/badge/GitHub-App-181717?logo=github)](https://github.com/apps/gitkord)
@@ -35,6 +35,8 @@ Reviews slip through the cracks when the pull request lives on GitHub and the co
 GitKord closes that gap. Point it at a repository and it keeps one message per pull request in your Discord channels, editing that message in place as the PR moves. Open it, review it, push to it, merge it, and the message follows along. Every event lands in a thread hanging off that message, so the full history of a PR reads top to bottom without anyone lifting a finger.
 
 It runs as a GitHub App, so there is nothing to wire up per repository once it is installed. Subscribe a channel with a slash command and you are done!
+
+Learn more about the product and any new release announcements on our [website](https://www.gitkord.com).
 
 > **Status:** Active development. See the [Roadmap](#roadmap) for what has landed and what is next. Join the [support channel](https://discord.gg/gNEvCUFzt) to keep up with updates.
 
@@ -203,18 +205,24 @@ The first `--build` start compiles all dependencies into the `cargo_target` volu
 ✅ RabbitMQ message broker to retry and store failed messages, alleviating backpressure.<br>
 ✅ Update local development to encompass message broker and observability stacks via Docker Compose.<br>
 ✅ Migrate Config-as-Code to Infra-as-Code for Railway deployment.<br>
+✅ Launch the GitKord domain.<br>
+✅ Added backend replicas and timed offsets to make deployments reliable.<br>
+✅ Exposed business metrics summary as public endpoint for website.
 
 #### In progress:
 
-- [ ] Dedicated GitKord domain.
 - [ ] Checks handling for GitHub actions.
-- [ ] Configure alarms to trigger on high latency and DLQ depth.
+- [ ] Configure canaries and alarms for service latency and DLQ depth.
+- [ ] Authenticate Discord/GitHub link.
 
 #### Planned:
 
-- [ ] AI summary view of new PRs.
-- [ ] Setup RabbitMQ node cluster.
-- [ ] Implement load balancer for multiple backend containers.
+- [ ] AI summary of PR on Discord.
+- [ ] Cron job to retry failed GitHub webhook deliveries when backend is offline.
+- [ ] Autocomplete user entries on Discord client.
+- [ ] List PRs, subscriptions, team members for repository.
+- [ ] Improved health check to display average latency and service disruption.
+- [ ] Process batched webhook messages concurrently.
 
 ## License
 
