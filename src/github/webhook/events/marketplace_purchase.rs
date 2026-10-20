@@ -2,10 +2,7 @@
 //!
 //! GitHub delivers Marketplace lifecycle events (purchase, cancellation,
 //! plan changes, etc.) to the App's webhook with an
-//! `X-GitHub-Event: marketplace_purchase` header. This handler is the
-//! acknowledged receiver for those events: it verifies-adjacent signature +
-//! payload, and for the initial stand-up it simply records the event. It is a
-//! stable hook point to grow real billing/product changes into later.
+//! `X-GitHub-Event: marketplace_purchase` header.
 
 use crate::error::AppError;
 use crate::github::webhook::events::models::GitHubEvent;
@@ -15,9 +12,6 @@ use axum::body::Bytes;
 use serde::Deserialize;
 use tracing::info;
 
-/// Minimal `marketplace_purchase` webhook payload. GitHub always sends these
-/// as JSON — extra fields are ignored by `serde`, so only what we surface is
-/// modelled here.
 #[derive(Debug, Deserialize)]
 pub struct MarketplacePurchasePayload {
 	/// The lifecycle action: `purchased`, `cancelled`, `pending_change`,
@@ -72,7 +66,7 @@ pub struct MarketplacePlan {
 	pub yearly_price_in_cents: u64,
 }
 
-/// Acknowledges Marketplace events. Currently a lightweight receiver — it
+/// Acknowledges Marketplace events. Lightweight receiver (not fully implemented),
 /// validates the signature and payload, records the purchase change to the
 /// logs, and returns. This is enough for GitHub to verify the webhook when
 /// listing the App, and gives a clear place to attach billing logic later.
