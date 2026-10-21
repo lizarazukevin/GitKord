@@ -10,7 +10,7 @@ use crate::discord::messaging::util::now_utc;
 use crate::error::AppError;
 use crate::service::github::pr_messages::PrMessageData;
 use serenity::all::{ChannelId, CreateMessage, CreateThread, EditMessage, Http, MessageId};
-use tracing::info;
+use tracing::{error, info};
 
 /// Identifiers returned after posting a PR message.
 pub struct DiscordMessage {
@@ -61,6 +61,40 @@ pub async fn post_pull_request_message(
 		message_id: message.id.get(),
 		thread_id: thread.id.get(),
 	})
+}
+
+/// Roll back a freshly posted PR message and its audit thread.
+///
+/// Called when the message reached `Discord` but its matching database record
+/// could not be persisted. Removes the delivered message and keeps a retried
+/// delivery idempotent from the user's perspective, avoiding duplicate messages.
+///
+/// The deletion is best-effort: each failure is logged rather than propagated
+/// so the original database error (the real cause) surfaces to the caller.
+pub async fn rollback_posted_pr_message(
+	http: &Http,
+	channel_id: u64,
+	message_id: u64,
+	thread_id: u64,
+) {
+	// Delete the audit thread first.
+	if let Err(thread_err) = ChannelId::new(thread_id).delete(http).await {
+		error!(
+			error = %thread_err,
+			thread_id,
+			"failed to delete PR audit thread during rollback"
+		);
+	}
+	if let Err(message_err) = ChannelId::new(channel_id)
+		.delete_message(http, MessageId::new(message_id))
+		.await
+	{
+		error!(
+			error = %message_err,
+			message_id,
+			"failed to delete PR message during rollback"
+		);
+	}
 }
 
 /// Edit the main PR message in place with refreshed data.
