@@ -66,7 +66,7 @@ impl AssignModule {
 		Ok(Some(AssignRequest {
 			reviewer,
 			action,
-			actor: cmd.user.name.clone(),
+			actor_discord_id: cmd.user.id.get(),
 			repo,
 			pr,
 			channel_id: cmd.channel_id.get(),

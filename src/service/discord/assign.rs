@@ -23,7 +23,7 @@ pub enum AssignAction {
 pub struct AssignRequest {
 	pub reviewer: ReviewerInput,
 	pub action: AssignAction,
-	pub actor: String,
+	pub actor_discord_id: u64,
 	pub repo: Option<String>,
 	pub pr: Option<u64>,
 	pub channel_id: u64,
@@ -36,6 +36,7 @@ struct AssignContext {
 	pr: u64,
 	actor: String,
 	reviewer_login: String,
+	reviewer_display: String,
 	action: AssignAction,
 }
 
@@ -82,12 +83,22 @@ impl AssignService {
 		.await?;
 		let is_requested = requested_revs.contains(&reviewer_login);
 
+		// The actor is always kept in `GitHub`-login form (plain text, never a
+		// mention) so the audit entry cannot ping the person who ran the command.
+		let actor = self
+			.resolve_discord_user_login(req.actor_discord_id)
+			.await?;
+		let reviewer_display = self
+			.resolve_reviewer_display(&reviewer_login, req.actor_discord_id)
+			.await;
+
 		let ctx = AssignContext {
 			owner,
 			project,
 			pr,
-			actor: req.actor,
+			actor,
 			reviewer_login,
+			reviewer_display,
 			action: req.action,
 		};
 
@@ -182,18 +193,44 @@ impl AssignService {
 		match reviewer {
 			ReviewerInput::GitHubLogin(login) => Ok(login.clone()),
 			ReviewerInput::DiscordMention(discord_id) => {
-				let link = self
-					.user_store
-					.fetch_by_discord_id(*discord_id)
-					.await?
-					.ok_or_else(|| {
-						AppError::message(format_error(
-							"Discord user has not linked their GitHub account",
-							Some("Ask them to run `/link` first."),
-						))
-					})?;
-				Ok(link.github_login)
+				self.resolve_discord_user_login(*discord_id).await
 			}
+		}
+	}
+
+	/// Resolve a `Discord` user ID to its linked `GitHub` login, backed by the
+	/// same `user_links` table that `/link` writes to.
+	async fn resolve_discord_user_login(&self, discord_id: u64) -> Result<String, AppError> {
+		self.user_store
+			.fetch_by_discord_id(discord_id)
+			.await?
+			.map(|link| link.github_login)
+			.ok_or_else(|| {
+				AppError::message(format_error(
+					"Discord user has not linked their GitHub account",
+					Some("Ask them to run `/link` first."),
+				))
+			})
+	}
+
+	/// Render the assigned reviewer as a `Discord` mention when they have one
+	/// linked, preferring the plain `GitHub` login otherwise. Never emits a
+	/// mention that would ping the actor themself.
+	async fn resolve_reviewer_display(
+		&self,
+		reviewer_login: &str,
+		actor_discord_id: u64,
+	) -> String {
+		let discord_ids = self
+			.user_store
+			.fetch_by_github_logins(&[reviewer_login.to_owned()])
+			.await
+			.unwrap_or_default();
+
+		match discord_ids.get(reviewer_login) {
+			Some(id) if *id == actor_discord_id => reviewer_login.to_owned(),
+			Some(id) => format!("<@{id}>"),
+			None => reviewer_login.to_owned(),
 		}
 	}
 
@@ -231,12 +268,12 @@ impl AssignService {
 			AssignAction::Assign => {
 				format!(
 					"👥 **{}** requested review from **{}**",
-					ctx.actor, ctx.reviewer_login
+					ctx.actor, ctx.reviewer_display
 				)
 			}
 			AssignAction::Unassign => format!(
 				"👤 **{}** removed review request from **{}**",
-				ctx.actor, ctx.reviewer_login
+				ctx.actor, ctx.reviewer_display
 			),
 		};
 
