@@ -1,11 +1,12 @@
 //! Service layer for pull‑request events.
 
 use serenity::all::{ChannelId, Http};
+use std::collections::HashSet;
 use std::sync::Arc;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::discord::messaging::audit::{post_commit_push, post_lifecycle_pr_update};
-use crate::discord::messaging::messages::post_pull_request_message;
+use crate::discord::messaging::messages::{post_pull_request_message, rollback_posted_pr_message};
 use crate::error::AppError;
 use crate::github::api::client::GitHubClient;
 use crate::github::webhook::events::models::PullRequestInfo;
@@ -128,11 +129,27 @@ impl PullRequestService {
 			return Ok(());
 		};
 
+		// A retry can re-run this after a partial failure, so skip channels that
+		// already got a message instead of posting them a duplicate.
+		let existing = self
+			.pr_store
+			.fetch_all_by_repository_and_pr(&req.owner, &req.project, req.pr.number)
+			.await?;
+		let already_posted: HashSet<u64> = existing.iter().map(|msg| msg.channel_id).collect();
+
 		let subscriptions = self
 			.sub_store
 			.fetch_all_by_owner_project(&req.owner, &req.project)
 			.await?;
 		for sub in &subscriptions {
+			if already_posted.contains(&sub.channel_id) {
+				info!(
+					channel_id = sub.channel_id,
+					"PR message already posted, skipping duplicate"
+				);
+				continue;
+			}
+
 			let posted = post_pull_request_message(
 				&self.http,
 				ChannelId::from(sub.channel_id),
@@ -140,7 +157,8 @@ impl PullRequestService {
 			)
 			.await?;
 
-			self.pr_store
+			if let Err(save_err) = self
+				.pr_store
 				.upsert(PrMessage {
 					owner: req.owner.clone(),
 					project: req.project.clone(),
@@ -153,7 +171,19 @@ impl PullRequestService {
 					created_by: Some(req.sender.clone()),
 					updated_by: Some(req.sender.clone()),
 				})
-				.await?;
+				.await
+			{
+				// Message delivered to `Discord` but did not persist.
+				// Roll back the message to avoid stacking.
+				rollback_posted_pr_message(
+					&self.http,
+					sub.channel_id,
+					posted.message_id,
+					posted.thread_id,
+				)
+				.await;
+				return Err(save_err);
+			}
 		}
 
 		Ok(())
