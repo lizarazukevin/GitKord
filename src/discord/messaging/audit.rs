@@ -5,7 +5,9 @@
 //! funnel through a shared helper so error handling stays consistent.
 
 use crate::error::AppError;
+use crate::models::pr_message::PrMessage;
 use serenity::all::{ChannelId, CreateMessage, Http};
+use tracing::error;
 
 /// Append a PR lifecycle change to the audit thread.
 pub async fn post_lifecycle_pr_update(
@@ -79,4 +81,14 @@ pub async fn post_to_thread(http: &Http, thread_id: u64, content: &str) -> Resul
 		.send_message(http, CreateMessage::new().content(content))
 		.await?;
 	Ok(())
+}
+
+/// Post `content` to every PR thread, logging and swallowing failures so a
+/// single failing channel can't stop the rest of the broadcast.
+pub async fn broadcast_to_threads(http: &Http, pr_messages: &[PrMessage], content: &str) {
+	for message in pr_messages {
+		if let Err(e) = post_to_thread(http, message.thread_id, content).await {
+			error!(error = %e, thread_id = message.thread_id, "failed to post audit message");
+		}
+	}
 }

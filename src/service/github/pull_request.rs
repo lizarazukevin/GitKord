@@ -5,7 +5,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use crate::discord::messaging::audit::{post_commit_push, post_lifecycle_pr_update};
+use crate::discord::messaging::audit::{
+	broadcast_to_threads, post_commit_push, post_lifecycle_pr_update,
+};
 use crate::discord::messaging::messages::{post_pull_request_message, rollback_posted_pr_message};
 use crate::error::AppError;
 use crate::github::api::client::GitHubClient;
@@ -50,6 +52,10 @@ pub struct PullRequestRequest {
 	pub project: String,
 	pub pr: PullRequestInfo,
 	pub sender: String,
+	/// Whether the event's sender is a bot/app rather than a person, used to
+	/// skip a webhook audit for changes `GitKord`'s own GitHub API calls trigger.
+	#[expect(dead_code)]
+	pub sender_is_bot: bool,
 }
 
 impl PullRequestRequest {
@@ -68,7 +74,8 @@ impl PullRequestRequest {
 			owner: payload.repository.owner.login,
 			project: payload.repository.name,
 			pr: payload.pull_request,
-			sender: payload.sender.login,
+			sender: payload.sender.login.clone(),
+			sender_is_bot: payload.sender.is_bot(),
 		}
 	}
 }
@@ -106,9 +113,10 @@ impl PullRequestService {
 			PullRequestAction::Closed | PullRequestAction::Reopened => {
 				self.handle_lifecycle_change(req).await
 			}
-			PullRequestAction::Edited
-			| PullRequestAction::ReviewRequested
-			| PullRequestAction::ReviewRequestRemoved => self.refresh_and_skip_audit(req).await,
+			PullRequestAction::ReviewRequested | PullRequestAction::ReviewRequestRemoved => {
+				self.handle_review_request_change(req).await
+			}
+			PullRequestAction::Edited => self.refresh_and_skip_audit(req).await,
 			PullRequestAction::Other => Ok(()),
 		}
 	}
@@ -230,10 +238,107 @@ impl PullRequestService {
 		Ok(())
 	}
 
-	/// Actions that only change the visible PR data (edited, review requests).
+	/// A reviewer was requested or unrequested on the PR, event from website.
+	async fn handle_review_request_change(&self, req: PullRequestRequest) -> Result<(), AppError> {
+		let prev = self
+			.pr_store
+			.fetch_requested_reviewers(&req.owner, &req.project, req.pr.number)
+			.await?;
+		let next: Vec<String> = req
+			.pr
+			.requested_reviewers
+			.iter()
+			.map(|reviewer| reviewer.login.clone())
+			.collect();
+
+		let pr_messages = self
+			.update_pr_messages(&req.owner, &req.project, req.pr.number)
+			.await?;
+
+		let Some(msg) = self
+			.review_request_audit(req.action, &req.sender, &prev, &next)
+			.await
+		else {
+			return Ok(());
+		};
+
+		broadcast_to_threads(&self.http, &pr_messages, &msg).await;
+
+		Ok(())
+	}
+
+	/// Build the audit line for a website-initiated reviewer change by
+	/// reconciling the stored baseline against the event's reviewer list.
+	async fn review_request_audit(
+		&self,
+		action: PullRequestAction,
+		sender: &str,
+		prev: &[String],
+		next: &[String],
+	) -> Option<String> {
+		let (added, removed) = diff_reviewers(prev, next);
+
+		let affected = match action {
+			PullRequestAction::ReviewRequested => added,
+			PullRequestAction::ReviewRequestRemoved => removed,
+			_ => return None,
+		};
+
+		// With no stored baseline assume the change covers the current list for requests.
+		// With a baseline but no diff, the event is either a duplicate or stale delivery.
+		let affected = if affected.is_empty() {
+			if prev.is_empty() {
+				match action {
+					PullRequestAction::ReviewRequested => next.to_vec(),
+					_ => return None,
+				}
+			} else {
+				return None;
+			}
+		} else {
+			affected
+		};
+
+		if affected.is_empty() {
+			return None;
+		}
+
+		let names = self.reviewer_display(&affected).await;
+		let reviewer_list = names.join(", ");
+
+		match action {
+			PullRequestAction::ReviewRequested => Some(format!(
+				"👥 **{sender}** requested review from **{reviewer_list}**"
+			)),
+			PullRequestAction::ReviewRequestRemoved => Some(format!(
+				"👤 **{sender}** removed review request from **{reviewer_list}**"
+			)),
+			_ => None,
+		}
+	}
+
+	/// Render each login as its `Discord` mention when linked, else the login.
+	async fn reviewer_display(&self, logins: &[String]) -> Vec<String> {
+		let discord_ids = self
+			.user_store
+			.fetch_by_github_logins(logins)
+			.await
+			.unwrap_or_default();
+
+		logins
+			.iter()
+			.map(|login| {
+				discord_ids
+					.get(login)
+					.map_or_else(|| login.clone(), |id| format!("<@{id}>"))
+			})
+			.collect()
+	}
+
+	/// Actions that only change the visible PR message data.
 	///
-	/// Refresh the message without any audit entry. Only `Discord` commands that
-	/// target `/assign` or `/unassign` post an audit entry, this reduces noise.
+	/// Refresh the message without any audit entry. Either handled silently
+	/// or no planned audit entry for event.
 	async fn refresh_and_skip_audit(&self, req: PullRequestRequest) -> Result<(), AppError> {
 		self.update_pr_messages(&req.owner, &req.project, req.pr.number)
 			.await?;
@@ -274,4 +379,20 @@ impl PullRequestService {
 		)
 		.await
 	}
+}
+
+/// Returns the logins added to and removed from `next` relative to `prev`.
+fn diff_reviewers(prev: &[String], next: &[String]) -> (Vec<String>, Vec<String>) {
+	let added = next
+		.iter()
+		.filter(|login| !prev.contains(login))
+		.cloned()
+		.collect();
+	let removed = prev
+		.iter()
+		.filter(|login| !next.contains(login))
+		.cloned()
+		.collect();
+
+	(added, removed)
 }

@@ -56,12 +56,25 @@ impl GitHubEvent {
 #[derive(Debug, Clone, Deserialize)]
 pub struct GitHubUserInfo {
 	pub login: String,
+	/// Account kind (`User`, `Bot`, `Organization`).`None` when omitted.
+	#[serde(rename = "type", default)]
+	pub user_type: Option<String>,
+}
+
+impl GitHubUserInfo {
+	/// Whether this account is an automated (`*[bot]`) account rather than a
+	/// person, used to attribute review requests to human actors only.
+	#[must_use]
+	pub fn is_bot(&self) -> bool {
+		self.user_type.as_deref() == Some("Bot") || self.login.ends_with("[bot]")
+	}
 }
 
 impl From<Author> for GitHubUserInfo {
 	fn from(author: Author) -> Self {
 		Self {
 			login: author.login,
+			user_type: None,
 		}
 	}
 }
@@ -204,6 +217,7 @@ impl From<PullRequest> for PullRequestInfo {
 			html_url: pr.html_url.map(|u| u.to_string()).unwrap_or_default(),
 			user: GitHubUserInfo {
 				login: pr.user.map(|u| u.login).unwrap_or_default(),
+				user_type: None,
 			},
 			head: PullRequestRefInfo {
 				branch: pr.head.ref_field.clone(),
