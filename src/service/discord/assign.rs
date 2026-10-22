@@ -1,7 +1,6 @@
 //! Service layer for `/assign` and `/unassign` commands.
 
 use crate::discord::commands::args::ReviewerInput;
-use crate::discord::messaging::audit::broadcast_to_threads;
 use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
@@ -10,9 +9,8 @@ use crate::models::pr_message::PrStore;
 use crate::models::subscription::SubscriptionStore;
 use crate::models::user_link::UserStore;
 use octocrab::Octocrab;
-use serenity::http::Http;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::info;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssignAction {
@@ -23,7 +21,6 @@ pub enum AssignAction {
 pub struct AssignRequest {
 	pub reviewer: ReviewerInput,
 	pub action: AssignAction,
-	pub actor_discord_id: u64,
 	pub repo: Option<String>,
 	pub pr: Option<u64>,
 	pub channel_id: u64,
@@ -34,9 +31,7 @@ struct AssignContext {
 	owner: String,
 	project: String,
 	pr: u64,
-	actor: String,
 	reviewer_login: String,
-	reviewer_display: String,
 	action: AssignAction,
 }
 
@@ -64,7 +59,7 @@ impl AssignService {
 
 	/// Resolve the PR context and reviewer, then (un)assign on `GitHub`
 	/// and send audit message on the thread.
-	pub async fn handle(&self, req: AssignRequest, http: &Http) -> Result<String, AppError> {
+	pub async fn handle(&self, req: AssignRequest) -> Result<(), AppError> {
 		let (owner, project, pr) = self
 			.resolve_pr_context(req.channel_id, req.repo, req.pr)
 			.await?;
@@ -83,22 +78,11 @@ impl AssignService {
 		.await?;
 		let is_requested = requested_revs.contains(&reviewer_login);
 
-		// The actor is always kept in `GitHub`-login form (plain text, never a
-		// mention) so the audit entry cannot ping the person who ran the command.
-		let actor = self
-			.resolve_discord_user_login(req.actor_discord_id)
-			.await?;
-		let reviewer_display = self
-			.resolve_reviewer_display(&reviewer_login, req.actor_discord_id)
-			.await;
-
 		let ctx = AssignContext {
 			owner,
 			project,
 			pr,
-			actor,
 			reviewer_login,
-			reviewer_display,
 			action: req.action,
 		};
 
@@ -112,18 +96,7 @@ impl AssignService {
 			if ctx.action == AssignAction::Assign { "assigned" } else { "unassigned" }
 		);
 
-		self.broadcast_audit(http, &ctx).await;
-
-		Ok(match ctx.action {
-			AssignAction::Assign => format!(
-				"Requested a review from **{}** on PR #**{}** in **{}**",
-				ctx.reviewer_login, ctx.pr, repo
-			),
-			AssignAction::Unassign => format!(
-				"Removed review request from **{}** on PR #**{}** in **{}**",
-				ctx.reviewer_login, ctx.pr, repo
-			),
-		})
+		Ok(())
 	}
 
 	/// Verify a `GitHub` login actually exists before requesting a review from it.
@@ -211,73 +184,6 @@ impl AssignService {
 					Some("Ask them to run `/link` first."),
 				))
 			})
-	}
-
-	/// Render the assigned reviewer as a `Discord` mention when they have one
-	/// linked, preferring the plain `GitHub` login otherwise. Never emits a
-	/// mention that would ping the actor themself.
-	async fn resolve_reviewer_display(
-		&self,
-		reviewer_login: &str,
-		actor_discord_id: u64,
-	) -> String {
-		let discord_ids = self
-			.user_store
-			.fetch_by_github_logins(&[reviewer_login.to_owned()])
-			.await
-			.unwrap_or_default();
-
-		match discord_ids.get(reviewer_login) {
-			Some(id) if *id == actor_discord_id => reviewer_login.to_owned(),
-			Some(id) => format!("<@{id}>"),
-			None => reviewer_login.to_owned(),
-		}
-	}
-
-	/// Sends an assign audit message to every saved PR message's thread.
-	async fn broadcast_audit(&self, http: &Http, ctx: &AssignContext) {
-		let pr_messages = match self
-			.pr_store
-			.fetch_all_by_repository_and_pr(&ctx.owner, &ctx.project, ctx.pr)
-			.await
-		{
-			Ok(messages) => messages,
-			Err(e) => {
-				error!(
-					error = %e,
-					owner = %ctx.owner,
-					project = %ctx.project,
-					pr = ctx.pr,
-					"failed to fetch PR messages for audit"
-				);
-				return;
-			}
-		};
-
-		if pr_messages.is_empty() {
-			warn!(
-				owner = %ctx.owner,
-				project = %ctx.project,
-				pr = ctx.pr,
-				"no PR message records found for audit post"
-			);
-			return;
-		}
-
-		let msg = match ctx.action {
-			AssignAction::Assign => {
-				format!(
-					"👥 **{}** requested review from **{}**",
-					ctx.actor, ctx.reviewer_display
-				)
-			}
-			AssignAction::Unassign => format!(
-				"👤 **{}** removed review request from **{}**",
-				ctx.actor, ctx.reviewer_display
-			),
-		};
-
-		broadcast_to_threads(http, &pr_messages, &msg).await;
 	}
 }
 

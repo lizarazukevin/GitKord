@@ -66,7 +66,6 @@ impl AssignModule {
 		Ok(Some(AssignRequest {
 			reviewer,
 			action,
-			actor_discord_id: cmd.user.id.get(),
 			repo,
 			pr,
 			channel_id: cmd.channel_id.get(),
@@ -90,13 +89,17 @@ impl CommandModule for AssignModule {
 		};
 		cmd.defer_ephemeral(ctx).await?;
 
-		match self.service.handle(req, &ctx.http).await {
-			Ok(msg) => deferred_ephemeral(ctx, cmd, &msg).await,
+		match self.service.handle(req).await {
+			Ok(()) => {
+				cmd.delete_response(ctx).await?;
+				Ok(())
+			}
 			Err(e) => {
 				let user_msg = match &e {
 					AppError::Message(_) => e.to_string(),
 					_ => format_error("Something went wrong. Please try again.", None),
 				};
+
 				deferred_ephemeral(ctx, cmd, &user_msg).await?;
 				Err(e)
 			}

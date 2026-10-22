@@ -54,6 +54,7 @@ pub struct PullRequestRequest {
 	pub sender: String,
 	/// Whether the event's sender is a bot/app rather than a person, used to
 	/// skip a webhook audit for changes `GitKord`'s own GitHub API calls trigger.
+	#[expect(dead_code)]
 	pub sender_is_bot: bool,
 }
 
@@ -253,10 +254,6 @@ impl PullRequestService {
 		let pr_messages = self
 			.update_pr_messages(&req.owner, &req.project, req.pr.number)
 			.await?;
-
-		if req.sender_is_bot || pr_messages.is_empty() {
-			return Ok(());
-		}
 
 		let Some(msg) = self
 			.review_request_audit(req.action, &req.sender, &prev, &next)
