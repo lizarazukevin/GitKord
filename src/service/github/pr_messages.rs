@@ -32,6 +32,7 @@ pub struct PrMessageData {
 	pub commits: u64,
 	pub comments: u64,
 	pub reviews: Vec<ReviewSummary>,
+	pub requested_reviewers: Vec<String>,
 	pub checks: Vec<CheckSummary>,
 }
 
@@ -76,6 +77,11 @@ impl PrMessageData {
 			commits: pr.commits,
 			comments: pr.comments.saturating_add(pr.review_comments),
 			reviews: reviewers,
+			requested_reviewers: pr
+				.requested_reviewers
+				.iter()
+				.map(|reviewer| reviewer.login.clone())
+				.collect(),
 			checks: vec![],
 		}
 	}
@@ -197,5 +203,11 @@ pub async fn update_all_pr_messages(
 		)
 		.await?;
 	}
+
+	// Syncs requested reviewer baseline so accurate diffs can be created later.
+	pr_store
+		.update_requested_reviewers(owner, project, pr_number, &message_data.requested_reviewers)
+		.await?;
+
 	Ok(pr_messages)
 }

@@ -105,6 +105,45 @@ impl PrStore for PgPrMessageStore {
 		Ok(rows.into_iter().map(PrMessage::from).collect())
 	}
 
+	async fn fetch_requested_reviewers(
+		&self,
+		owner: &str,
+		project: &str,
+		pr_number: u64,
+	) -> Result<Vec<String>, AppError> {
+		let logins: Vec<String> = sqlx::query_scalar(
+			"SELECT requested_reviewers FROM pr_messages WHERE owner = $1 AND project = $2 AND pr = $3 LIMIT 1",
+		)
+		.bind(owner)
+		.bind(project)
+		.bind(pr_number.cast_signed())
+		.fetch_optional(&self.pool)
+		.await?
+		.unwrap_or_default();
+
+		Ok(logins)
+	}
+
+	async fn update_requested_reviewers(
+		&self,
+		owner: &str,
+		project: &str,
+		pr_number: u64,
+		reviewers: &[String],
+	) -> Result<(), AppError> {
+		sqlx::query(
+			"UPDATE pr_messages SET requested_reviewers = $4 WHERE owner = $1 AND project = $2 AND pr = $3",
+		)
+		.bind(owner)
+		.bind(project)
+		.bind(pr_number.cast_signed())
+		.bind(reviewers)
+		.execute(&self.pool)
+		.await?;
+
+		Ok(())
+	}
+
 	async fn count_distinct_prs(&self) -> Result<u64, AppError> {
 		let count: i64 =
 			sqlx::query_scalar("SELECT COUNT(DISTINCT (owner, project, pr)) FROM pr_messages")

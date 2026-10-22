@@ -36,6 +36,24 @@ pub trait PrStore: Send + Sync {
 		project: &str,
 		pr_number: u64,
 	) -> Result<Vec<PrMessage>, AppError>;
+	/// Fetch the GitHub logins currently requested as reviewers on a PR.
+	/// List of reviewers is the same for a messages across all channels.
+	/// Empty when the PR has no stored messages yet.
+	async fn fetch_requested_reviewers(
+		&self,
+		owner: &str,
+		project: &str,
+		pr_number: u64,
+	) -> Result<Vec<String>, AppError>;
+	/// Persist the GitHub logins currently requested as reviewers on a PR
+	/// across all of its stored message rows.
+	async fn update_requested_reviewers(
+		&self,
+		owner: &str,
+		project: &str,
+		pr_number: u64,
+		reviewers: &[String],
+	) -> Result<(), AppError>;
 	/// Count the number of distinct pull requests a message has been posted for.
 	async fn count_distinct_prs(&self) -> Result<u64, AppError>;
 }

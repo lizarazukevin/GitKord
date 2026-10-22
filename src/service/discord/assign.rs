@@ -1,7 +1,7 @@
 //! Service layer for `/assign` and `/unassign` commands.
 
 use crate::discord::commands::args::ReviewerInput;
-use crate::discord::messaging::audit::post_to_thread;
+use crate::discord::messaging::audit::broadcast_to_threads;
 use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
@@ -277,11 +277,7 @@ impl AssignService {
 			),
 		};
 
-		for message in pr_messages {
-			if let Err(e) = post_to_thread(http, message.thread_id, &msg).await {
-				error!(error = %e, thread_id = message.thread_id, "failed to post audit message");
-			}
-		}
+		broadcast_to_threads(http, &pr_messages, &msg).await;
 	}
 }
 
