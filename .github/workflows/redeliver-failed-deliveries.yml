@@ -37,9 +37,9 @@ jobs:
 
       - name: Run script
         env:
-          APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-          TOKEN: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+          APP_ID: ${{ secrets.GITKORD_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.GITKORD_APP_PRIVATE_KEY }}
+          TOKEN: ${{ secrets.GITKORD_WEBHOOK_SECRET }}
           LAST_REDELIVERY_VARIABLE_NAME: 'GITKORD_LAST_DELIVERY'
 
           WORKFLOW_REPO: ${{ github.event.repository.name }}
