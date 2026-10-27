@@ -8,10 +8,10 @@
     "typescript": "^7.0.2"
   },
   "scripts": {
-    "lint": "oxlint .railway",
-    "lint:fix": "oxlint --fix .railway",
-    "format:check": "oxfmt --check .railway",
-    "format": "oxfmt --write .railway",
+    "lint": "oxlint .railway .github/workflows/scripts",
+    "lint:fix": "oxlint --fix .railway .github/workflows/scripts",
+    "format:check": "oxfmt --check .railway .github/workflows/scripts",
+    "format": "oxfmt --write .railway .github/workflows/scripts",
     "typecheck": "tsc --noEmit"
   }
 }
