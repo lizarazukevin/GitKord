@@ -39,7 +39,6 @@ jobs:
         env:
           APP_ID: ${{ secrets.GITKORD_APP_ID }}
           PRIVATE_KEY: ${{ secrets.GITKORD_APP_PRIVATE_KEY }}
-          TOKEN: ${{ secrets.GITKORD_WEBHOOK_SECRET }}
           LAST_REDELIVERY_VARIABLE_NAME: 'GITKORD_LAST_DELIVERY'
 
           WORKFLOW_REPO: ${{ github.event.repository.name }}

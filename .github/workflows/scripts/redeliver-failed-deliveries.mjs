@@ -1,12 +1,11 @@
 // This script uses GitHub's Octokit SDK to make API requests.
 // For more information, see https://docs.github.com/en/rest/guides/scripting-with-the-rest-api-and-javascript
-import { App, Octokit } from "octokit";
+import { App } from "octokit";
 
 async function checkAndRedeliverWebhooks() {
   // Get the values of environment variables that were set by the GitHub Actions workflow.
   const APP_ID = process.env.APP_ID;
   const PRIVATE_KEY = process.env.PRIVATE_KEY;
-  const TOKEN = process.env.TOKEN;
   const LAST_REDELIVERY_VARIABLE_NAME = process.env.LAST_REDELIVERY_VARIABLE_NAME;
   const WORKFLOW_REPO_NAME = process.env.WORKFLOW_REPO;
   const WORKFLOW_REPO_OWNER = process.env.WORKFLOW_REPO_OWNER;
@@ -18,11 +17,9 @@ async function checkAndRedeliverWebhooks() {
     privateKey: PRIVATE_KEY,
   });
 
-  // Create an instance of `Octokit` using the token values that were set in the GitHub Actions workflow.
-  // This will be used to update the configuration variable that stores the last time that this script ran.
-  const octokit = new Octokit({
-    auth: TOKEN,
-  });
+  // Use the GitHub App's own Octokit instance for Actions API calls.
+  // TOKEN is only the webhook signature secret and is NOT a GitHub token.
+  const octokit = app.octokit;
 
   try {
     // Get the last time that this script ran from the configuration variable.
