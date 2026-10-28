@@ -13,7 +13,7 @@ if (!APP_ID || !PRIVATE_KEY) {
 
 const app = new App({
   appId: APP_ID,
-  appKey: PRIVATE_KEY,
+  privateKey: PRIVATE_KEY,
 });
 
 const octokit = app.octokit;
