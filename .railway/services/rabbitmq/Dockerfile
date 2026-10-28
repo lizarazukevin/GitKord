@@ -14,4 +14,5 @@ COPY enabled_plugins /etc/rabbitmq/enabled_plugins
 # upstream entrypoint/docker-entrypoint.sh (which sets up ports, loads
 # management.load_definitions, and starts the broker as the `rabbitmq` user).
 COPY rabbitmq-init.sh /usr/local/bin/rabbitmq-init.sh
+RUN chmod +x /usr/local/bin/rabbitmq-init.sh
 ENTRYPOINT ["/usr/local/bin/rabbitmq-init.sh"]
