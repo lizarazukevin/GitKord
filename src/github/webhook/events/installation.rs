@@ -14,6 +14,7 @@ use std::sync::Arc;
 pub struct InstallationPayload {
 	pub action: String,
 	pub installation: InstallationInfo,
+	#[serde(default)]
 	pub repositories: Vec<InstallationRepo>,
 }
 
