@@ -14,7 +14,7 @@ if (!APP_ID || !PRIVATE_KEY) {
 const app = new App({
   appId: APP_ID,
   appKey: PRIVATE_KEY,
-})
+});
 
 const octokit = app.octokit;
 
@@ -22,15 +22,12 @@ async function main() {
   const cutoff = Date.now() - LOOKBACK_MS;
   const deliveriesByGuid = new Map();
 
-  const iterator = octokit.paginate.iterator(
-      "GET /app/hook/deliveries",
-      {
-        per_page: 100,
-        headers: {
-          "X-GitHub-Api-Version": API_VERSION,
-        },
-      },
-  );
+  const iterator = octokit.paginate.iterator("GET /app/hook/deliveries", {
+    per_page: 100,
+    headers: {
+      "X-GitHub-Api-Version": API_VERSION,
+    },
+  });
 
   // Fetch all attempts within the rolling 30-minute window
   for await (const { data } of iterator) {
@@ -70,29 +67,26 @@ async function main() {
     const latest = attempts[0];
 
     try {
-      await octokit.request(
-          "POST /app/hook/deliveries/{delivery_id}/attempts",
-          {
-            delivery_id: latest.id,
-            headers: {
-              "X-GitHub-Api-Version": API_VERSION,
-            },
-          },
-      );
+      await octokit.request("POST /app/hook/deliveries/{delivery_id}/attempts", {
+        delivery_id: latest.id,
+        headers: {
+          "X-GitHub-Api-Version": API_VERSION,
+        },
+      });
 
       retried++;
       console.log(`Redelivery requested: ${guid}`);
     } catch (error) {
       console.error(
-          `Redelivery failed for ${guid}:`,
-          error.response?.data?.message ?? error.message,
+        `Redelivery failed for ${guid}:`,
+        error.response?.data?.message ?? error.message,
       );
       throw error;
     }
   }
 
   console.log(
-      `Finished: ${retried} redelivery requests, ` +
+    `Finished: ${retried} redelivery requests, ` +
       `${skipped} successful deliveries skipped, ` +
       `${deliveriesByGuid.size} unique deliveries scanned.`,
   );
