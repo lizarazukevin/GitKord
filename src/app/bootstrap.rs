@@ -6,7 +6,7 @@ use crate::app::observability::MetricsRecorder;
 use crate::app::server::serve_http;
 use crate::app::shutdown::shutdown_signal;
 use crate::app::workers::business_metrics_worker::BusinessMetricsWorker;
-use crate::app::workers::redelivery_worker::WebhookRedeliveryWorker;
+use crate::app::workers::webhook_redelivery_worker::WebhookRedeliveryWorker;
 use crate::app::{admin, public};
 use crate::broker::rabbitmq::{RabbitMqConnection, RabbitMqConsumer, RabbitMqPublisher};
 use crate::broker::{MessageConsumer, MessagePublisher, GITHUB_EVENTS_EXCHANGE};
