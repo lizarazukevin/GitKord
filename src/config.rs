@@ -104,6 +104,12 @@ pub struct EnvConfig {
 
 	/// How often the `BusinessMetricsWorker` refreshes business metrics.
 	pub metrics_aggregate_interval_secs: u64,
+
+	/// Interval at which webhook redelivery reconciliation is run.
+	pub webhook_redelivery_interval_secs: u64,
+
+	/// How far back the redelivery spans from when it's triggered.
+	pub webhook_redelivery_lookback_secs: u64,
 }
 
 impl EnvConfig {
@@ -146,6 +152,11 @@ impl EnvConfig {
 
 		let metrics_aggregate_interval_secs = parse_u64_env("METRICS_AGGREGATE_INTERVAL_SECS", 60)?;
 
+		let webhook_redelivery_interval_secs =
+			parse_u64_env("WEBHOOK_REDELIERY_INTERVAL_SECS", 300)?;
+		let webhook_redelivery_lookback_secs =
+			parse_u64_env("WEBHOOK_REDELIERY_LOOKBACK_SECONDS", 3600)?;
+
 		Ok(Self {
 			discord_token,
 			github_webhook_secret,
@@ -164,6 +175,8 @@ impl EnvConfig {
 			rabbitmq_prefetch,
 			admin_token,
 			metrics_aggregate_interval_secs,
+			webhook_redelivery_interval_secs,
+			webhook_redelivery_lookback_secs,
 		})
 	}
 

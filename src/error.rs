@@ -57,6 +57,15 @@ pub enum AppError {
 	#[error("failed to parse webhook payload: {0}")]
 	Deserialization(#[from] serde_json::Error),
 
+	/// A configuration duration doesn't fit the [`chrono::Duration`].
+	/// Not a bad request.
+	#[error("out of range time delta: {0}")]
+	OutOfRange(#[from] chrono::OutOfRangeError),
+
+	/// Failed to build the outbound GitHub HTTP client.
+	#[error("failed to build GitHub HTTP client: {0}")]
+	HttpClientBuild(#[source] reqwest::Error),
+
 	/// User-facing validation/business error surfaced verbatim (no prefix).
 	///
 	/// Used for messages meant to be shown directly to a Discord user, e.g.
@@ -94,8 +103,10 @@ impl AppError {
 			Self::Broker(_) => "broker",
 			Self::UnroutableEvent(_) => "unroutable_event",
 			Self::Deserialization(_) => "deserialization",
+			Self::OutOfRange(_) => "out_of_range",
 			Self::Message(_) => "validation",
 			Self::Internal(_) => "internal",
+			Self::HttpClientBuild(_) => "http_client_build",
 		}
 	}
 }
@@ -113,7 +124,9 @@ impl IntoResponse for AppError {
 			| Self::Database(_)
 			| Self::Migration(_)
 			| Self::Internal(_)
-			| Self::Broker(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			| Self::Broker(_)
+			| Self::OutOfRange(_)
+			| Self::HttpClientBuild(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		};
 
 		// Only user-facing errors echo their message, else generic message.
@@ -129,7 +142,9 @@ impl IntoResponse for AppError {
 			| Self::Loki(_)
 			| Self::Broker(_)
 			| Self::UnroutableEvent(_)
-			| Self::Deserialization(_) => {
+			| Self::Deserialization(_)
+			| Self::OutOfRange(_)
+			| Self::HttpClientBuild(_) => {
 				tracing::error!(error = %self, "internal error");
 				"internal server error".to_string()
 			}
