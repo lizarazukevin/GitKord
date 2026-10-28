@@ -6,6 +6,15 @@
     }
   ],
   "vhosts": [{ "name": "/" }],
+  "permissions": [
+    {
+      "user": "gitkord",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
   "exchanges": [
     {
       "name": "gitkord.github.events",
