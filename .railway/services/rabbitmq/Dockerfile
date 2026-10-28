@@ -16,3 +16,4 @@ COPY enabled_plugins /etc/rabbitmq/enabled_plugins
 COPY rabbitmq-init.sh /usr/local/bin/rabbitmq-init.sh
 RUN chmod +x /usr/local/bin/rabbitmq-init.sh
 ENTRYPOINT ["/usr/local/bin/rabbitmq-init.sh"]
+CMD ["rabbitmq-server"]
