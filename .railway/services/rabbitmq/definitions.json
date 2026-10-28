@@ -1,4 +1,10 @@
 {
+  "users": [
+    {
+      "name": "gitkord",
+      "tags": ["administrator"]
+    }
+  ],
   "vhosts": [{ "name": "/" }],
   "exchanges": [
     {
