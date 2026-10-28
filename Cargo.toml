@@ -55,6 +55,7 @@ subtle = "2.6"
 # Serialization / deserialization (JSON payloads, config)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+reqwest = { version = "0.13", features = ["json"] }
 
 # Async trait support (needed for trait objects with async methods)
 async-trait = "0.1"

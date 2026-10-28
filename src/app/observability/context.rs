@@ -13,6 +13,8 @@ pub enum EventKind {
 	HttpRequest,
 	/// The periodic `BusinessMetricsWorker` refresh of business metrics.
 	Aggregation,
+	/// Periodic redelivery job for failed webhook deliveries.
+	WebhookRedelivery,
 }
 
 impl EventKind {
@@ -23,6 +25,7 @@ impl EventKind {
 			Self::Webhook => "webhook",
 			Self::HttpRequest => "http_request",
 			Self::Aggregation => "metrics_aggregation",
+			Self::WebhookRedelivery => "webhook_redelivery",
 		}
 	}
 }

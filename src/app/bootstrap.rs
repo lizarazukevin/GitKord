@@ -6,6 +6,7 @@ use crate::app::observability::MetricsRecorder;
 use crate::app::server::serve_http;
 use crate::app::shutdown::shutdown_signal;
 use crate::app::workers::business_metrics_worker::BusinessMetricsWorker;
+use crate::app::workers::webhook_redelivery_worker::WebhookRedeliveryWorker;
 use crate::app::{admin, public};
 use crate::broker::rabbitmq::{RabbitMqConnection, RabbitMqConsumer, RabbitMqPublisher};
 use crate::broker::{MessageConsumer, MessagePublisher, GITHUB_EVENTS_EXCHANGE};
@@ -51,6 +52,7 @@ pub(super) struct Application {
 	business_metrics_worker: BusinessMetricsWorker,
 	public_routes: Router,
 	admin_routes: Router,
+	webhook_redelivery_worker: WebhookRedeliveryWorker,
 }
 
 impl Application {
@@ -104,6 +106,14 @@ impl Application {
 			Arc::clone(&metrics_recorder),
 			Duration::from_secs(env_config.metrics_aggregate_interval_secs),
 		);
+
+		let webhook_redelivery_worker = WebhookRedeliveryWorker::new(
+			Arc::clone(&metrics_recorder),
+			env_config.github_app_id.to_string(),
+			&env_config.github_app_private_key,
+			Duration::from_secs(env_config.webhook_redelivery_interval_secs),
+			Duration::from_secs(env_config.webhook_redelivery_lookback_secs),
+		)?;
 
 		// One AMQP connection and a publisher and consumer channel on a TCP connection
 		let rabbitmq_connection = RabbitMqConnection::connect(&env_config.rabbitmq_url).await?;
@@ -214,6 +224,7 @@ impl Application {
 			business_metrics_worker,
 			public_routes,
 			admin_routes,
+			webhook_redelivery_worker,
 		})
 	}
 
@@ -221,6 +232,8 @@ impl Application {
 		let shard_manager = self.discord_client.shard_manager.clone();
 
 		let metrics_agg = spawn(self.business_metrics_worker.run());
+
+		let webhook_redelivery = spawn(self.webhook_redelivery_worker.run());
 
 		let mut http = spawn(serve_http(
 			self.port,
@@ -263,7 +276,7 @@ impl Application {
 			}
 		}
 
-		let _ = tokio::join!(http, discord, queue, metrics_agg);
+		let _ = tokio::join!(http, discord, queue, metrics_agg, webhook_redelivery);
 		Ok(())
 	}
 }
