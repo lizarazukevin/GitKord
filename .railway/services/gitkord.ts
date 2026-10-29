@@ -20,6 +20,7 @@ export const GitKord = service("GitKord", {
     PORT: preserve(),
     RABBITMQ_URL: preserve(),
     DATABASE_MAX_CONNECTIONS: preserve(),
+    GITHUB_APP_CLIENT_ID: preserve(),
   },
   deploy: {
     drainingSeconds: 30,
