@@ -199,8 +199,6 @@ impl UserStore for PgUserStore {
 	}
 
 	async fn count_registered(&self) -> Result<u64, AppError> {
-		// A verified row can have its login cleared by another owner's claim
-		// but still carries an ID, so count either column.
 		let count: i64 = sqlx::query_scalar(
 			"SELECT COUNT(*) FROM user_links
               WHERE github_login IS NOT NULL OR github_user_id IS NOT NULL",
