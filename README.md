@@ -147,6 +147,7 @@ Set `LOCAL_DEV=true` and provide the following (read in `src/config.rs`):
 | `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`).                                                         |
 | `GITHUB_TOKEN` | Yes (local dev) | GitHub PAT with repository access and read/write permissions for pull requests and webhooks, used instead of GitHub App auth. |
 | `PUBLIC_DOMAIN` | Yes (local dev) | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                              |
+| `GITHUB_CLIENT_ID` | Yes (all envs) | GitHub App Client ID (not App ID). Device-flow identity linking. Not a secret. |
 | `DATABASE_URL` | Yes | Postgres connection string.                                                                                                  |
 | `RABBITMQ_URL` | Yes | AMQP connection URI for the RabbitMQ broker, e.g. `amqp://user:pass@host:5672/%2f`. The app will not start without this.     |
 | `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                 |

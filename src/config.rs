@@ -54,6 +54,11 @@ pub struct EnvConfig {
 	/// `GitHub` App private key contents (PEM format). Prod only.
 	pub github_app_private_key: String,
 
+	/// `GitHub` App **Client ID** (not App ID, not an installation ID).
+	/// Used for device-flow user identity linking in every environment.
+	/// Not a secret, sent in the browser URL during device flow.
+	pub github_app_client_id: String,
+
 	/// Database connection string (e.g. `Postgres`).
 	pub database_url: String,
 
@@ -124,6 +129,7 @@ impl EnvConfig {
 
 		let discord_token = require_env("DISCORD_TOKEN")?;
 		let github_webhook_secret = require_env("GITHUB_WEBHOOK_SECRET")?;
+		let github_app_client_id = require_env("GITHUB_APP_CLIENT_ID")?;
 		let database_url = require_env("DATABASE_URL")?;
 		let database_max_connections = parse_u32_env("DATABASE_MAX_CONNECTIONS", 10)?;
 		let database_min_connections = parse_u32_env("DATABASE_MIN_CONNECTIONS", 1)?;
@@ -162,6 +168,7 @@ impl EnvConfig {
 			github_webhook_secret,
 			github_app_id,
 			github_app_private_key,
+			github_app_client_id,
 			database_url,
 			database_max_connections,
 			database_min_connections,
