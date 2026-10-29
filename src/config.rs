@@ -161,7 +161,7 @@ impl EnvConfig {
 		let webhook_redelivery_interval_secs =
 			parse_u64_env("WEBHOOK_REDELIERY_INTERVAL_SECS", 300)?;
 		let webhook_redelivery_lookback_secs =
-			parse_u64_env("WEBHOOK_REDELIERY_LOOKBACK_SECONDS", 3600)?;
+			parse_u64_env("WEBHOOK_REDELIERY_LOOKBACK_SECONDS", 900)?;
 
 		Ok(Self {
 			discord_token,
