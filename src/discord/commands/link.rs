@@ -74,6 +74,9 @@ impl CommandModule for UserLinkModule {
 			Err(e) => {
 				let user_msg = match &e {
 					AppError::Message(_) => e.to_string(),
+					AppError::UserLinkConflict => {
+						"This GitHub account is already linked to another Discord user.".to_string()
+					}
 					_ => format_error("Something went wrong. Please try again.", None),
 				};
 				ephemeral(ctx, cmd, &user_msg).await?;

@@ -177,7 +177,7 @@ impl AssignService {
 		self.user_store
 			.fetch_by_discord_id(discord_id)
 			.await?
-			.map(|link| link.github_login)
+			.and_then(|link| link.github_login)
 			.ok_or_else(|| {
 				AppError::message(format_error(
 					"Discord user has not linked their GitHub account",

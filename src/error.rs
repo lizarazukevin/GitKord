@@ -77,6 +77,11 @@ pub enum AppError {
 	/// Catch-all for internal errors that don't fit variants.
 	#[error("internal error: {0}")]
 	Internal(#[from] anyhow::Error),
+
+	/// A verified `GitHub` account is already linked to a different `Discord`
+	/// user. Surfaces as a user-facing validation error.
+	#[error("github account already linked to another discord user")]
+	UserLinkConflict,
 }
 
 impl From<serenity::Error> for AppError {
@@ -107,6 +112,7 @@ impl AppError {
 			Self::Message(_) => "validation",
 			Self::Internal(_) => "internal",
 			Self::HttpClientBuild(_) => "http_client_build",
+			Self::UserLinkConflict => "user_link_conflict",
 		}
 	}
 }
@@ -114,6 +120,7 @@ impl AppError {
 impl IntoResponse for AppError {
 	fn into_response(self) -> Response {
 		let status = match &self {
+			Self::UserLinkConflict => StatusCode::CONFLICT,
 			Self::InvalidSignature => StatusCode::UNAUTHORIZED,
 			Self::GitHub(_) => StatusCode::BAD_GATEWAY,
 			Self::Message(_) | Self::Deserialization(_) => StatusCode::BAD_REQUEST,
@@ -133,6 +140,9 @@ impl IntoResponse for AppError {
 		// Full details go to logs via `Display`/`source`.
 		let body = match &self {
 			Self::Message(_) | Self::InvalidSignature => self.to_string(),
+			Self::UserLinkConflict => {
+				"This GitHub account is already linked to another Discord user".to_string()
+			}
 			Self::GitHub(_)
 			| Self::Discord(_)
 			| Self::Database(_)

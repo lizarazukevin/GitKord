@@ -44,7 +44,9 @@ impl UserLinkService {
 						self.user_store
 							.upsert(UserLink {
 								discord_id: req.discord_id,
-								github_login: verified.clone(),
+								github_login: Some(verified.clone()),
+								github_user_id: None,
+								github_verified_at: None,
 								created_at: Utc::now(),
 								updated_at: Utc::now(),
 								created_by: Some(req.discord_id.to_string()),
