@@ -2307,9 +2307,9 @@ dependencies = [
 
 [[package]]
 name = "octocrab"
-version = "0.54.5"
+version = "0.54.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1316aeebcf5959e7442809c5446d97df5b37d87742c9e363b3e9920e0b3fb994"
+checksum = "74361a384f69ad80419be6d2bd57a02c7ae09d3f49acd0609a0ecb11d541e85f"
 dependencies = [
  "arc-swap",
  "base64 0.22.1",
@@ -4431,9 +4431,9 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "uuid"
-version = "1.28.0"
+version = "1.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cc1186384beb7dd8eedea376413fd654937285ea6c9cfbb928dc3043ea4b606"
+checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
 dependencies = [
  "getrandom 0.4.2",
  "js-sys",
