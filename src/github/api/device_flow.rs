@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 //! `GitHub` App device-flow identity verification.
 //!
 //! Three endpoints, no OAuth scopes, no client secret:

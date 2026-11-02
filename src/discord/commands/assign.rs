@@ -3,7 +3,9 @@
 pub use crate::discord::commands::args::CommandOption;
 use crate::discord::commands::args::{number_option, repo_name_option, resolve_reviewer_option};
 use crate::discord::commands::registry::CommandModule;
-use crate::discord::commands::response::{deferred_ephemeral, ephemeral, require_guild};
+use crate::discord::commands::response::{
+	defer_ephemeral, ephemeral, ephemeral_followup, require_guild,
+};
 use crate::error::format_error;
 use crate::service::discord::assign::{AssignAction, AssignRequest, AssignService};
 use crate::AppError;
@@ -87,7 +89,7 @@ impl CommandModule for AssignModule {
 		let Some(req) = self.parse_assign_input(ctx, cmd).await? else {
 			return Ok(());
 		};
-		cmd.defer_ephemeral(ctx).await?;
+		defer_ephemeral(ctx, cmd).await?;
 
 		match self.service.handle(req).await {
 			Ok(()) => {
@@ -100,7 +102,7 @@ impl CommandModule for AssignModule {
 					_ => format_error("Something went wrong. Please try again.", None),
 				};
 
-				deferred_ephemeral(ctx, cmd, &user_msg).await?;
+				ephemeral_followup(ctx, cmd, &user_msg).await?;
 				Err(e)
 			}
 		}

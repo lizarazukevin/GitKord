@@ -11,6 +11,7 @@ categories = ["web-programming"]
 [dependencies]
 # Async runtime
 tokio = { version = "1.53", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 
 # HTTP server — receives GitHub webhooks
 axum = { version = "0.8", features = ["macros"] }

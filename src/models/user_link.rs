@@ -28,17 +28,12 @@ pub struct UserLink {
 /// Persistence for the `Discord` ID to `GitHub` identity mapping.
 #[async_trait]
 pub trait UserStore: Send + Sync {
-	/// Legacy, unauthenticated upsert by login. Kept until commit 4 removes
-	/// `/link <username>`.
-	async fn upsert(&self, link: UserLink) -> Result<(), AppError>;
-
 	/// Authenticated upsert. Clears any other row's login matching
 	/// `github_login` case-insensitively, then writes the verified identity in
 	/// one transaction.
 	///
 	/// Returns [`AppError::UserLinkConflict`] when the GitHub ID
 	/// already belongs to another Discord user.
-	#[allow(dead_code)]
 	async fn upsert_verified(
 		&self,
 		discord_id: u64,
@@ -57,11 +52,7 @@ pub trait UserStore: Send + Sync {
 
 	/// Null the GitHub columns but keep the row (forward-compatible with more
 	/// providers). No-op when nothing is linked.
-	#[allow(dead_code)]
 	async fn unlink_github(&self, discord_id: u64) -> Result<(), AppError>;
-
-	/// Delete the row entirely. Legacy `/unlink` only; removed in commit 4.
-	async fn delete(&self, discord_id: u64) -> Result<(), AppError>;
 
 	/// Count rows that currently have a GitHub identity.
 	async fn count_registered(&self) -> Result<u64, AppError>;

@@ -222,7 +222,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(operation_duration_sec_bucket[5m])) by (le)) unless sum(rate(operation_duration_sec_bucket[5m])) == 0",
+          "expr": "histogram_quantile(0.95, sum(rate(operation_duration_sec_bucket{event_name!=\"GET /metrics\", event_name!= \"GET /healthz\", event_name!=\"link\"}[5m])) by (le)) unless sum(rate(operation_duration_sec_bucket{event_name!=\"GET /metrics\", event_name!=\"GET /healthz\", event_name!=\"link\"}[5m])) == 0",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"

@@ -36,4 +36,15 @@ impl MetricsRecorder for PrometheusRecorder {
 		)
 		.increment(1);
 	}
+
+	/// Low cardinality as long as the outcome and reason are predefined set of values.
+	fn record_link_outcome(&self, outcome: &str, reason: &str) {
+		counter!(
+			"link_flow_outcomes_total",
+			"outcome" => outcome.to_owned(),
+			"reason" => reason.to_owned(),
+			"env" => self.environment.clone(),
+		)
+		.increment(1);
+	}
 }

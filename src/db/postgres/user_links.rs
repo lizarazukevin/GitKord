@@ -47,23 +47,6 @@ impl PgUserStore {
 
 #[async_trait]
 impl UserStore for PgUserStore {
-	async fn upsert(&self, link: UserLink) -> Result<(), AppError> {
-		sqlx::query(
-			"INSERT INTO user_links (discord_id, github_login, created_at, updated_at, created_by, updated_by)
-             VALUES ($1, $2, NOW(), NOW(), $3, $3)
-             ON CONFLICT (discord_id) DO UPDATE SET
-                github_login = EXCLUDED.github_login,
-                updated_at = NOW(),
-                updated_by = EXCLUDED.updated_by",
-		)
-			.bind(link.discord_id.cast_signed())
-			.bind(link.github_login.as_deref())
-			.bind(link.updated_by.as_deref())
-			.execute(&self.pool)
-			.await?;
-		Ok(())
-	}
-
 	async fn upsert_verified(
 		&self,
 		discord_id: u64,
@@ -187,14 +170,6 @@ impl UserStore for PgUserStore {
 		.bind(discord_id.to_string())
 		.execute(&self.pool)
 		.await?;
-		Ok(())
-	}
-
-	async fn delete(&self, discord_id: u64) -> Result<(), AppError> {
-		sqlx::query("DELETE FROM user_links WHERE discord_id = $1")
-			.bind(discord_id.cast_signed())
-			.execute(&self.pool)
-			.await?;
 		Ok(())
 	}
 
