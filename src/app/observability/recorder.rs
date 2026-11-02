@@ -8,4 +8,6 @@ pub trait MetricsRecorder: Send + Sync {
 	fn record_duration(&self, kind: EventKind, event_name: &str, duration: Duration);
 	/// Record an error that occurred during an operation, tagged by its event kind.
 	fn record_error(&self, kind: EventKind, event_name: &str, error_type: &str);
+	/// Increment attempts at linking accounts.
+	fn record_link_outcome(&self, outcome: &str, reason: &str);
 }

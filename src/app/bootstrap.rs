@@ -13,6 +13,7 @@ use crate::broker::{MessageConsumer, MessagePublisher, GITHUB_EVENTS_EXCHANGE};
 use crate::config::{EnvConfig, Environment};
 use crate::db::create_stores;
 use crate::error::AppError;
+use crate::github::api::device_flow::DeviceFlowClient;
 use crate::github::webhook::consumer::run_queue_consumer;
 use crate::github::webhook::events::installation::InstallationEventHandler;
 use crate::github::webhook::events::installation_repositories::InstallationRepositoriesEventHandler;
@@ -38,6 +39,7 @@ use axum::Router;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::{select, spawn};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 pub(super) struct Application {
@@ -52,12 +54,15 @@ pub(super) struct Application {
 	business_metrics_worker: BusinessMetricsWorker,
 	public_routes: Router,
 	admin_routes: Router,
-	webhook_redelivery_worker: WebhookRedeliveryWorker,
+	webhook_redelivery_worker: Option<WebhookRedeliveryWorker>,
+	shutdown: CancellationToken,
 }
 
 impl Application {
 	#[allow(clippy::too_many_lines)]
 	pub async fn build(env_config: EnvConfig) -> Result<Self, AppError> {
+		let shutdown = CancellationToken::new();
+
 		let webhook_registration_config = env_config.webhook_registration_config();
 
 		let gh_client = Arc::new(github::api::client::GitHubClient::new(
@@ -107,13 +112,18 @@ impl Application {
 			Duration::from_secs(env_config.metrics_aggregate_interval_secs),
 		);
 
-		let webhook_redelivery_worker = WebhookRedeliveryWorker::new(
-			Arc::clone(&metrics_recorder),
-			env_config.github_app_id.to_string(),
-			&env_config.github_app_private_key,
-			Duration::from_secs(env_config.webhook_redelivery_interval_secs),
-			Duration::from_secs(env_config.webhook_redelivery_lookback_secs),
-		)?;
+		let webhook_redelivery_worker = if env_config.local_dev {
+			info!("skipping webhook redelivery worker (local dev)");
+			None
+		} else {
+			Some(WebhookRedeliveryWorker::new(
+				Arc::clone(&metrics_recorder),
+				env_config.github_app_id.to_string(),
+				&env_config.github_app_private_key,
+				Duration::from_secs(env_config.webhook_redelivery_interval_secs),
+				Duration::from_secs(env_config.webhook_redelivery_lookback_secs),
+			)?)
+		};
 
 		// One AMQP connection and a publisher and consumer channel on a TCP connection
 		let rabbitmq_connection = RabbitMqConnection::connect(&env_config.rabbitmq_url).await?;
@@ -142,9 +152,15 @@ impl Application {
 			webhook_registration_config.clone(),
 		));
 
+		let device_flow_client = DeviceFlowClient::new(
+			reqwest::Client::new(),
+			env_config.github_app_client_id.clone(),
+		);
 		let link_service = Arc::new(UserLinkService::new(
 			Arc::clone(&stores.users),
-			Arc::clone(&gh_client),
+			device_flow_client,
+			Arc::clone(&metrics_recorder),
+			shutdown.clone(),
 		));
 
 		let health_service = Arc::new(HealthService::new(Arc::clone(&gh_client)));
@@ -225,6 +241,7 @@ impl Application {
 			public_routes,
 			admin_routes,
 			webhook_redelivery_worker,
+			shutdown,
 		})
 	}
 
@@ -233,7 +250,11 @@ impl Application {
 
 		let metrics_agg = spawn(self.business_metrics_worker.run());
 
-		let webhook_redelivery = spawn(self.webhook_redelivery_worker.run());
+		let webhook_redelivery = spawn(async move {
+			if let Some(worker) = self.webhook_redelivery_worker {
+				worker.run().await;
+			}
+		});
 
 		let mut http = spawn(serve_http(
 			self.port,
@@ -272,6 +293,7 @@ impl Application {
 			}
 			() = shutdown_signal() => {
 				info!("shutdown signal received, stopping Discord client");
+				self.shutdown.cancel();
 				shard_manager.shutdown_all().await;
 			}
 		}

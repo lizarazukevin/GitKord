@@ -3,11 +3,11 @@
 use crate::AppError;
 use serenity::all::{
 	CommandInteraction, Context, CreateInteractionResponse, CreateInteractionResponseMessage,
-	GuildId,
+	EditInteractionResponse, GuildId,
 };
 
 /// Send an ephemeral response visible only to the users who ran a slash command.
-/// Limited to operation taking 3 seconds, otherwise use [`deferred_ephemeral`].
+/// Limited to operation taking 3 seconds, otherwise use [`ephemeral_followup`].
 pub(super) async fn ephemeral(
 	ctx: &Context,
 	cmd: &CommandInteraction,
@@ -25,10 +25,31 @@ pub(super) async fn ephemeral(
 	Ok(())
 }
 
+/// Acknowledge an interaction ephemerally if it will take longer than
+/// Discord's 3-second window.
+pub(super) async fn defer_ephemeral(
+	ctx: &Context,
+	cmd: &CommandInteraction,
+) -> Result<(), AppError> {
+	cmd.defer_ephemeral(ctx).await?;
+	Ok(())
+}
+
+/// Edit a deferred ephemeral message.
+pub(super) async fn edit_ephemeral(
+	ctx: &Context,
+	cmd: &CommandInteraction,
+	content: &str,
+) -> Result<(), AppError> {
+	cmd.edit_response(ctx, EditInteractionResponse::new().content(content))
+		.await?;
+	Ok(())
+}
+
 /// Send an ephemeral follow-up after the interaction has been deferred.
 /// Interaction token is valid for 15 minutes.
 /// Ref: <https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-callback>
-pub(super) async fn deferred_ephemeral(
+pub(super) async fn ephemeral_followup(
 	ctx: &Context,
 	cmd: &CommandInteraction,
 	content: &str,
