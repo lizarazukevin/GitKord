@@ -115,6 +115,10 @@ pub struct EnvConfig {
 
 	/// How far back the redelivery spans from when it's triggered.
 	pub webhook_redelivery_lookback_secs: u64,
+
+	/// Maximum repository subscriptions allowed on the Basic plan.
+	/// Defaults to `5`.
+	pub basic_subscription_cap: u32,
 }
 
 impl EnvConfig {
@@ -163,6 +167,8 @@ impl EnvConfig {
 		let webhook_redelivery_lookback_secs =
 			parse_u64_env("WEBHOOK_REDELIERY_LOOKBACK_SECONDS", 900)?;
 
+		let basic_subscription_cap = parse_u32_env("BASIC_SUBSCRIPTION_CAP", 5)?;
+
 		Ok(Self {
 			discord_token,
 			github_webhook_secret,
@@ -184,6 +190,7 @@ impl EnvConfig {
 			metrics_aggregate_interval_secs,
 			webhook_redelivery_interval_secs,
 			webhook_redelivery_lookback_secs,
+			basic_subscription_cap,
 		})
 	}
 
