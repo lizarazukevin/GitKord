@@ -4199,7 +4199,7 @@
     }
   ],
   "preload": false,
-  "refresh": "1m",
+  "refresh": "",
   "schemaVersion": 42,
   "tags": [
     "rabbitmq-prometheus"
