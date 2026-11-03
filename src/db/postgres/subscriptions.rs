@@ -74,13 +74,13 @@ impl SubscriptionStore for PgSubscriptionStore {
 		// Exit early if this repository is already in this channel.
 		let already_subscribed: bool = sqlx::query_scalar(
 			"SELECT EXISTS(
-    SELECT 1
-    FROM subscriptions
-    WHERE owner = $1
-    	AND project = $2
-    	AND guild_id = $3
-    	AND channel_id = $4
-)",
+                SELECT 1
+                FROM subscriptions
+                WHERE owner = $1
+                  AND project = $2
+                  AND guild_id = $3
+                  AND channel_id = $4
+            )",
 		)
 		.bind(&sub.owner)
 		.bind(&sub.project)
@@ -97,9 +97,8 @@ impl SubscriptionStore for PgSubscriptionStore {
 		// Count only rows this user created, legacy rows count against no one.
 		let used: i64 = sqlx::query_scalar(
 			"SELECT COUNT(*)
-FROM subscriptions
-WHERE created_by = $1
-",
+             FROM subscriptions
+             WHERE created_by = $1",
 		)
 		.bind(creator)
 		.fetch_one(&mut *tx)
