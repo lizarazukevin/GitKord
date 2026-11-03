@@ -15,6 +15,7 @@ use indexmap::IndexMap;
 use octocrab::models::pulls::{Review, ReviewState};
 use octocrab::Octocrab;
 use serenity::all::{ChannelId, Http};
+use std::collections::HashMap;
 
 pub struct PrMessageData {
 	pub status_emoji: &'static str,
@@ -45,6 +46,11 @@ pub struct ReviewSummary {
 pub struct CheckSummary {
 	pub name: String,
 	pub conclusion: CheckStatus,
+}
+
+struct ReviewerState {
+	github_id: Option<u64>,
+	state: ReviewState,
 }
 
 #[allow(unused)]
@@ -132,7 +138,7 @@ async fn installation_client_for_repo(
 fn merge_review_states(
 	submitted_reviews: &[Review],
 	requested_reviewers: &[GitHubUserInfo],
-) -> IndexMap<String, ReviewState> {
+) -> IndexMap<String, ReviewerState> {
 	let mut states = IndexMap::new();
 
 	for review in submitted_reviews {
@@ -140,7 +146,13 @@ fn merge_review_states(
 			let login = user.login.clone();
 			if !login.is_empty() {
 				let state = review.state.unwrap_or(ReviewState::Commented);
-				states.insert(login, state);
+				states.insert(
+					login,
+					ReviewerState {
+						github_id: Some(user.id.0),
+						state,
+					},
+				);
 			}
 		}
 	}
@@ -148,7 +160,10 @@ fn merge_review_states(
 	for reviewer in requested_reviewers {
 		states
 			.entry(reviewer.login.clone())
-			.or_insert(ReviewState::Pending);
+			.or_insert(ReviewerState {
+				github_id: reviewer.id,
+				state: ReviewState::Pending,
+			});
 	}
 
 	states
@@ -157,25 +172,49 @@ fn merge_review_states(
 /// Displays a user's `Discord` tag when a link to their `GitHub` login is found.
 async fn enrich_reviewers(
 	user_store: &dyn UserStore,
-	reviewers: IndexMap<String, ReviewState>,
+	reviewers: IndexMap<String, ReviewerState>,
 ) -> Vec<ReviewSummary> {
 	let logins: Vec<String> = reviewers.keys().cloned().collect();
-	let discord_map = user_store
+	let github_ids: Vec<i64> = reviewers
+		.values()
+		.filter_map(|r| r.github_id)
+		.map(u64::cast_signed)
+		.collect();
+
+	let by_id = user_store
+		.fetch_by_github_user_ids(&github_ids)
+		.await
+		.unwrap_or_default();
+	let by_login = user_store
 		.fetch_by_github_logins(&logins)
 		.await
 		.unwrap_or_default();
 
 	reviewers
 		.into_iter()
-		.map(|(github_login, state)| {
-			let discord_tag = discord_map.get(&github_login).map(|id| format!("<@{id}>"));
+		.map(|(github_login, ReviewerState { github_id, state })| {
+			let discord_id = resolve_discord_id(github_id, &github_login, &by_id, &by_login);
 			ReviewSummary {
 				github_login,
-				discord_tag,
+				discord_tag: discord_id.map(|id| format!("<@{id}>")),
 				state,
 			}
 		})
 		.collect()
+}
+
+/// ID match first (rename-proof, wins over any login collision), then login
+/// match (legacy rows), then none.
+fn resolve_discord_id(
+	github_id: Option<u64>,
+	login: &str,
+	by_id: &HashMap<i64, u64>,
+	by_login: &HashMap<String, u64>,
+) -> Option<u64> {
+	github_id
+		.map(u64::cast_signed)
+		.and_then(|id| by_id.get(&id).copied())
+		.or_else(|| by_login.get(login).copied())
 }
 
 /// Updates stored PR messages across all subscribed channels with new webhook activity in place.
