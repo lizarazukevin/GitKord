@@ -4,6 +4,14 @@ use crate::error::AppError;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
+/// Result of trying to create a subscription under a plan cap.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateSubscriptionOutcome {
+	Created,
+	AlreadySubscribed,
+	LimitReached { used: u32, cap: u32 },
+}
+
 #[derive(Debug, Clone)]
 pub struct Subscription {
 	pub owner: String,
@@ -24,8 +32,13 @@ pub struct Subscription {
 /// Persistence for `Discord` channel subscriptions to a repository's PR updates.
 #[async_trait]
 pub trait SubscriptionStore: Send + Sync {
-	/// Insert or update a repository subscription to a channel.
-	async fn upsert(&self, subscription: Subscription) -> Result<(), AppError>;
+	/// Create a subscription only if it does not already exist and the creator is below
+	/// the `max_subscriptions` for their plan.
+	async fn create_within_limit(
+		&self,
+		subscription: Subscription,
+		max_subscriptions: u32,
+	) -> Result<CreateSubscriptionOutcome, AppError>;
 	/// Look up the stored `GitHub` app installation ID of a subscribed repository.
 	async fn fetch_installation_id_by_owner_project(
 		&self,

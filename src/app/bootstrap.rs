@@ -150,6 +150,7 @@ impl Application {
 			Arc::clone(&stores.subscriptions),
 			Arc::clone(&gh_client),
 			webhook_registration_config.clone(),
+			env_config.basic_subscription_cap,
 		));
 
 		let device_flow_client = DeviceFlowClient::new(

@@ -8,7 +8,8 @@ use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
 use crate::github::api::pull_requests::split_repo;
-use crate::models::subscription::{Subscription, SubscriptionStore};
+use crate::models::plan::Plan;
+use crate::models::subscription::{CreateSubscriptionOutcome, Subscription, SubscriptionStore};
 use chrono::Utc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,7 @@ pub struct SubscribeService {
 	sub_store: Arc<dyn SubscriptionStore>,
 	github: Arc<GitHubClient>,
 	config: WebhookRegistrationConfig,
+	basic_subscription_cap: u32,
 }
 
 impl SubscribeService {
@@ -36,11 +38,13 @@ impl SubscribeService {
 		sub_store: Arc<dyn SubscriptionStore>,
 		github: Arc<GitHubClient>,
 		config: WebhookRegistrationConfig,
+		basic_subscription_cap: u32,
 	) -> Self {
 		Self {
 			sub_store,
 			github,
 			config,
+			basic_subscription_cap,
 		}
 	}
 
@@ -57,26 +61,44 @@ impl SubscribeService {
 
 		match req.action {
 			SubscribeAction::Subscribe => {
-				self.sub_store
-					.upsert(Subscription {
-						owner: owner.to_owned(),
-						project: project.to_owned(),
-						guild_id: req.guild_id,
-						channel_id: req.channel_id,
-						installation_id,
-						created_at: Utc::now(),
-						updated_at: Utc::now(),
-						created_by: Some(req.discord_id.to_string()),
-						updated_by: Some(req.discord_id.to_string()),
-					})
-					.await?;
+				let subscription = Subscription {
+					owner: owner.to_owned(),
+					project: project.to_owned(),
+					guild_id: req.guild_id,
+					channel_id: req.channel_id,
+					installation_id,
+					created_at: Utc::now(),
+					updated_at: Utc::now(),
+					created_by: Some(req.discord_id.to_string()),
+					updated_by: Some(req.discord_id.to_string()),
+				};
 
-				info!(repo = %req.repo, "channel subscribed");
+				let cap = Plan::Basic.max_subscriptions(self.basic_subscription_cap);
 
-				Ok(format!(
-					"This channel will now receive PR updates for **{}**.",
-					req.repo
-				))
+				match self
+					.sub_store
+					.create_within_limit(subscription, cap)
+					.await?
+				{
+					CreateSubscriptionOutcome::Created => {
+						info!(repo = %req.repo, "channel subscribed");
+						Ok(format!(
+							"This channel will now receive PR updates for **{}**.",
+							req.repo
+						))
+					}
+					CreateSubscriptionOutcome::AlreadySubscribed => {
+						info!(repo = %req.repo, "channel already subscribed");
+						Ok(format!(
+							"This channel is already subscribed to **{}**.",
+							req.repo
+						))
+					}
+					CreateSubscriptionOutcome::LimitReached { used, cap } => {
+						info!(repo = %req.repo, used, cap, "subscription limit reached");
+						Err(limit_reached_error(&req.repo, used, cap))
+					}
+				}
 			}
 			SubscribeAction::Unsubscribe => {
 				self.sub_store
@@ -147,4 +169,14 @@ impl SubscribeService {
 		info!(repo, "webhook registered for local dev");
 		Ok(0)
 	}
+}
+
+/// User-facing refusal for a plan cap rejection.
+fn limit_reached_error(repo: &str, used: u32, cap: u32) -> AppError {
+	AppError::message(format_error(
+		&format!("You've reached the Basic plan limit of {cap} repository subscriptions."),
+		Some(&format!(
+			"You're using **{used}** of **{cap}**. Existing subscriptions are kept, including any that were created before this limit. To subscribe to **{repo}**, run `/unsubscribe` for a repository you no longer need.\n\n-# *Premium plans with a higher limit are coming soon.*"
+		)),
+	))
 }

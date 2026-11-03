@@ -1,7 +1,8 @@
 //! `Postgres` implementation of `SubscriptionStore`.
 
 use crate::error::AppError;
-use crate::models::subscription::{Subscription, SubscriptionStore};
+use crate::models::subscription::{CreateSubscriptionOutcome, Subscription, SubscriptionStore};
+use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -48,25 +49,105 @@ impl PgSubscriptionStore {
 
 #[async_trait]
 impl SubscriptionStore for PgSubscriptionStore {
-	async fn upsert(&self, sub: Subscription) -> Result<(), AppError> {
-		sqlx::query(
-			"INSERT INTO subscriptions (owner, project, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $6)
-             ON CONFLICT (owner, project, guild_id, channel_id) DO UPDATE SET
-                installation_id = EXCLUDED.installation_id,
-                updated_at = NOW(),
-                updated_by = EXCLUDED.updated_by",
+	async fn create_within_limit(
+		&self,
+		sub: Subscription,
+		max_subscriptions: u32,
+	) -> Result<CreateSubscriptionOutcome, AppError> {
+		let creator = sub
+			.created_by
+			.as_deref()
+			.ok_or_else(|| AppError::Internal(anyhow!("subscription creator is required")))?;
+		let discord_id = creator
+			.parse::<i64>()
+			.map_err(|e| AppError::Internal(anyhow!("invalid created_by discord id: {e}")))?;
+
+		let mut tx = self.pool.begin().await?;
+
+		// Serialize concurrent subscribes from the same user, lock releases
+		// on commit or rollback when completing transaction.
+		sqlx::query("SELECT pg_advisory_xact_lock($1)")
+			.bind(discord_id)
+			.execute(&mut *tx)
+			.await?;
+
+		// Exit early if this repository is already in this channel.
+		let already_subscribed: bool = sqlx::query_scalar(
+			"SELECT EXISTS(
+    SELECT 1
+    FROM subscriptions
+    WHERE owner = $1
+    	AND project = $2
+    	AND guild_id = $3
+    	AND channel_id = $4
+)",
+		)
+		.bind(&sub.owner)
+		.bind(&sub.project)
+		.bind(sub.guild_id.cast_signed())
+		.bind(sub.channel_id.cast_signed())
+		.fetch_one(&mut *tx)
+		.await?;
+
+		if already_subscribed {
+			tx.rollback().await?;
+			return Ok(CreateSubscriptionOutcome::AlreadySubscribed);
+		}
+
+		// Count only rows this user created, legacy rows count against no one.
+		let used: i64 = sqlx::query_scalar(
+			"SELECT COUNT(*)
+FROM subscriptions
+WHERE created_by = $1
+",
+		)
+		.bind(creator)
+		.fetch_one(&mut *tx)
+		.await?;
+
+		let used = u32::try_from(used)
+			.map_err(|e| AppError::Internal(anyhow!("subscription count out of range: {e}")))?;
+
+		if used >= max_subscriptions {
+			tx.rollback().await?;
+			return Ok(CreateSubscriptionOutcome::LimitReached {
+				used,
+				cap: max_subscriptions,
+			});
+		}
+
+		let result = sqlx::query(
+			"INSERT INTO subscriptions (
+                owner,
+                project,
+                guild_id,
+                channel_id,
+                installation_id,
+                created_at,
+                updated_at,
+                created_by,
+                updated_by
+             ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $6)
+             ON CONFLICT (owner, project, guild_id, channel_id) DO NOTHING",
 		)
 		.bind(&sub.owner)
 		.bind(&sub.project)
 		.bind(sub.guild_id.cast_signed())
 		.bind(sub.channel_id.cast_signed())
 		.bind(sub.installation_id.cast_signed())
-		.bind(sub.updated_by.as_deref())
-		.execute(&self.pool)
+		.bind(creator)
+		.execute(&mut *tx)
 		.await?;
 
-		Ok(())
+		// Another user inserted the same channel between our EXISTS and insert,
+		// cannot serialize that so primary key is final arbiter.
+		if result.rows_affected() == 0 {
+			tx.rollback().await?;
+			return Ok(CreateSubscriptionOutcome::AlreadySubscribed);
+		}
+
+		tx.commit().await?;
+		Ok(CreateSubscriptionOutcome::Created)
 	}
 
 	async fn fetch_installation_id_by_owner_project(
