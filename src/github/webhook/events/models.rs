@@ -53,12 +53,14 @@ impl GitHubEvent {
 }
 
 /// Minimal `GitHub` user reference.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct GitHubUserInfo {
 	pub login: String,
 	/// Account kind (`User`, `Bot`, `Organization`).`None` when omitted.
 	#[serde(rename = "type", default)]
 	pub user_type: Option<String>,
+	#[serde(default)]
+	pub id: Option<u64>,
 }
 
 impl GitHubUserInfo {
@@ -75,6 +77,7 @@ impl From<Author> for GitHubUserInfo {
 		Self {
 			login: author.login,
 			user_type: None,
+			id: Some(author.id.0),
 		}
 	}
 }
@@ -215,10 +218,7 @@ impl From<PullRequest> for PullRequestInfo {
 			state,
 			merged: pr.merged.unwrap_or(false),
 			html_url: pr.html_url.map(|u| u.to_string()).unwrap_or_default(),
-			user: GitHubUserInfo {
-				login: pr.user.map(|u| u.login).unwrap_or_default(),
-				user_type: None,
-			},
+			user: pr.user.map(|u| (*u).into()).unwrap_or_default(),
 			head: PullRequestRefInfo {
 				branch: pr.head.ref_field.clone(),
 				sha: pr.head.sha.clone(),

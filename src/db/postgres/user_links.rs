@@ -156,6 +156,28 @@ impl UserStore for PgUserStore {
 			.collect())
 	}
 
+	async fn fetch_by_github_user_ids(
+		&self,
+		github_user_ids: &[i64],
+	) -> Result<HashMap<i64, u64>, AppError> {
+		if github_user_ids.is_empty() {
+			return Ok(HashMap::new());
+		}
+		let rows = sqlx::query_as::<_, (i64, i64)>(
+			"SELECT github_user_id, discord_id
+           FROM user_links
+          WHERE github_user_id = ANY($1)",
+		)
+		.bind(github_user_ids)
+		.fetch_all(&self.pool)
+		.await?;
+
+		Ok(rows
+			.into_iter()
+			.map(|(gh_id, discord_id)| (gh_id, discord_id.cast_unsigned()))
+			.collect())
+	}
+
 	async fn unlink_github(&self, discord_id: u64) -> Result<(), AppError> {
 		sqlx::query(
 			"UPDATE user_links

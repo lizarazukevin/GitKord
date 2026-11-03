@@ -50,6 +50,13 @@ pub trait UserStore: Send + Sync {
 		github_logins: &[String],
 	) -> Result<HashMap<String, u64>, AppError>;
 
+	/// Map each GitHub numeric user ID to its linked Discord user ID. Rows
+	/// without a `github_user_id` (legacy, unlinked) are skipped.
+	async fn fetch_by_github_user_ids(
+		&self,
+		github_user_ids: &[i64],
+	) -> Result<HashMap<i64, u64>, AppError>;
+
 	/// Null the GitHub columns but keep the row (forward-compatible with more
 	/// providers). No-op when nothing is linked.
 	async fn unlink_github(&self, discord_id: u64) -> Result<(), AppError>;
