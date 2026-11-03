@@ -71,7 +71,7 @@ That is it. The next time someone opens a pull request on that repository, it sh
 
 **Reviewer assignment from Discord.** `/assign` and `/unassign` take a GitHub username or a Discord mention. Run them inside a PR thread and GitKord infers the repository and PR number for you. It will not let someone request a review from themselves.
 
-**Linked identities.** `/link` ties your Discord account to your GitHub username after checking the account exists. Once linked, you show up as a Discord mention in the automated messages instead of a bare login.
+**Linked identities.** `/link` verifies you are who you say you are on GitHub using our **device flow client**. You never type a username: the client hands you a link and a short code, you confirm in your browser, and the client authenticates the real GitHub account and records that identity against your Discord account. Once linked, you show up as a Discord mention in automated messages instead of a bare GitHub login.
 
 **Quiet by design.** Every slash command replies privately to the person who ran it, so the channel stays free of command chatter.
 
@@ -83,8 +83,8 @@ That is it. The next time someone opens a pull request on that repository, it sh
 |---------|--------------|
 | `/subscribe` | Start posting PR updates for a repository in this channel. |
 | `/unsubscribe` | Stop posting PR updates for a repository in this channel. |
-| `/link` | Link your Discord account to a GitHub username. |
-| `/unlink` | Remove your Discord to GitHub link. |
+| `/link` | Link your Discord account to a GitHub account you verify on GitHub. |
+| `/unlink` | Remove the linked GitHub account from your Discord account. |
 | `/assign` | Request a review. Skip `repo` and `pr` when run inside a PR thread. |
 | `/unassign` | Remove a review request. Same thread awareness as `/assign`. |
 | `/health` | Check that GitKord and its GitHub connection are online. |
@@ -141,22 +141,22 @@ You will need [Rust](https://www.rust-lang.org/tools/install) 1.91 or newer with
 
 Set `LOCAL_DEV=true` and provide the following (read in `src/config.rs`):
 
-| Variable | Required | Description                                                                                                                  |
-|----------|----------|--------------------------------------------------------------------------------------------------------------------------------|
-| `DISCORD_TOKEN` | Yes | Discord bot token from the Developer Portal (Bot → Reset Token).                                                             |
-| `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`).                                                         |
+| Variable | Required | Description                                                                                                                 |
+|----------|---------|-------------------------------------------------------------------------------------------------------------------------------|
+| `DISCORD_TOKEN` | Yes | Discord bot token from the Developer Portal (Bot → Reset Token).                                                            |
+| `GITHUB_WEBHOOK_SECRET` | Yes | HMAC secret for verifying webhook payloads (`openssl rand -hex 32`).                                                        |
 | `GITHUB_TOKEN` | Yes (local dev) | GitHub PAT with repository access and read/write permissions for pull requests and webhooks, used instead of GitHub App auth. |
-| `PUBLIC_DOMAIN` | Yes (local dev) | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                              |
-| `GITHUB_CLIENT_ID` | Yes (all envs) | GitHub App Client ID (not App ID). Device-flow identity linking. Not a secret. |
-| `DATABASE_URL` | Yes | Postgres connection string.                                                                                                  |
-| `RABBITMQ_URL` | Yes | AMQP connection URI for the RabbitMQ broker, e.g. `amqp://user:pass@host:5672/%2f`. The app will not start without this.     |
-| `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                 |
-| `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                 |
+| `PUBLIC_DOMAIN` | Yes (local dev) | Your tunnel host, e.g. `abc123.ngrok-free.app` (no `https://`).                                                             |
+| `GITHUB_CLIENT_ID` | Yes | GitHub App Client ID. Used by the device flow client to authenticate and verify the GitHub identity when linking. |
+| `DATABASE_URL` | Yes | Postgres connection string.                                                                                                 |
+| `RABBITMQ_URL` | Yes | AMQP connection URI for the RabbitMQ broker, e.g. `amqp://user:pass@host:5672/%2f`. The app will not start without this.    |
+| `LOCAL_DEV` | No | Set to `true` to enable local dev mode. Defaults to `false`.                                                                |
+| `RUST_LOG` | No | Log level: `trace`, `debug`, `info`, `warn`.                                                                                |
 | `LOG_ENDPOINT` | No | Log shipping URL (e.g. Loki push URL). When set, logs are shipped to the backend; otherwise logs go to stdout only. |
-| `RABBITMQ_PREFETCH` | No | Max unacknowledged messages the queue consumer holds at once. Defaults to `10`.                                              |
-| `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                        |
-| `INTERNAL_PORT` | No | Internal metrics/health listen port, scraped by Prometheus. Defaults to `9090`.                                              |
-| `METRICS_AGGREGATE_INTERVAL_SECS` | No | How often the `BusinessMetricsWorker` refreshes cached business metrics. Defaults to `60`.                                    |
+| `RABBITMQ_PREFETCH` | No | Max unacknowledged messages the queue consumer holds at once. Defaults to `10`.                                             |
+| `PORT` | No | HTTP listen port. Defaults to `3000`.                                                                                       |
+| `INTERNAL_PORT` | No | Internal metrics/health listen port, scraped by Prometheus. Defaults to `9090`.                                             |
+| `METRICS_AGGREGATE_INTERVAL_SECS` | No | How often the `BusinessMetricsWorker` refreshes cached business metrics. Defaults to `60`.                                   |
 
 #### Running the Complete Service
 
@@ -208,13 +208,13 @@ The first `--build` start compiles all dependencies into the `cargo_target` volu
 ✅ Migrate Config-as-Code to Infra-as-Code for Railway deployment.<br>
 ✅ Launch the GitKord domain.<br>
 ✅ Added backend replicas and timed offsets to make deployments reliable.<br>
-✅ Exposed business metrics summary as public endpoint for website.
+✅ Exposed business metrics summary as public endpoint for website.<br>
+✅ Authenticate Discord/GitHub link.
 
 #### In progress:
 
 - [ ] Checks handling for GitHub actions.
 - [ ] Configure canaries and alarms for service latency and DLQ depth.
-- [ ] Authenticate Discord/GitHub link.
 
 #### Planned:
 
