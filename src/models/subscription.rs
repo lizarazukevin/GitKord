@@ -34,10 +34,12 @@ pub struct Subscription {
 pub trait SubscriptionStore: Send + Sync {
 	/// Create a subscription only if it does not already exist and the creator is below
 	/// the `max_subscriptions` for their plan.
+	///
+	/// `None` means unlimited (e.g. Admin): the count is skipped entirely.
 	async fn create_within_limit(
 		&self,
 		subscription: Subscription,
-		max_subscriptions: u32,
+		max_subscriptions: Option<u32>,
 	) -> Result<CreateSubscriptionOutcome, AppError>;
 	/// Look up the stored `GitHub` app installation ID of a subscribed repository.
 	async fn fetch_installation_id_by_owner_project(

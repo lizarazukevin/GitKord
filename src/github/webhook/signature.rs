@@ -9,7 +9,7 @@ use axum::body::Bytes;
 use hmac::{Hmac, KeyInit, Mac};
 use http::HeaderMap;
 use sha2::Sha256;
-use tracing::log::warn;
+use tracing::warn;
 
 pub type HmacSha256 = Hmac<Sha256>;
 

@@ -1,5 +1,4 @@
 //! Service layer for the newsletter: signups, opt-outs, and listing.
-//!
 //! Owns the signup store and will grow to dispatch email updates.
 
 use crate::models::newsletter_signup::{Email, NewsletterSignup, NewsletterSignupStore};

@@ -8,8 +8,8 @@ use crate::error::{format_error, AppError};
 use crate::github;
 use crate::github::api::client::GitHubClient;
 use crate::github::api::pull_requests::split_repo;
-use crate::models::plan::Plan;
 use crate::models::subscription::{CreateSubscriptionOutcome, Subscription, SubscriptionStore};
+use crate::service::entitlement::EntitlementService;
 use chrono::Utc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,23 +28,29 @@ pub struct SubscribeRequest {
 
 pub struct SubscribeService {
 	sub_store: Arc<dyn SubscriptionStore>,
+	entitlement_service: Arc<EntitlementService>,
 	github: Arc<GitHubClient>,
 	config: WebhookRegistrationConfig,
 	basic_subscription_cap: u32,
+	premium_subscription_cap: u32,
 }
 
 impl SubscribeService {
 	pub fn new(
 		sub_store: Arc<dyn SubscriptionStore>,
+		entitlement_service: Arc<EntitlementService>,
 		github: Arc<GitHubClient>,
 		config: WebhookRegistrationConfig,
 		basic_subscription_cap: u32,
+		premium_subscription_cap: u32,
 	) -> Self {
 		Self {
 			sub_store,
+			entitlement_service,
 			github,
 			config,
 			basic_subscription_cap,
+			premium_subscription_cap,
 		}
 	}
 
@@ -73,11 +79,16 @@ impl SubscribeService {
 					updated_by: Some(req.discord_id.to_string()),
 				};
 
-				let cap = Plan::Basic.max_subscriptions(self.basic_subscription_cap);
+				let plan = self
+					.entitlement_service
+					.resolve_plan(req.discord_id)
+					.await?;
+				let plan_cap = plan
+					.max_subscriptions(self.basic_subscription_cap, self.premium_subscription_cap);
 
 				match self
 					.sub_store
-					.create_within_limit(subscription, cap)
+					.create_within_limit(subscription, plan_cap)
 					.await?
 				{
 					CreateSubscriptionOutcome::Created => {

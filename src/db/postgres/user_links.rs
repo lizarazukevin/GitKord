@@ -1,4 +1,4 @@
-//! `Postgres` implementation of `UserStore`.
+//! `Postgres` implementation of [`UserStore`].
 use crate::error::AppError;
 use crate::models::user_link::{UserLink, UserStore};
 use async_trait::async_trait;

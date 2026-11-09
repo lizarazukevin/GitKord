@@ -1,4 +1,4 @@
-//! `Postgres` implementation of `NewsletterSignupStore`.
+//! `Postgres` implementation of [`NewsletterSignupStore`].
 
 use crate::models::newsletter_signup::{Email, NewsletterSignup, NewsletterSignupStore};
 use crate::AppError;
