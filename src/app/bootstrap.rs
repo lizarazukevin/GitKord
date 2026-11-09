@@ -27,9 +27,11 @@ use crate::service::discord::assign::AssignService;
 use crate::service::discord::health::HealthService;
 use crate::service::discord::link::UserLinkService;
 use crate::service::discord::subscribe::SubscribeService;
+use crate::service::entitlement::EntitlementService;
 use crate::service::github::installation::InstallationService;
 use crate::service::github::installation_repositories::InstallationRepositoriesService;
 use crate::service::github::issue_comment::IssueCommentService;
+use crate::service::github::marketplace::MarketplaceService;
 use crate::service::github::pull_request::PullRequestService;
 use crate::service::github::review::ReviewService;
 use crate::service::newsletter::NewsletterService;
@@ -139,6 +141,13 @@ impl Application {
 			env_config.rabbitmq_prefetch,
 		));
 
+		let marketplace_service =
+			Arc::new(MarketplaceService::new(Arc::clone(&stores.entitlements)));
+		let entitlement_service = Arc::new(EntitlementService::new(
+			Arc::clone(&stores.entitlements),
+			Arc::clone(&stores.users),
+		));
+
 		let assign_service = Arc::new(AssignService::new(
 			Arc::clone(&stores.prs),
 			Arc::clone(&stores.subscriptions),
@@ -148,9 +157,11 @@ impl Application {
 
 		let subscribe_service = Arc::new(SubscribeService::new(
 			Arc::clone(&stores.subscriptions),
+			Arc::clone(&entitlement_service),
 			Arc::clone(&gh_client),
 			webhook_registration_config.clone(),
 			env_config.basic_subscription_cap,
+			env_config.premium_subscription_cap,
 		));
 
 		let device_flow_client = DeviceFlowClient::new(
@@ -211,7 +222,7 @@ impl Application {
 			Arc::clone(&stores.subscriptions),
 		));
 
-		let handlers: [Arc<dyn WebhookEventHandler>; 6] = [
+		let webhook_event_handlers: [Arc<dyn WebhookEventHandler>; 6] = [
 			Arc::new(PullRequestEventHandler::new(pull_request_service)),
 			Arc::new(ReviewEventHandler::new(review_service)),
 			Arc::new(IssueCommentEventHandler::new(issue_comment_service)),
@@ -219,12 +230,12 @@ impl Application {
 			Arc::new(InstallationRepositoriesEventHandler::new(
 				installation_repositories_service,
 			)),
-			Arc::new(MarketplacePurchaseEventHandler::new()),
+			Arc::new(MarketplacePurchaseEventHandler::new(marketplace_service)),
 		];
 
 		let webhook_router = Arc::new(WebhookRouter::new(
 			env_config.github_webhook_secret.clone(),
-			handlers,
+			webhook_event_handlers,
 			Arc::clone(&metrics_recorder),
 			Arc::clone(&publisher),
 		));

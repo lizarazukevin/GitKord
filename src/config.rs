@@ -119,6 +119,10 @@ pub struct EnvConfig {
 	/// Maximum repository subscriptions allowed on the Basic plan.
 	/// Defaults to `5`.
 	pub basic_subscription_cap: u32,
+
+	/// Maximum repository subscriptions allowed on the Premium plan.
+	/// Defaults to `100`.
+	pub premium_subscription_cap: u32,
 }
 
 impl EnvConfig {
@@ -168,6 +172,7 @@ impl EnvConfig {
 			parse_u64_env("WEBHOOK_REDELIERY_LOOKBACK_SECONDS", 900)?;
 
 		let basic_subscription_cap = parse_u32_env("BASIC_SUBSCRIPTION_CAP", 5)?;
+		let premium_subscription_cap = parse_u32_env("PREMIUM_SUBSCRIPTION_CAP", 100)?;
 
 		Ok(Self {
 			discord_token,
@@ -191,6 +196,7 @@ impl EnvConfig {
 			webhook_redelivery_interval_secs,
 			webhook_redelivery_lookback_secs,
 			basic_subscription_cap,
+			premium_subscription_cap,
 		})
 	}
 

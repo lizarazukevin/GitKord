@@ -7,10 +7,11 @@
 use crate::error::AppError;
 use crate::github::webhook::events::models::GitHubEvent;
 use crate::github::webhook::router::WebhookEventHandler;
+use crate::service::github::marketplace::{MarketplaceRequest, MarketplaceService};
 use async_trait::async_trait;
 use axum::body::Bytes;
 use serde::Deserialize;
-use tracing::info;
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct MarketplacePurchasePayload {
@@ -36,7 +37,9 @@ pub struct MarketplaceSender {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MarketplacePurchase {
 	pub account: MarketplaceAccount,
+	#[allow(dead_code)]
 	pub billing_cycle: String,
+	#[allow(dead_code)]
 	pub unit_count: u64,
 	#[allow(dead_code)]
 	pub on_free_trial: bool,
@@ -49,6 +52,7 @@ pub struct MarketplacePurchase {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MarketplaceAccount {
 	pub login: String,
+	pub id: i64,
 }
 
 /// The selected Marketplace plan.
@@ -59,6 +63,7 @@ pub struct MarketplacePlan {
 	pub name: String,
 	#[allow(dead_code)]
 	pub description: String,
+	#[allow(dead_code)]
 	pub price_model: String,
 	#[allow(dead_code)]
 	pub monthly_price_in_cents: u64,
@@ -70,12 +75,13 @@ pub struct MarketplacePlan {
 /// validates the signature and payload, records the purchase change to the
 /// logs, and returns. This is enough for GitHub to verify the webhook when
 /// listing the App, and gives a clear place to attach billing logic later.
-#[derive(Debug, Default)]
-pub struct MarketplacePurchaseEventHandler;
+pub struct MarketplacePurchaseEventHandler {
+	service: Arc<MarketplaceService>,
+}
 
 impl MarketplacePurchaseEventHandler {
-	pub const fn new() -> Self {
-		Self
+	pub const fn new(service: Arc<MarketplaceService>) -> Self {
+		Self { service }
 	}
 }
 
@@ -87,20 +93,7 @@ impl WebhookEventHandler for MarketplacePurchaseEventHandler {
 
 	async fn execute(&self, body: Bytes) -> Result<(), AppError> {
 		let payload: MarketplacePurchasePayload = serde_json::from_slice(&body)?;
-		let purchase = &payload.marketplace_purchase;
-
-		info!(
-			action = %payload.action,
-			effective_date = %payload.effective_date,
-			actor = %payload.sender.login,
-			account = %purchase.account.login,
-			billing_cycle = %purchase.billing_cycle,
-			plan = %purchase.plan.name,
-			price_model = %purchase.plan.price_model,
-			unit_count = purchase.unit_count,
-			"marketplace purchase event received"
-		);
-
-		Ok(())
+		let req = MarketplaceRequest::from_payload(payload)?;
+		self.service.handle(req).await
 	}
 }

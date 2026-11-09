@@ -1,5 +1,6 @@
 //! Domain types and store interfaces.
 
+pub mod entitlement;
 pub mod newsletter_signup;
 pub mod plan;
 pub mod pr_message;

@@ -3,5 +3,6 @@
 
 pub mod business_metrics;
 pub mod discord;
+pub mod entitlement;
 pub mod github;
 pub mod newsletter;

@@ -1,4 +1,4 @@
-//! `Postgres` implementation of `SubscriptionStore`.
+//! `Postgres` implementation of [`SubscriptionStore`].
 
 use crate::error::AppError;
 use crate::models::subscription::{CreateSubscriptionOutcome, Subscription, SubscriptionStore};
@@ -52,7 +52,7 @@ impl SubscriptionStore for PgSubscriptionStore {
 	async fn create_within_limit(
 		&self,
 		sub: Subscription,
-		max_subscriptions: u32,
+		max_subscriptions: Option<u32>,
 	) -> Result<CreateSubscriptionOutcome, AppError> {
 		let creator = sub
 			.created_by
@@ -94,25 +94,23 @@ impl SubscriptionStore for PgSubscriptionStore {
 			return Ok(CreateSubscriptionOutcome::AlreadySubscribed);
 		}
 
-		// Count only rows this user created, legacy rows count against no one.
-		let used: i64 = sqlx::query_scalar(
-			"SELECT COUNT(*)
+		if let Some(cap) = max_subscriptions {
+			let used: i64 = sqlx::query_scalar(
+				"SELECT COUNT(*)
              FROM subscriptions
              WHERE created_by = $1",
-		)
-		.bind(creator)
-		.fetch_one(&mut *tx)
-		.await?;
+			)
+			.bind(creator)
+			.fetch_one(&mut *tx)
+			.await?;
 
-		let used = u32::try_from(used)
-			.map_err(|e| AppError::Internal(anyhow!("subscription count out of range: {e}")))?;
+			let used = u32::try_from(used)
+				.map_err(|e| AppError::Internal(anyhow!("subscription count out of range: {e}")))?;
 
-		if used >= max_subscriptions {
-			tx.rollback().await?;
-			return Ok(CreateSubscriptionOutcome::LimitReached {
-				used,
-				cap: max_subscriptions,
-			});
+			if used >= cap {
+				tx.rollback().await?;
+				return Ok(CreateSubscriptionOutcome::LimitReached { used, cap });
+			}
 		}
 
 		let result = sqlx::query(

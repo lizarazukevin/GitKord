@@ -1,4 +1,4 @@
-//! `Postgres` implementation of `PrStore`.
+//! `Postgres` implementation of [`PrStore`].
 
 use crate::error::AppError;
 use crate::models::pr_message::{PrMessage, PrStore};
