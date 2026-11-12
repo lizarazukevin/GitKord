@@ -83,6 +83,7 @@ That is it. The next time someone opens a pull request on that repository, it sh
 |---------|--------------|
 | `/subscribe` | Start posting PR updates for a repository in this channel. |
 | `/unsubscribe` | Stop posting PR updates for a repository in this channel. |
+| `/list` | List the repositories subscribed in this channel, with who added them and when. |
 | `/link` | Link your Discord account to a GitHub account you verify on GitHub. |
 | `/unlink` | Remove the linked GitHub account from your Discord account. |
 | `/assign` | Request a review. Skip `repo` and `pr` when run inside a PR thread. |
@@ -196,6 +197,7 @@ The first `--build` start compiles all dependencies into the `cargo_target` volu
 ✅ One live message per pull request, edited in place, with a per-PR audit thread.<br>
 ✅ `pull_request` and `pull_request_review` events reflected in Discord.<br>
 ✅ Subscriptions from any channel to any repository, including the same repo across multiple channels in a server.<br>
+✅ `/list subscriptions` lists the repositories a channel follows, with who added them and when.<br>
 ✅ GitHub App installation auth, so no per-repo webhook setup.<br>
 ✅ `/link` and `/unlink` with GitHub account verification.<br>
 ✅ `/assign` and `/unassign` with Discord mention resolution, thread-aware context, and a self-assignment guard.<br>
@@ -221,7 +223,7 @@ The first `--build` start compiles all dependencies into the `cargo_target` volu
 - [ ] AI summary of PR on Discord.
 - [ ] Cron job to retry failed GitHub webhook deliveries when backend is offline.
 - [ ] Autocomplete user entries on Discord client.
-- [ ] List PRs, subscriptions, team members for repository.
+- [ ] List PRs and team members for a repository.
 - [ ] Improved health check to display average latency and service disruption.
 - [ ] Process batched webhook messages concurrently.
 
