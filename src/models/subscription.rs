@@ -19,11 +19,9 @@ pub struct Subscription {
 	pub guild_id: u64,
 	pub channel_id: u64,
 	pub installation_id: u64,
-	#[allow(dead_code)]
 	pub created_at: DateTime<Utc>,
 	#[allow(dead_code)]
 	pub updated_at: DateTime<Utc>,
-	#[allow(dead_code)]
 	pub created_by: Option<String>,
 	#[allow(dead_code)]
 	pub updated_by: Option<String>,
@@ -53,6 +51,9 @@ pub trait SubscriptionStore: Send + Sync {
 		owner: &str,
 		project: &str,
 	) -> Result<Vec<Subscription>, AppError>;
+	/// List all subscription records by a specific channel ID.
+	async fn fetch_all_by_channel_id(&self, channel_id: u64)
+		-> Result<Vec<Subscription>, AppError>;
 	/// Remove a single channel subscription for a repository.
 	async fn delete(
 		&self,

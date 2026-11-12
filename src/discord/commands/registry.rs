@@ -7,10 +7,12 @@ use crate::app::observability::{
 use crate::discord::commands::assign::AssignModule;
 use crate::discord::commands::health::HealthModule;
 use crate::discord::commands::link::UserLinkModule;
+use crate::discord::commands::list::ListModule;
 use crate::discord::commands::subscribe::SubscribeModule;
 use crate::service::discord::assign::AssignService;
 use crate::service::discord::health::HealthService;
 use crate::service::discord::link::UserLinkService;
+use crate::service::discord::list::ListSubscriptionsQuery;
 use crate::service::discord::subscribe::SubscribeService;
 use crate::AppError;
 use async_trait::async_trait;
@@ -109,6 +111,7 @@ pub fn build_registry(
 	subscribe_service: Arc<SubscribeService>,
 	link_service: Arc<UserLinkService>,
 	health_service: Arc<HealthService>,
+	list_subscriptions: ListSubscriptionsQuery,
 ) -> CommandRegistry {
 	let mut registry = CommandRegistry::new();
 
@@ -116,6 +119,7 @@ pub fn build_registry(
 	registry.register(SubscribeModule::new(subscribe_service));
 	registry.register(UserLinkModule::new(link_service));
 	registry.register(HealthModule::new(health_service));
+	registry.register(ListModule::new(list_subscriptions));
 
 	registry
 }

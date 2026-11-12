@@ -181,6 +181,19 @@ impl SubscriptionStore for PgSubscriptionStore {
 
 		Ok(rows.into_iter().map(Subscription::from).collect())
 	}
+	async fn fetch_all_by_channel_id(
+		&self,
+		channel_id: u64,
+	) -> Result<Vec<Subscription>, AppError> {
+		let rows = sqlx::query_as::<_, SubscriptionRow>(
+			"SELECT owner, project, guild_id, channel_id, installation_id, created_at, updated_at, created_by, updated_by FROM subscriptions WHERE channel_id = $1",
+		)
+			.bind(channel_id.cast_signed())
+			.fetch_all(&self.pool)
+			.await?;
+
+		Ok(rows.into_iter().map(Subscription::from).collect())
+	}
 
 	async fn delete(
 		&self,
