@@ -54,28 +54,67 @@ impl CommandModule for ListModule {
 	}
 }
 
+/// Cap on rows rendered in one ephemeral reply.
+/// Keep message well under Discord's 2000-character content limit.
+const MAX_SUBSCRIPTIONS_TO_LIST: usize = 15;
+
 /// Render a subscription list and reply ephemerally.
 async fn reply_with_subs(
 	ctx: &Context,
 	cmd: &CommandInteraction,
 	subs: Vec<Subscription>,
 ) -> Result<(), AppError> {
-	ephemeral(ctx, cmd, &format_subscriptions(&subs)).await
+	ephemeral(ctx, cmd, &format_subscriptions(cmd.channel_id.get(), &subs)).await
 }
 
-/// Format channel subscriptions into a user-facing `Discord` message.
-fn format_subscriptions(subs: &[Subscription]) -> String {
+/// Format the channel's subscriptions as a single `Discord` message.
+fn format_subscriptions(channel_id: u64, subs: &[Subscription]) -> String {
 	if subs.is_empty() {
-		return "No repository subscriptions in this channel.".into();
+		return format!("No repository subscriptions in <#{channel_id}> yet.");
 	}
 
-	let repos = subs
+	// Ordering is a presentation concern; the query stays an unfiltered read.
+	let mut sorted = subs.iter().collect::<Vec<_>>();
+	sorted.sort_by_key(|sub| (&sub.owner, &sub.project));
+
+	let body = sorted
 		.iter()
-		.map(|sub| format!("- `{}/{}`", sub.owner, sub.project))
+		.take(MAX_SUBSCRIPTIONS_TO_LIST)
+		.map(|sub| format_line(sub))
 		.collect::<Vec<_>>()
 		.join("\n");
 
-	format!("**Repository subscriptions in this channel**\n{repos}")
+	let hidden = sorted.len().saturating_sub(MAX_SUBSCRIPTIONS_TO_LIST);
+	let footer = if hidden == 0 {
+		String::new()
+	} else {
+		format!("\n\n-# *…and {hidden} more*")
+	};
+
+	format!("**Subscribed repositories in:  <#{channel_id}>**\n{body}{footer}")
+}
+
+/// One bullet row: repo, optional subscriber mention, and creation date.
+fn format_line(sub: &Subscription) -> String {
+	let mut parts = vec![format!(
+		"[{}/{}](<https://github.com/{}/{}>)",
+		sub.owner, sub.project, sub.owner, sub.project
+	)];
+
+	if let Some(mention) = subscriber_mention(sub.created_by.as_deref()) {
+		parts.push(mention);
+	}
+
+	parts.push(sub.created_at.format("*%d %b %Y*").to_string());
+	format!("- {}", parts.join("  **·**  "))
+}
+
+/// Render a `Discord` snowflake as a mention, or `None` when absent or not a
+/// valid snowflake (pre-audit rows have no creator).
+fn subscriber_mention(created_by: Option<&str>) -> Option<String> {
+	created_by
+		.and_then(|id| id.parse::<u64>().ok())
+		.map(|id| format!("<@{id}>"))
 }
 
 fn list_command() -> CreateCommand {
@@ -84,6 +123,6 @@ fn list_command() -> CreateCommand {
 		.add_option(CreateCommandOption::new(
 			CommandOptionType::SubCommand,
 			"subscriptions",
-			"List repositories this channel is subscribed to",
+			"List repositories you are subscribed to",
 		))
 }

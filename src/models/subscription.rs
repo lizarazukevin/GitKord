@@ -19,11 +19,9 @@ pub struct Subscription {
 	pub guild_id: u64,
 	pub channel_id: u64,
 	pub installation_id: u64,
-	#[allow(dead_code)]
 	pub created_at: DateTime<Utc>,
 	#[allow(dead_code)]
 	pub updated_at: DateTime<Utc>,
-	#[allow(dead_code)]
 	pub created_by: Option<String>,
 	#[allow(dead_code)]
 	pub updated_by: Option<String>,
