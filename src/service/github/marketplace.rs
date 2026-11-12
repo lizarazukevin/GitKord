@@ -153,7 +153,7 @@ impl MarketplaceService {
 
 	fn marketplace_plan(name: &str) -> Option<Plan> {
 		match name.to_ascii_lowercase().as_str() {
-			"basic" => Some(Plan::Basic),
+			"basic" | "basic. limited pr tracking." => Some(Plan::Basic),
 			"premium" => Some(Plan::Premium),
 			_ => None,
 		}
