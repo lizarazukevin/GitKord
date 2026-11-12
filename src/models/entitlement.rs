@@ -1,3 +1,5 @@
+//! Domain model and traits for entitlement plans.
+
 use crate::models::plan::Plan;
 use crate::AppError;
 use chrono::{DateTime, Utc};

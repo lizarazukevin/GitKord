@@ -53,6 +53,9 @@ pub trait SubscriptionStore: Send + Sync {
 		owner: &str,
 		project: &str,
 	) -> Result<Vec<Subscription>, AppError>;
+	/// List all subscription records by a specific channel ID.
+	async fn fetch_all_by_channel_id(&self, channel_id: u64)
+		-> Result<Vec<Subscription>, AppError>;
 	/// Remove a single channel subscription for a repository.
 	async fn delete(
 		&self,

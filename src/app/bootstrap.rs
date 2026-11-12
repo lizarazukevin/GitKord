@@ -26,6 +26,7 @@ use crate::service::business_metrics::BusinessMetricsService;
 use crate::service::discord::assign::AssignService;
 use crate::service::discord::health::HealthService;
 use crate::service::discord::link::UserLinkService;
+use crate::service::discord::list::ListSubscriptionsQuery;
 use crate::service::discord::subscribe::SubscribeService;
 use crate::service::entitlement::EntitlementService;
 use crate::service::github::installation::InstallationService;
@@ -177,11 +178,15 @@ impl Application {
 
 		let health_service = Arc::new(HealthService::new(Arc::clone(&gh_client)));
 
+		let list_subscriptions = ListSubscriptionsQuery::new(Arc::clone(&stores.subscriptions));
+
+		// Services and queries mapped to dedicated slash commands
 		let module_registry = discord::commands::registry::build_registry(
 			assign_service,
 			subscribe_service,
 			link_service,
 			health_service,
+			list_subscriptions,
 		);
 
 		let (discord_client, http) = discord::client::build(
