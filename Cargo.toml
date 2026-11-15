@@ -47,6 +47,11 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 # HTTP types shared between axum and reqwest
 http = "1.4"
 
+# Vendored OpenSSL: a transitive dependency pulls in openssl-sys. The vendored
+# feature builds OpenSSL from source so the static musl build works without a
+# system libssl. Not unused - do not remove.
+openssl = { version = "0.10", features = ["vendored"] }
+
 # HMAC-SHA256 signature verification for GitHub webhooks
 hmac = "0.13"
 sha2 = "0.11"
