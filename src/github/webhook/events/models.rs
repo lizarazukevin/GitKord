@@ -217,8 +217,8 @@ impl From<PullRequest> for PullRequestInfo {
 			title: pr.title.unwrap_or_default(),
 			state,
 			merged: pr.merged.unwrap_or(false),
-			html_url: pr.html_url.map(|u| u.to_string()).unwrap_or_default(),
-			user: pr.user.map(|u| (*u).into()).unwrap_or_default(),
+			html_url: pr.html_url.map_or_default(|u| u.to_string()),
+			user: pr.user.map_or_default(|u| (*u).into()),
 			head: PullRequestRefInfo {
 				branch: pr.head.ref_field.clone(),
 				sha: pr.head.sha.clone(),
