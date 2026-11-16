@@ -1,4 +1,4 @@
-FROM rabbitmq:4.3.6-management-alpine
+FROM rabbitmq:4.4.0-management-alpine
 
 # Railway terminal explicit path to expose Erlang and RabbitMQ binaries
 RUN echo 'export PATH="/opt/erlang/bin:/opt/rabbitmq/sbin:$PATH"' >> /etc/profile
