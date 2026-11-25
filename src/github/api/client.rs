@@ -1,7 +1,6 @@
 //! Client objects to communicate with `GitHub`.
 use crate::error::AppError;
 use anyhow::anyhow;
-use jsonwebtoken::EncodingKey;
 use octocrab::Octocrab;
 
 #[derive(Clone)]
@@ -37,7 +36,7 @@ impl GitHubClient {
 			AuthMode::Pat(client)
 		} else {
 			// `jsonwebtoken::Error` has no `AppError` conversion; surface it as an internal error.
-			let key = EncodingKey::from_rsa_pem(private_key_pem.as_bytes())
+			let key = octocrab::EncodingKey::from_rsa_pem(private_key_pem.as_bytes())
 				.map_err(|e| AppError::Internal(anyhow!("invalid GitHub App private key: {e}")))?;
 			let client = Octocrab::builder().app(app_id.into(), key).build()?;
 			AuthMode::App(client)
